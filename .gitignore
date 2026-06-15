@@ -1,0 +1,59 @@
+# ============================================================
+# SunnyBridge MVP — .gitignore
+# ============================================================
+
+# --- Environment / Secrets ---
+.env
+.env.*
+!.env.example
+.supabase-access-token
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+
+# --- Keys & Certificates ---
+keys/
+*.pem
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Database local ---
+*.db
+*.sqlite3
+
+# --- Backup / Dumps ---
+backup/
+*.dump
+
+# --- Node ---
+node_modules/
+.next/
+
+# --- Flutter ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# --- Alembic ---
+alembic/alembic.log

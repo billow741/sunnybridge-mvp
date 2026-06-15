@@ -1,0 +1,19 @@
+-- SunnyBridge MVP — Migration 005
+-- Storage buckets: pdfs / covers (private, no Storage RLS)
+-- Corresponds to: SPRINT-1 DB-05
+--
+-- NOTE: TECH-SPEC Appendix B defines Storage RLS using auth.role(),
+-- but this project uses self-signed RS256 JWT (not Supabase Auth).
+-- auth.role() returns 'anon'/'authenticated'/'service_role', NOT
+-- our custom parent/teacher/admin roles.
+--
+-- Decision: Create private buckets WITHOUT Storage RLS.
+-- Backend uses service_role key to generate signed URLs.
+-- See TECH-SPEC 7.3 — Signed URL pattern.
+--
+-- Bucket creation must be done via Storage REST API (not SQL DDL):
+--   POST /storage/v1/bucket  {"id":"pdfs","name":"pdfs","public":false}
+--   POST /storage/v1/bucket  {"id":"covers","name":"covers","public":false}
+--
+-- This SQL file is for documentation only — Storage API is the
+-- authoritative way to create buckets in Supabase.

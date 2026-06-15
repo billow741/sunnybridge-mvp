@@ -1,0 +1,26 @@
+name: sunnybridge_teacher
+description: SunnyBridge MVP — 教师端 (Teacher App)
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  sunnybridge_core:
+    path: ../../packages/core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  integration_test:
+    sdk: flutter
+  dio: ^5.0.0
+  go_router: any
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,26 @@
+name: sunnybridge_student
+description: SunnyBridge MVP — 学习端 (家长/学生)
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  sunnybridge_core:
+    path: ../../packages/core
+  pdfrx: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  dio: ^5.0.0
+
+flutter:
+  uses-material-design: true
