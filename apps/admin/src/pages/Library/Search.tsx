@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Table, Tag, Select, Input, Switch, Button, Space, Typography, Spin } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Row, Col, Card, Table, Tag, Select, Input, Switch, Button, Space, Typography } from 'antd';
 import { SearchOutlined, ReloadOutlined, EditOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getMaterialList } from '../../services/reading';

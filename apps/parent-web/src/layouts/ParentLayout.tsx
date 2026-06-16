@@ -4,7 +4,6 @@ import {
   HomeOutlined,
   TeamOutlined,
   CalendarOutlined,
-  ReadOutlined,
   BookOutlined,
   HistoryOutlined,
   LogoutOutlined,

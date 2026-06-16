@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Tag, Typography, Spin, Carousel, Button, Space } from 'antd';
+import { Row, Col, Card, Tag, Typography, Spin, Carousel, Button } from 'antd';
 import { BookOutlined, StarOutlined, FireOutlined, ClockCircleOutlined, ReadOutlined, SoundOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
@@ -12,11 +12,10 @@ import {
   LEVEL_COLORS,
   READING_CATEGORY_LABELS,
   RESOURCE_CATEGORY_LABELS,
-  LIBRARY_LABELS,
 } from '../../library/adapter';
 import type { ResourceItem, MaterialLevel } from '../../library/adapter';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 function ResourceCard({ item, onClick }: { item: ResourceItem; onClick: () => void }) {
   return (
@@ -97,7 +96,7 @@ export default function ParentLibraryHome() {
   ];
   const visibleItems = parentVisibleFilter(allItems);
   const byLevel = groupByLevel(visibleItems);
-  const readingItems = visibleItems.filter(i => i.library === 'reading');
+  // reading items available under library='reading'
   const featuredItems = visibleItems.filter(i => i.isFeatured);
   const newItems = [...visibleItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 8);
 

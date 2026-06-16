@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Form, Input, Select, InputNumber, Switch, Button, Row, Col, Space, Typography, Spin, message, Tag } from 'antd';
 import { SaveOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getMaterialDetail, createMaterial, updateMaterial } from '../../services/reading';
 import { getResourceDetail, createResource, updateResource } from '../../services/resource';
-import { LIBRARY_OPTIONS, LEVEL_OPTIONS, AUDIENCE_OPTIONS, LIBRARY_LABELS } from '../../library/adapter';
-import type { LibraryType, MaterialLevel } from '../../library/adapter';
+import { LIBRARY_OPTIONS, LEVEL_OPTIONS, AUDIENCE_OPTIONS } from '../../library/adapter';
+import type { LibraryType } from '../../library/adapter';
 
 const { TextArea } = Input;
 const { Title } = Typography;

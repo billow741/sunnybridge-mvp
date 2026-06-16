@@ -269,7 +269,7 @@ export function buildCatalogTree(): TreeNode[] {
         // Level 分区
         ...(['L1','L2','L3','L4','L5','L6'] as MaterialLevel[]).map(lv => ({
           key: `reading.level.${lv}`,
-          title: LEVEL_LABELS[lv],
+          title: LEVEL_LABELS[lv]!,
           filter: { library: 'reading', level: lv } as { library: LibraryType; level: MaterialLevel },
         })),
       ],

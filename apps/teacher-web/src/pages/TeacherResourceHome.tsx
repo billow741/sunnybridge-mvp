@@ -12,7 +12,7 @@ import {
   READING_CATEGORY_LABELS,
   RESOURCE_CATEGORY_LABELS,
 } from '../library/adapter';
-import type { ResourceItem, MaterialLevel } from '../library/adapter';
+import type { ResourceItem } from '../library/adapter';
 
 const { Title, Text } = Typography;
 

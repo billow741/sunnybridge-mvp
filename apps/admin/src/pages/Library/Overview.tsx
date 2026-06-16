@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Row, Col, Card, Statistic, Tag, Table, Typography, Spin } from 'antd';
 import {
   BookOutlined,
-  ReadOutlined,
-  TeamOutlined,
   StarOutlined,
   CheckCircleOutlined,
   StopOutlined,

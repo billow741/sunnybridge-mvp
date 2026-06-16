@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Tag, Typography, Spin, Empty, List, Button, Progress } from 'antd';
-import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined, ReadOutlined } from '@ant-design/icons';
+import { useState, useEffect } from 'react';
+import { Card, Tag, Typography, Spin, Empty, Button, Progress } from 'antd';
+import { BookOutlined, CheckCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Tree, Table, Tag, Button, Space, Popconfirm, Typography, Input, Spin } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Layout, Tree, Table, Tag, Button, Space, Popconfirm, Typography, Input } from 'antd';
 import { EditOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { TreeProps } from 'antd';
 import { getMaterialList, deleteMaterial } from '../../services/reading';

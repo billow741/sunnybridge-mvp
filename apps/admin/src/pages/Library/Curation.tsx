@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Tag, Typography, Spin, Empty } from 'antd';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, Tag, Typography, Spin, Empty } from 'antd';
 import { StarOutlined, FireOutlined, PlusOutlined, BookOutlined, SoundOutlined } from '@ant-design/icons';
 import { getMaterialList } from '../../services/reading';
 import { getResourceList } from '../../services/resource';
@@ -11,7 +11,7 @@ import {
   READING_CATEGORY_LABELS,
   RESOURCE_CATEGORY_LABELS,
 } from '../../library/adapter';
-import type { ResourceItem, MaterialLevel } from '../../library/adapter';
+import type { ResourceItem } from '../../library/adapter';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
