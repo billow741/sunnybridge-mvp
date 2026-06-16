@@ -58,3 +58,4 @@ node_modules/
 
 # --- Alembic ---
 alembic/alembic.log
+*.tsbuildinfo

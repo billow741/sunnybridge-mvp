@@ -1,29 +1,37 @@
 /**
- * Admin layout with sidebar — 6 menu items per SPRINT-1 ADMIN-01.
+ * Admin layout with sidebar.
  *
- * Menu items (from IA.md + Sprint 验收标准 ④):
+ * Menu structure:
  * 1. 首页概览 (Dashboard)
  * 2. 课程管理 (A-COURSE)
  * 3. 教师管理 (A-TEACHER)
  * 4. 学生管理 (A-STUDENT)
- * 5. 阅读馆管理 (A-READING) — P1
- * 6. 资源库管理 (A-RESOURCE) — P1
- *
- * P1 items: 阅读馆管理 (A-READING) now implemented (ADMIN-05).
- * Resource management (A-RESOURCE) remains disabled.
+ * 5. 阅读馆管理 (A-READING)
+ * 6. 资源馆 (Library — SubMenu)
+ *    ├── 总览
+ *    ├── 馆藏目录
+ *    ├── 资源编目
+ *    ├── 资源检索
+ *    ├── 专题陈列
+ *    └── 使用记录
  */
 
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Button, Typography, theme } from 'antd';
 import {
- DashboardOutlined,
- BookOutlined,
- TeamOutlined,
- UserOutlined,
- ReadOutlined,
- FolderOutlined,
- LogoutOutlined,
+  DashboardOutlined,
+  BookOutlined,
+  TeamOutlined,
+  UserOutlined,
+  ReadOutlined,
+  FolderOutlined,
+  LogoutOutlined,
+  AppstoreOutlined,
+  EditOutlined,
+  SearchOutlined,
+  StarOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import { logout } from '../api/auth';
 
@@ -31,36 +39,44 @@ const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
 
 const menuItems = [
- {
- key: '/dashboard',
- icon: <DashboardOutlined />,
- label: '首页概览',
- },
- {
- key: '/courses',
- icon: <BookOutlined />,
- label: '课程管理',
- },
- {
- key: '/teachers',
- icon: <TeamOutlined />,
- label: '教师管理',
- },
- {
- key: '/students',
- icon: <UserOutlined />,
- label: '学生管理',
- },
- {
-  key: '/reading',
-  icon: <ReadOutlined />,
-  label: '阅读馆管理',
- },
- {
- key: '/resources',
- icon: <FolderOutlined />,
- label: '资源库管理',
- },
+  {
+    key: '/dashboard',
+    icon: <DashboardOutlined />,
+    label: '首页概览',
+  },
+  {
+    key: '/courses',
+    icon: <BookOutlined />,
+    label: '课程管理',
+  },
+  {
+    key: '/teachers',
+    icon: <TeamOutlined />,
+    label: '教师管理',
+  },
+  {
+    key: '/students',
+    icon: <UserOutlined />,
+    label: '学生管理',
+  },
+  {
+    key: '/reading',
+    icon: <ReadOutlined />,
+    label: '阅读馆管理',
+  },
+  {
+    key: '/library',
+    icon: <BookOutlined />,
+    label: '资源馆',
+    children: [
+      { key: '/library/overview', icon: <AppstoreOutlined />, label: '总览' },
+      { key: '/library/catalog', icon: <FolderOutlined />, label: '馆藏目录' },
+      { key: '/library/cataloging', icon: <EditOutlined />, label: '资源编目' },
+      { key: '/library/search', icon: <SearchOutlined />, label: '资源检索' },
+      { key: '/library/curation', icon: <StarOutlined />, label: '专题陈列' },
+      { key: '/library/usage', icon: <BarChartOutlined />, label: '使用记录' },
+    ],
+  },
 ];
 
 const AdminLayout: React.FC = () => {
@@ -78,10 +94,13 @@ const AdminLayout: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Determine active menu key from path
-  const selectedKey = menuItems.find((item) =>
-    location.pathname.startsWith(item.key),
-  )?.key ?? '/courses';
+  // Flatten all keys (including submenu children) for matching
+  const allKeys = menuItems.flatMap(item =>
+    'children' in item ? [item.key, ...item.children!.map(c => c.key)] : [item.key]
+  );
+  const selectedKey = allKeys.find(key => location.pathname.startsWith(key)) ?? '/dashboard';
+  // Open the submenu if on a library page
+  const openKeys = location.pathname.startsWith('/library') ? ['/library'] : [];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -110,6 +129,7 @@ const AdminLayout: React.FC = () => {
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
+          defaultOpenKeys={openKeys}
           items={menuItems}
           onClick={handleMenuClick}
         />
