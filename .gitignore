@@ -6,6 +6,7 @@
 .env
 .env.*
 !.env.example
+!.env.production
 .supabase-access-token
 
 # --- Python ---
