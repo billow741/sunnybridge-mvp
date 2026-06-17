@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     jwt_refresh_expire_days: int = 30
     jwt_algorithm: str = "RS256"
 
+    # --- File Storage ---
+    storage_backend: str = "local"  # local | supabase | cos
+    storage_root: str = "/data/sb-files"  # LocalStorage root directory
+
     # --- Redis ---
     redis_url: str = "redis://localhost:6379"
 

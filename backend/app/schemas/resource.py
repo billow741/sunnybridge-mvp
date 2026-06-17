@@ -1,10 +1,9 @@
 """Resource module Pydantic schemas.
 
-Per TECH-SPEC 5.7 / 6.1 / DB-04:
-- ResourceCreate / ResourceUpdate: admin CRUD
-- ResourceOut / ResourceDetail: list + detail responses
-- PaginatedResources: TECH-SPEC 5.9 list response format
-- UploadPdfOut: generic PDF upload response
+Storage migration (2026-06):
+- category: opened from hardcoded regex to free string (max 50 chars)
+- pdf_url: now stores logical path like "resources/{category}/{id}.pdf"
+- UploadPdfOut.storage_path: logical path, not Supabase path
 """
 
 from datetime import datetime
@@ -22,10 +21,11 @@ class ResourceCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     category: str = Field(
         ...,
-        pattern=r"^(phonics|word_card|recommended)$",
-        description="自然拼读/单词卡/推荐",
+        min_length=1,
+        max_length=50,
+        description="资源分类，如 phonics/word_card/recommended/song/video 等",
     )
-    pdf_url: str = Field(..., min_length=1, description="PDF file URL in Supabase Storage")
+    pdf_url: str = Field("", min_length=0, description="逻辑存储路径，如 resources/phonics/xxx.pdf; 上传后自动填充")
     sort_order: int = Field(0, ge=0)
     is_active: bool = True
 
@@ -33,10 +33,7 @@ class ResourceCreate(BaseModel):
 class ResourceUpdate(BaseModel):
     """Request body for PUT /resources/{id}. All optional."""
     title: str | None = Field(None, min_length=1, max_length=200)
-    category: str | None = Field(
-        None,
-        pattern=r"^(phonics|word_card|recommended)$",
-    )
+    category: str | None = Field(None, min_length=1, max_length=50)
     sort_order: int | None = Field(None, ge=0)
     is_active: bool | None = None
 
@@ -54,13 +51,13 @@ class ResourceOut(BaseModel):
 
 
 class ResourceDetail(ResourceOut):
-    """Resource detail with signed PDF URL."""
-    pdf_url: str | None = None  # raw storage path (admin)
-    signed_pdf_url: str | None = None  # short-lived signed URL (parent/teacher)
+    """Resource detail with download URL."""
+    pdf_url: str | None = None  # logical storage path (admin sees raw, user sees download)
+    signed_pdf_url: str | None = None  # download endpoint path for parent/teacher
 
 
 class PaginatedResources(BaseModel):
-    """Paginated list response per TECH-SPEC 5.9."""
+    """Paginated list response."""
     items: list[ResourceOut]
     total: int
     page: int
@@ -73,5 +70,5 @@ class PaginatedResources(BaseModel):
 
 class UploadPdfOut(BaseModel):
     """Response for POST /upload/pdf — generic PDF upload."""
-    storage_path: str = Field(..., description="Supabase Storage path")
-    url: str = Field(..., description="Public or storage path for binding")
+    storage_path: str = Field(..., description="逻辑存储路径 (如 uploads/xxx.pdf)")
+    url: str = Field(..., description="同 storage_path，绑定到 resource.pdf_url")

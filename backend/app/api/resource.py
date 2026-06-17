@@ -1,18 +1,20 @@
-"""Resource module router — resource CRUD + upload + generic upload.
+"""Resource module router — resource CRUD + upload + download.
 
-Per TECH-SPEC 5.7 / 5.8:
-- GET  /api/v1/resources — resource list with category filter (parent, teacher)
-- GET  /api/v1/resources/{id} — resource detail with signed PDF URL (parent, teacher)
-- POST /api/v1/resources — create resource (admin)
-- PUT  /api/v1/resources/{id} — update resource (admin)
-- DELETE /api/v1/resources/{id} — delete resource (admin)
-- POST /api/v1/resources/{id}/upload — upload PDF (admin)
-- POST /api/v1/upload/pdf — generic PDF upload → returns storage path (admin)
+Per TECH-SPEC 5.7 / 5.8 + storage migration:
+- GET    /api/v1/resources — list (parent, teacher, admin)
+- GET    /api/v1/resources/{id} — detail (parent, teacher, admin)
+- POST   /api/v1/resources — create (admin)
+- PUT    /api/v1/resources/{id} — update (admin)
+- DELETE /api/v1/resources/{id} — delete (admin)
+- POST   /api/v1/resources/{id}/upload — upload PDF (admin)
+- GET    /api/v1/resources/{id}/download — download PDF via X-Accel-Redirect
+- POST   /api/v1/upload/pdf — generic PDF upload → returns storage path (admin)
 """
 
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi.responses import Response
 
 from app.core.deps import require_role
 from app.schemas.auth import CurrentUser
@@ -27,6 +29,7 @@ from app.schemas.resource import (
 from app.services.resource import (
     create_resource,
     delete_resource,
+    download_resource_pdf,
     get_resource_detail,
     list_resources,
     update_resource,
@@ -38,29 +41,26 @@ router = APIRouter(prefix="/api/v1", tags=["resources"])
 
 
 # ---------------------------------------------------------------------------
-# Resource browsing (parent + teacher) — MUST be before /{resource_id}
+# Resource browsing (parent + teacher + admin)
 # ---------------------------------------------------------------------------
 
 
 @router.get("/resources", response_model=PaginatedResources)
 async def list_resources_endpoint(
-    category: str | None = Query(
-        None, description="Category filter: phonics/word_card/recommended"
-    ),
-    is_active: bool | None = Query(None, description="Active filter: true=active only, false=inactive only, None=all. Parent/teacher default true; admin can override"),
+    category: str | None = Query(None, description="Category filter"),
+    is_active: bool | None = Query(None, description="Active filter"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     user: CurrentUser = Depends(require_role("parent", "teacher", "admin")),
 ) -> PaginatedResources:
-    """List active resources with optional category filter.
-
-    Parent/Teacher: default is_active=true.
-    Admin: can pass is_active=false to see inactive, or omit (None) to see all.
-    """
+    """List resources with optional category filter."""
     effective_is_active = is_active
     if is_active is None and user.role != "admin":
         effective_is_active = True
-    return await list_resources(category=category, page=page, page_size=page_size, is_active=effective_is_active)
+    return await list_resources(
+        category=category, page=page, page_size=page_size,
+        is_active=effective_is_active,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -99,20 +99,34 @@ async def delete_resource_endpoint(
 @router.post("/resources/{resource_id}/upload", response_model=ResourceDetail)
 async def upload_resource_pdf_endpoint(
     resource_id: UUID,
-    file: UploadFile = File(..., description="PDF file, max 50MB"),
+    file: UploadFile = File(..., description="PDF file, max 30MB"),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> ResourceDetail:
     """Upload PDF for a resource. Admin only.
 
-    - Validates: application/pdf only, ≤ 50MB
-    - Uploads to Supabase Storage: resources/{category}/{resource_id}.pdf
-    - Updates resource record with pdf_url
+    - Validates: application/pdf only, ≤ 30MB
+    - Saves to local disk: /data/sb-files/resources/{category}/{resource_id}.pdf
+    - Updates resource record with pdf_url (logical path)
     """
     return await upload_resource_pdf(resource_id, file)
 
 
 # ---------------------------------------------------------------------------
-# Resource detail (parent + teacher) — MUST be after admin CRUD routes
+# Resource download (parent + teacher + admin) — X-Accel-Redirect
+# ---------------------------------------------------------------------------
+
+
+@router.get("/resources/{resource_id}/download")
+async def download_resource_endpoint(
+    resource_id: UUID,
+    user: CurrentUser = Depends(require_role("parent", "teacher", "admin")),
+) -> Response:
+    """Download PDF for a resource via Nginx X-Accel-Redirect."""
+    return await download_resource_pdf(resource_id)
+
+
+# ---------------------------------------------------------------------------
+# Resource detail — MUST be after specific routes like /download, /upload
 # ---------------------------------------------------------------------------
 
 
@@ -121,11 +135,8 @@ async def get_resource_detail_endpoint(
     resource_id: UUID,
     user: CurrentUser = Depends(require_role("parent", "teacher", "admin")),
 ) -> ResourceDetail:
-    """Get resource detail with signed PDF URL. Parent/Teacher/Admin.
-
-    Signed URL expires in 1 hour.
-    """
-    return await get_resource_detail(resource_id)
+    """Get resource detail. signed_pdf_url points to download endpoint."""
+    return await get_resource_detail(resource_id, role=user.role)
 
 
 # ---------------------------------------------------------------------------
@@ -138,9 +149,5 @@ async def upload_pdf_general_endpoint(
     file: UploadFile = File(..., description="PDF file, max 50MB"),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> UploadPdfOut:
-    """Generic PDF upload — returns storage path for later binding.
-
-    Per TECH-SPEC 5.8: POST /upload/pdf → returns storage path.
-    Use this to upload a PDF first, then bind the path when creating a resource.
-    """
+    """Generic PDF upload — returns logical path for later binding."""
     return await upload_pdf_general(file)

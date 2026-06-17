@@ -2,21 +2,36 @@
 
 Per TECH-SPEC 5.6 / 6.1 / 7.1:
 - Material CRUD (admin)
-- PDF upload to Supabase Storage + page_count extraction via PyMuPDF
-- Signed URL generation (1h expiry)
+- PDF upload to local disk storage (→ /data/sb-files/) with X-Accel-Redirect
+- Cover image upload (webp)
 - Reading progress: list + upsert (auto-mark completed)
+
+Storage migration note (2026-06):
+- Old: Supabase Storage (pdfs bucket), signed URLs
+- New: Local VPS disk (/data/sb-files/), X-Accel-Redirect via Nginx
+- DB field pdf_url now stores logical path: "reading/L3/{id}.pdf"
+- Frontend downloads via: GET /api/v1/reading/materials/{id}/download
 """
 
-import io
 import structlog
 from datetime import datetime, timezone
 from uuid import UUID
 
 import fitz  # PyMuPDF
 from fastapi import HTTPException, UploadFile, status
+from fastapi.responses import Response
 
 from app.core.config import get_settings
 from app.core.database import get_supabase
+from app.core.storage import (
+    get_storage,
+    reading_pdf_path,
+    cover_path,
+    validate_file_size,
+    validate_content_type,
+    SIZE_LIMITS,
+    X_ACCEL_PREFIX,
+)
 from app.schemas.reading import (
     MaterialCreate,
     MaterialDetail,
@@ -47,54 +62,11 @@ CATEGORY_LABELS = {
 # ---------------------------------------------------------------------------
 
 def _extract_page_count(file_bytes: bytes) -> int:
-    """Extract page count from PDF bytes using PyMuPDF.
-
-    Per TECH-SPEC 7.5.
-    """
+    """Extract page count from PDF bytes using PyMuPDF."""
     doc = fitz.open(stream=file_bytes, filetype="pdf")
     count = doc.page_count
     doc.close()
     return count
-
-
-def _generate_storage_path(level: str, material_id: str) -> str:
-    """Generate Supabase Storage path for a reading material PDF.
-
-    Per TECH-SPEC 7.2: reading/{level}/{material_id}.pdf
-    """
-    return f"reading/{level}/{material_id}.pdf"
-
-
-async def _get_signed_url(storage_path: str, expires_in: int = 3600) -> str:
-    """Generate a signed URL for a file in the 'pdfs' bucket.
-
-    Per TECH-SPEC 7.3: signed URL with 1h expiry.
-    """
-    sb = get_supabase()
-    try:
-        result = sb.storage.from_("pdfs").create_signed_url(
-            storage_path, expires_in
-        )
-        # supabase-py returns {"signedURL": "..."} or {"signedUrl": "..."}
-        signed_url = result.get("signedURL") or result.get("signedUrl") or result.get("signed_url")
-        if not signed_url:
-            # Some versions return the URL directly
-            if isinstance(result, str):
-                return result
-            logger.error("signed_url_parse_failed", result=result)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "SIGNED_URL_FAILED", "message": "生成签名URL失败"},
-            )
-        return signed_url
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("signed_url_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": "SIGNED_URL_FAILED", "message": "生成签名URL失败"},
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +102,6 @@ async def update_material(material_id: UUID, body: MaterialUpdate) -> MaterialOu
     """Update a reading material. Admin only."""
     sb = get_supabase()
 
-    # Verify exists
     existing = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
     if not existing.data:
         raise HTTPException(
@@ -138,7 +109,6 @@ async def update_material(material_id: UUID, body: MaterialUpdate) -> MaterialOu
             detail={"code": "MATERIAL_NOT_FOUND", "message": "阅读材料不存在"},
         )
 
-    # Build update data (only non-None fields)
     update_data = {}
     if body.title is not None:
         update_data["title"] = body.title
@@ -157,7 +127,6 @@ async def update_material(material_id: UUID, body: MaterialUpdate) -> MaterialOu
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         sb.table("reading_materials").update(update_data).eq("id", str(material_id)).execute()
 
-    # Fetch updated
     updated = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
     return MaterialOut(**updated.data[0])
 
@@ -181,13 +150,11 @@ async def delete_material(material_id: UUID) -> dict:
 async def upload_pdf(material_id: UUID, file: UploadFile) -> MaterialDetail:
     """Upload PDF for a reading material. Admin only.
 
-    Per TECH-SPEC 7.1 / 7.4:
-    - Validate: application/pdf only, ≤ 50MB
-    - Upload to Supabase Storage: reading/{level}/{material_id}.pdf
-    - Extract page_count via PyMuPDF
-    - Update material record with pdf_url + page_count
+    Storage: writes to /data/sb-files/reading/{level}/{material_id}.pdf
+    DB: stores logical path "reading/{level}/{material_id}.pdf" in pdf_url
     """
     sb = get_supabase()
+    storage = get_storage()
 
     # Verify material exists
     existing = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
@@ -200,22 +167,13 @@ async def upload_pdf(material_id: UUID, file: UploadFile) -> MaterialDetail:
     material = existing.data[0]
 
     # Validate content type
-    if file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "INVALID_FILE_TYPE", "message": "仅支持 PDF 文件"},
-        )
+    validate_content_type(file.content_type, allowed=("application/pdf",))
 
     # Read file bytes
     file_bytes = await file.read()
 
-    # Validate file size (50MB)
-    max_size = 50 * 1024 * 1024  # 50MB
-    if len(file_bytes) > max_size:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"code": "FILE_TOO_LARGE", "message": "PDF 文件大小不能超过 50MB"},
-        )
+    # Validate file size
+    validate_file_size(file_bytes, limit_key="reading_pdf")
 
     # Extract page count
     try:
@@ -227,33 +185,13 @@ async def upload_pdf(material_id: UUID, file: UploadFile) -> MaterialDetail:
             detail={"code": "PDF_PARSE_ERROR", "message": "无法解析 PDF 页数"},
         )
 
-    # Upload to Supabase Storage
-    storage_path = _generate_storage_path(material["level"], str(material_id))
-    try:
-        sb.storage.from_("pdfs").upload(
-            storage_path,
-            file_bytes,
-            {"content-type": "application/pdf"},
-        )
-    except Exception as e:
-        # May already exist — try update
-        logger.warning("storage_upload_retry", error=str(e))
-        try:
-            sb.storage.from_("pdfs").update(
-                storage_path,
-                file_bytes,
-                {"content-type": "application/pdf"},
-            )
-        except Exception as e2:
-            logger.error("storage_upload_failed", error=str(e2))
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "UPLOAD_FAILED", "message": "PDF 上传失败"},
-            )
+    # Generate logical path and save
+    logical_path = reading_pdf_path(material["level"], str(material_id))
+    await storage.save(logical_path, file_bytes, content_type="application/pdf")
 
-    # Update material record
+    # Update material record with logical path + page_count + file_size
     update_data = {
-        "pdf_url": storage_path,
+        "pdf_url": logical_path,
         "page_count": page_count,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -262,15 +200,110 @@ async def upload_pdf(material_id: UUID, file: UploadFile) -> MaterialDetail:
     logger.info(
         "pdf_uploaded",
         material_id=str(material_id),
-        storage_path=storage_path,
+        storage_path=logical_path,
         page_count=page_count,
     )
 
     # Fetch updated record
     updated = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
-    return MaterialDetail(
-        **updated.data[0],
-        signed_pdf_url=None,  # admin doesn't need signed URL
+    return MaterialDetail(**updated.data[0], signed_pdf_url=None)
+
+
+async def upload_cover(material_id: UUID, file: UploadFile) -> MaterialOut:
+    """Upload cover image for a reading material. Admin only.
+
+    Accepts: image/webp, image/jpeg, image/png
+    Stores as: covers/{material_id}.webp
+    DB: stores logical path in cover_url
+    """
+    sb = get_supabase()
+    storage = get_storage()
+
+    # Verify material exists
+    existing = sb.table("reading_materials").select("id").eq("id", str(material_id)).limit(1).execute()
+    if not existing.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "MATERIAL_NOT_FOUND", "message": "阅读材料不存在"},
+        )
+
+    # Validate content type
+    validate_content_type(
+        file.content_type,
+        allowed=("image/webp", "image/jpeg", "image/png"),
+    )
+
+    # Read and validate size
+    file_bytes = await file.read()
+    validate_file_size(file_bytes, limit_key="cover_image")
+
+    # Determine extension
+    ext_map = {"image/webp": "webp", "image/jpeg": "jpg", "image/png": "png"}
+    ext = ext_map.get(file.content_type, "webp")
+
+    # Save to storage
+    logical_path = cover_path(str(material_id), ext=ext)
+    await storage.save(logical_path, file_bytes, content_type=file.content_type)
+
+    # Update material record
+    update_data = {
+        "cover_url": logical_path,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    sb.table("reading_materials").update(update_data).eq("id", str(material_id)).execute()
+
+    logger.info("cover_uploaded", material_id=str(material_id), path=logical_path)
+
+    updated = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
+    return MaterialOut(**updated.data[0])
+
+
+# ---------------------------------------------------------------------------
+# Material download (parent + teacher + admin) — X-Accel-Redirect
+# ---------------------------------------------------------------------------
+
+async def download_material_pdf(material_id: UUID) -> Response:
+    """Return Nginx X-Accel-Redirect response for PDF download.
+
+    Nginx config must have:
+      location /internal-files/ {
+          internal;
+          alias /data/sb-files/;
+      }
+    """
+    sb = get_supabase()
+
+    result = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
+    if not result.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "MATERIAL_NOT_FOUND", "message": "阅读材料不存在"},
+        )
+
+    row = result.data[0]
+
+    # Only active materials for non-admin (check handled by router if needed)
+    pdf_url = row.get("pdf_url", "")
+    if not pdf_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "FILE_NOT_FOUND", "message": "该材料尚未上传PDF"},
+        )
+
+    # Build X-Accel-Redirect header
+    # pdf_url is like "reading/L3/xxx.pdf"
+    # Nginx internal path: /internal-files/reading/L3/xxx.pdf
+    internal_path = f"{X_ACCEL_PREFIX}/{pdf_url}"
+
+    filename = f"{row['title']}.pdf"
+
+    return Response(
+        status_code=200,
+        headers={
+            "X-Accel-Redirect": internal_path,
+            "Content-Type": "application/pdf",
+            "Content-Disposition": f'inline; filename="{filename}"',
+        },
     )
 
 
@@ -285,11 +318,7 @@ async def list_materials(
     page_size: int = DEFAULT_PAGE_SIZE,
     is_active: bool | None = True,
 ) -> PaginatedMaterials:
-    """List reading materials with optional level/category filter.
-
-    Per TECH-SPEC 5.6: parent/teacher see only is_active=true.
-    Admin can pass is_active=false to see inactive, or None to see all.
-    """
+    """List reading materials with optional level/category filter."""
     sb = get_supabase()
 
     query = sb.table("reading_materials").select("*", count="exact")
@@ -301,11 +330,9 @@ async def list_materials(
     if category:
         query = query.eq("category", category)
 
-    # Get total count
     count_result = query.execute()
     total = count_result.count if count_result.count is not None else len(count_result.data)
 
-    # Paginated query
     offset = (page - 1) * page_size
     page_query = (
         sb.table("reading_materials")
@@ -332,11 +359,7 @@ async def list_materials(
 
 
 async def get_material_detail(material_id: UUID, role: str = "parent") -> MaterialDetail:
-    """Get material detail with signed PDF URL. Parent/Teacher/Admin.
-
-    Per TECH-SPEC 7.3: signed URL with 1h expiry.
-    Admin can view inactive materials; parent/teacher only see active.
-    """
+    """Get material detail. Parent/Teacher get download URL; Admin gets raw path."""
     sb = get_supabase()
 
     result = sb.table("reading_materials").select("*").eq("id", str(material_id)).limit(1).execute()
@@ -348,23 +371,24 @@ async def get_material_detail(material_id: UUID, role: str = "parent") -> Materi
 
     row = result.data[0]
 
-    # Only active materials visible to parent/teacher; admin can see all
     if role != "admin" and not row.get("is_active", True):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "MATERIAL_NOT_FOUND", "message": "阅读材料不存在"},
         )
 
-    # Generate signed URL for the PDF
-    signed_url = None
+    # For parent/teacher: generate download URL
+    # For admin: return raw logical path
     pdf_url = row.get("pdf_url", "")
-    if pdf_url:
-        signed_url = await _get_signed_url(pdf_url, expires_in=3600)
+    signed_pdf_url = None
 
-    return MaterialDetail(
-        **row,
-        signed_pdf_url=signed_url,
-    )
+    if pdf_url and role != "admin":
+        # Frontend should use: GET /api/v1/reading/materials/{id}/download
+        # We return the path here for backward compat; frontend will be
+        # updated to use the dedicated download endpoint.
+        signed_pdf_url = f"/api/v1/reading/materials/{material_id}/download"
+
+    return MaterialDetail(**row, signed_pdf_url=signed_pdf_url)
 
 
 # ---------------------------------------------------------------------------
@@ -372,20 +396,15 @@ async def get_material_detail(material_id: UUID, role: str = "parent") -> Materi
 # ---------------------------------------------------------------------------
 
 async def get_progress_list(parent_id: UUID) -> list[ProgressOut]:
-    """Get all reading progress for the parent's child.
-
-    Per TECH-SPEC 5.6: parent sees their child's progress only.
-    """
+    """Get all reading progress for the parent's child."""
     sb = get_supabase()
 
-    # Find parent's child
     child_result = sb.table("children").select("id").eq("parent_id", str(parent_id)).limit(1).execute()
     if not child_result.data:
         return []
 
     child_id = child_result.data[0]["id"]
 
-    # Get all progress records for this child
     progress_result = (
         sb.table("reading_progress")
         .select("*")
@@ -407,7 +426,6 @@ async def get_progress_list(parent_id: UUID) -> list[ProgressOut]:
     )
     mat_map = {str(m["id"]): m for m in mat_result.data}
 
-    # Enrich each progress with material info
     items = []
     for row in progress_result.data:
         mat_info = mat_map.get(str(row["material_id"]), {})
@@ -434,15 +452,9 @@ async def update_progress(
     material_id: UUID,
     body: ProgressUpdate,
 ) -> ProgressOut:
-    """Upsert reading progress for a material.
-
-    Per TECH-SPEC 5.6:
-    - current_page == page_count → auto mark completed=true
-    - Upsert on UNIQUE(child_id, material_id)
-    """
+    """Upsert reading progress for a material."""
     sb = get_supabase()
 
-    # Find parent's child
     child_result = sb.table("children").select("id").eq("parent_id", str(parent_id)).limit(1).execute()
     if not child_result.data:
         raise HTTPException(
@@ -452,7 +464,6 @@ async def update_progress(
 
     child_id = child_result.data[0]["id"]
 
-    # Verify material exists and is active
     mat = sb.table("reading_materials").select("id, page_count, title, level, category, cover_url, is_active").eq("id", str(material_id)).limit(1).execute()
     if not mat.data:
         raise HTTPException(
@@ -462,8 +473,6 @@ async def update_progress(
 
     material = mat.data[0]
 
-    # Clamp current_page to [1, page_count] and auto-mark completed
-    # when current_page == page_count (exact match, prevents skip-to-end cheat)
     page_count = material.get("page_count", 0)
     clamped_page = body.current_page
     if page_count > 0:
@@ -489,7 +498,6 @@ async def update_progress(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "PROGRESS_UPDATE_FAILED", "message": "阅读进度更新失败"},
         )
-    progress_id = result.data[0]["id"]
 
     logger.info(
         "progress_updated",
@@ -499,13 +507,14 @@ async def update_progress(
         completed=completed,
     )
 
+    # Return enriched progress
     return ProgressOut(
-    id=progress_id,
-    material_id=material_id,
-    child_id=UUID(child_id),
-    current_page=clamped_page,
-    completed=completed,
-        last_read_at=datetime.now(timezone.utc),
+        id=result.data[0]["id"],
+        material_id=result.data[0]["material_id"],
+        child_id=result.data[0]["child_id"],
+        current_page=result.data[0]["current_page"],
+        completed=result.data[0]["completed"],
+        last_read_at=result.data[0]["last_read_at"],
         title=material.get("title"),
         level=material.get("level"),
         category=material.get("category"),
