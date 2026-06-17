@@ -1,5 +1,11 @@
 /**
  * App routes — React Router v6 configuration.
+ * 
+ * 资源馆菜单结构 (4项):
+ * ├── 总览
+ * ├── 资源列表
+ * ├── 分类管理
+ * └── 推荐配置
  */
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
@@ -13,13 +19,11 @@ import CoursesPage from '../pages/Courses';
 import ReadingPage from '../pages/Reading';
 import ResourcesPage from '../pages/Resources';
 
-// Library pages
+// Library pages — 4项
 import LibraryOverview from '../pages/Library/Overview';
-import LibraryCatalog from '../pages/Library/Catalog';
-import LibraryCataloging from '../pages/Library/Cataloging';
-import LibrarySearch from '../pages/Library/Search';
-import LibraryCuration from '../pages/Library/Curation';
-import LibraryUsage from '../pages/Library/Usage';
+import ResourceListPage from '../pages/Library/ResourceList';
+import CategoryManagePage from '../pages/Library/CategoryManage';
+import CurationPage from '../pages/Library/CurationManage';
 
 export const router = createBrowserRouter([
   {
@@ -62,30 +66,22 @@ export const router = createBrowserRouter([
         path: 'resources',
         element: <ResourcesPage />,
       },
-      // ── 资源馆 ──
+      // ── 资源馆 (4项) ──
       {
         path: 'library/overview',
         element: <LibraryOverview />,
       },
       {
-        path: 'library/catalog',
-        element: <LibraryCatalog />,
+        path: 'library/list',
+        element: <ResourceListPage />,
       },
       {
-        path: 'library/cataloging',
-        element: <LibraryCataloging />,
-      },
-      {
-        path: 'library/search',
-        element: <LibrarySearch />,
+        path: 'library/categories',
+        element: <CategoryManagePage />,
       },
       {
         path: 'library/curation',
-        element: <LibraryCuration />,
-      },
-      {
-        path: 'library/usage',
-        element: <LibraryUsage />,
+        element: <CurationPage />,
       },
     ],
   },

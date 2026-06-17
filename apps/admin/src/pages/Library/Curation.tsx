@@ -76,8 +76,8 @@ export default function LibraryCuration() {
         getResourceList({ page_size: 999, is_active: null as unknown as undefined } as any),
       ]);
       setAllItems([
-        ...mRes.items.map(fromReadingMaterial),
-        ...rRes.items.map(fromResource),
+        ...mRes.items.map(m => fromReadingMaterial(m)),
+        ...rRes.items.map(r => fromResource(r)),
       ]);
     } catch (e) {
       console.error(e);

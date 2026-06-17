@@ -57,16 +57,24 @@ def _extract_page_count(file_bytes: bytes) -> int:
 # ---------------------------------------------------------------------------
 
 async def create_resource(body: ResourceCreate) -> ResourceOut:
-    """Create a resource. Admin only."""
+    """Create a resource. Admin only. 草稿态允许只填 title.
+    
+    DB NOT NULL约束: category 必须有值。
+    草稿态传占位值 '__draft__'，后续上传后回填真实值。
+    """
     sb = get_supabase()
 
-    data = {
-        "title": body.title,
-        "category": body.category,
-        "pdf_url": body.pdf_url,
-        "sort_order": body.sort_order,
-        "is_active": body.is_active,
-    }
+    data = {"title": body.title}
+    # DB NOT NULL — 草稿态用占位值
+    data["category"] = body.category if body.category is not None else "__draft__"
+    if body.pdf_url is not None:
+        data["pdf_url"] = body.pdf_url
+    else:
+        data["pdf_url"] = ""  # DB NOT NULL, 草稿态用空串
+    data["sort_order"] = body.sort_order
+    data["is_active"] = body.is_active
+    if body.metadata is not None:
+        data["metadata"] = body.metadata
     result = sb.table("resources").insert(data).execute()
     if not result.data:
         raise HTTPException(
@@ -100,10 +108,14 @@ async def update_resource(resource_id: UUID, body: ResourceUpdate) -> ResourceOu
         update_data["title"] = body.title
     if body.category is not None:
         update_data["category"] = body.category
+    if body.pdf_url is not None:
+        update_data["pdf_url"] = body.pdf_url
     if body.sort_order is not None:
         update_data["sort_order"] = body.sort_order
     if body.is_active is not None:
         update_data["is_active"] = body.is_active
+    if body.metadata is not None:
+        update_data["metadata"] = body.metadata
 
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()

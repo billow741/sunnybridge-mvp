@@ -29,9 +29,7 @@ import {
   LogoutOutlined,
   AppstoreOutlined,
   EditOutlined,
-  SearchOutlined,
   StarOutlined,
-  BarChartOutlined,
 } from '@ant-design/icons';
 import { logout } from '../api/auth';
 
@@ -70,11 +68,9 @@ const menuItems = [
     label: '资源馆',
     children: [
       { key: '/library/overview', icon: <AppstoreOutlined />, label: '总览' },
-      { key: '/library/catalog', icon: <FolderOutlined />, label: '馆藏目录' },
-      { key: '/library/cataloging', icon: <EditOutlined />, label: '资源编目' },
-      { key: '/library/search', icon: <SearchOutlined />, label: '资源检索' },
-      { key: '/library/curation', icon: <StarOutlined />, label: '专题陈列' },
-      { key: '/library/usage', icon: <BarChartOutlined />, label: '使用记录' },
+      { key: '/library/list', icon: <EditOutlined />, label: '资源列表' },
+      { key: '/library/categories', icon: <FolderOutlined />, label: '分类管理' },
+      { key: '/library/curation', icon: <StarOutlined />, label: '推荐配置' },
     ],
   },
 ];

@@ -17,25 +17,28 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 class ResourceCreate(BaseModel):
-    """Request body for POST /resources."""
+    """Request body for POST /resources. 草稿态允许只填 title."""
     title: str = Field(..., min_length=1, max_length=200)
-    category: str = Field(
-        ...,
+    category: str | None = Field(
+        None,
         min_length=1,
         max_length=50,
-        description="资源分类，如 phonics/word_card/recommended/song/video 等",
+        description="资源分类, 草稿时可留空",
     )
-    pdf_url: str = Field("", min_length=0, description="逻辑存储路径，如 resources/phonics/xxx.pdf; 上传后自动填充")
+    pdf_url: str | None = Field(None, min_length=0, description="逻辑存储路径，如 resources/phonics/xxx.pdf; 上传后自动填充")
     sort_order: int = Field(0, ge=0)
     is_active: bool = True
+    metadata: dict | None = None
 
 
 class ResourceUpdate(BaseModel):
     """Request body for PUT /resources/{id}. All optional."""
     title: str | None = Field(None, min_length=1, max_length=200)
     category: str | None = Field(None, min_length=1, max_length=50)
+    pdf_url: str | None = Field(None, min_length=0, description="上传后自动填充的存储路径")
     sort_order: int | None = Field(None, ge=0)
     is_active: bool | None = None
+    metadata: dict | None = None
 
 
 class ResourceOut(BaseModel):
@@ -46,6 +49,7 @@ class ResourceOut(BaseModel):
     pdf_url: str | None = None
     sort_order: int = 0
     is_active: bool = True
+    metadata: dict | None = None
     created_at: datetime
     updated_at: datetime
 

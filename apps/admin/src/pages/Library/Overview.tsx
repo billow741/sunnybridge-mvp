@@ -1,23 +1,24 @@
+/**
+ * 资源馆总览 — 轻量版
+ * 
+ * 展示: 资源总数/上架比例/分类分布/待处理提醒/最近记录
+ * 数据来源: 同样是两个接口前端合并 (和列表页同样的 MVP 限制)
+ */
+
 import { useState, useEffect, useCallback } from 'react';
-import { Row, Col, Card, Statistic, Tag, Table, Typography, Spin } from 'antd';
+import { Row, Col, Card, Statistic, Tag, Table, Typography, Spin, Alert } from 'antd';
 import {
-  BookOutlined,
-  StarOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-  PlusOutlined,
+  BookOutlined, CheckCircleOutlined, StopOutlined,
+  PlusOutlined, WarningOutlined,
 } from '@ant-design/icons';
 import { getMaterialList } from '../../services/reading';
 import { getResourceList } from '../../services/resource';
 import {
-  fromReadingMaterial,
-  fromResource,
-  LIBRARY_LABELS,
-  LEVEL_LABELS,
-  READING_CATEGORY_LABELS,
-  RESOURCE_CATEGORY_LABELS,
+  fromReadingMaterial, fromResource,
+  READING_CATEGORY_LABELS, RESOURCE_CATEGORY_LABELS,
 } from '../../library/adapter';
-import type { ResourceItem, LibraryType, MaterialLevel } from '../../library/adapter';
+import type { ResourceItem } from '../../library/adapter';
+import { CATEGORY_LABELS, MODULE_LABELS } from '../../constants/resource';
 
 const { Title } = Typography;
 
@@ -33,8 +34,8 @@ export default function LibraryOverview() {
         getResourceList({ page_size: 999, is_active: null as unknown as undefined } as any),
       ]);
       const all = [
-        ...mRes.items.map(fromReadingMaterial),
-        ...rRes.items.map(fromResource),
+        ...mRes.items.map(m => fromReadingMaterial(m)),
+        ...rRes.items.map(r => fromResource(r)),
       ];
       setItems(all);
     } catch (e) {
@@ -51,66 +52,84 @@ export default function LibraryOverview() {
   const total = items.length;
   const activeCount = items.filter(i => i.isActive).length;
   const inactiveCount = total - activeCount;
+  const noPdfItems = items.filter(i => !i.fileUrl);
+  const noCoverItems = items.filter(i => !i.coverUrl);
   const featuredCount = items.filter(i => i.isFeatured).length;
 
-  const byLibrary = (lt: LibraryType) => items.filter(i => i.library === lt).length;
-  const byLevel = (lv: MaterialLevel) => items.filter(i => i.level === lv).length;
+  const byModule = (src: 'reading' | 'resource') => items.filter(i => i.source === src).length;
   const byCategory = (cat: string) => items.filter(i => i.category === cat).length;
 
-  const recentItems = [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10);
+  const recentItems = [...items]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
 
-  const libraryColors: Record<string, string> = { reading: '#54C5F8', teaching: '#48BB78', parent_support: '#ED8936', curation: '#9F7AEA' };
-  const levelColors: Record<string, string> = { L1: 'blue', L2: 'cyan', L3: 'green', L4: 'orange', L5: 'red', L6: 'purple' };
+  // unused: libraryColors / levelColors reserved for future UI
+  void 0;
 
   const recentColumns = [
     { title: '标题', dataIndex: 'title', key: 'title', ellipsis: true },
-    { title: '馆', dataIndex: 'library', key: 'library', width: 120, render: (v: LibraryType) => <Tag color={libraryColors[v]}>{LIBRARY_LABELS[v]}</Tag> },
-    { title: 'Level', dataIndex: 'level', key: 'level', width: 80, render: (v: MaterialLevel) => v ? <Tag color={levelColors[v]}>{LEVEL_LABELS[v]}</Tag> : '-' },
-    { title: '分类', dataIndex: 'category', key: 'category', width: 100, render: (v: string) => READING_CATEGORY_LABELS[v] || RESOURCE_CATEGORY_LABELS[v] || v },
-    { title: '状态', dataIndex: 'isActive', key: 'isActive', width: 80, render: (v: boolean) => v ? <Tag color="green">上架</Tag> : <Tag>下架</Tag> },
-    { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 170, render: (v: string) => new Date(v).toLocaleString('zh-CN') },
+    {
+      title: '模块', dataIndex: 'source', key: 'source', width: 100,
+      render: (s: 'reading' | 'resource') => <Tag color={s === 'reading' ? 'blue' : 'green'}>{MODULE_LABELS[s]}</Tag>,
+    },
+    {
+      title: '分类', dataIndex: 'category', key: 'category', width: 100,
+      render: (v: string) => CATEGORY_LABELS[v] || READING_CATEGORY_LABELS[v] || RESOURCE_CATEGORY_LABELS[v] || v,
+    },
+    {
+      title: '状态', dataIndex: 'isActive', key: 'isActive', width: 80,
+      render: (v: boolean) => v ? <Tag color="green">上架</Tag> : <Tag>下架</Tag>,
+    },
+    {
+      title: '创建', dataIndex: 'createdAt', key: 'createdAt', width: 170,
+      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+    },
   ];
 
   return (
     <div>
       <Title level={4}>资源馆总览</Title>
 
-      {/* 统计概要 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}><Card><Statistic title="总资源数" value={total} prefix={<BookOutlined />} /></Card></Col>
         <Col span={6}><Card><Statistic title="已上架" value={activeCount} valueStyle={{ color: '#52c41a' }} prefix={<CheckCircleOutlined />} /></Card></Col>
         <Col span={6}><Card><Statistic title="未上架" value={inactiveCount} valueStyle={{ color: '#999' }} prefix={<StopOutlined />} /></Card></Col>
-        <Col span={6}><Card><Statistic title="推荐资源" value={featuredCount} valueStyle={{ color: '#722ed1' }} prefix={<StarOutlined />} /></Card></Col>
+        <Col span={6}><Card><Statistic title="推荐资源" value={featuredCount} valueStyle={{ color: '#722ed1' }} prefix={<PlusOutlined />} /></Card></Col>
       </Row>
 
-      {/* 按馆统计 */}
-      <Card title="馆藏分布" style={{ marginBottom: 24 }}>
+      {/* 待处理提醒 */}
+      {(noPdfItems.length > 0 || noCoverItems.length > 0) && (
+        <Alert
+          type="warning"
+          showIcon
+          icon={<WarningOutlined />}
+          style={{ marginBottom: 16 }}
+          message={
+            <span>
+              {noPdfItems.length > 0 && <span>有 <b>{noPdfItems.length}</b> 个资源缺少 PDF；</span>}
+              {noCoverItems.length > 0 && <span>有 <b>{noCoverItems.length}</b> 个资源缺少封面</span>}
+            </span>
+          }
+        />
+      )}
+
+      {/* 按模块统计 */}
+      <Card title="模块分布" style={{ marginBottom: 24 }}>
         <Row gutter={16}>
-          {(Object.entries(LIBRARY_LABELS) as [LibraryType, string][]).map(([k, label]) => (
+          {(['reading', 'resource'] as const).map(k => (
             <Col span={6} key={k}>
-              <Card size="small" style={{ textAlign: 'center', borderTop: `3px solid ${libraryColors[k]}` }}>
-                <Statistic title={label} value={byLibrary(k)} valueStyle={{ color: libraryColors[k] }} />
+              <Card size="small" style={{ textAlign: 'center', borderTop: `3px solid ${k === 'reading' ? '#54C5F8' : '#48BB78'}` }}>
+                <Statistic title={MODULE_LABELS[k]} value={byModule(k)} valueStyle={{ color: k === 'reading' ? '#54C5F8' : '#48BB78' }} />
               </Card>
             </Col>
           ))}
         </Row>
       </Card>
 
-      {/* 按Level统计 */}
-      <Card title="级别分布（阅读馆）" style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {(['L1','L2','L3','L4','L5','L6'] as MaterialLevel[]).map(lv => (
-            <Tag key={lv} color={levelColors[lv]} style={{ fontSize: 14, padding: '4px 12px' }}>
-              {LEVEL_LABELS[lv]}: {byLevel(lv)}
-            </Tag>
-          ))}
-        </div>
-      </Card>
-
-      {/* 按Category统计 */}
+      {/* 分类统计 */}
       <Card title="分类统计" style={{ marginBottom: 24 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {Object.entries({ ...READING_CATEGORY_LABELS, ...RESOURCE_CATEGORY_LABELS }).map(([k, label]) => (
+          {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
             <Tag key={k} style={{ fontSize: 13, padding: '4px 12px' }}>
               {label}: {byCategory(k)}
             </Tag>

@@ -43,6 +43,9 @@ export interface ResourceItem {
   isFeatured?: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 展示分类 (从 metadata JSONB 读取) */
+  displayCategoryL1?: string;
+  displayCategoryL2?: string;
 }
 
 // ── 目录树定义 ──────────────────────────────────────
@@ -171,27 +174,33 @@ function resourceCategoryToAudience(category: string): Audience {
 export function fromReadingMaterial(m: {
   id: string;
   title: string;
-  level: string;
-  category: string;
+  level: string | null;
+  category: string | null;
   cover_url?: string | null;
   pdf_url?: string | null;
   page_count?: number;
   sort_order?: number;
   is_active: boolean;
+  metadata?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
   signed_pdf_url?: string | null;
 }): ResourceItem {
-  const cat = m.category || 'picture_book';
+  const isDraft = m.category === '__draft__' || !m.category;
+  const effectiveCat = isDraft ? 'picture_book' : m.category!;
+  const meta = m.metadata || {};
   return {
     id: m.id,
     source: 'reading',
     title: m.title,
-    library: 'reading',
-    collection: readingCategoryToCollection(cat),
-    category: cat,
+    subtitle: meta.subtitle || undefined,
+    summary: meta.description || undefined,
+    library: 'reading' as LibraryType,
+    collection: isDraft ? '未分类' : readingCategoryToCollection(effectiveCat),
+    category: isDraft ? '__draft__' : effectiveCat,
     level: m.level as MaterialLevel | undefined,
-    audience: readingCategoryToAudience(cat),
+    tags: meta.tags || undefined,
+    audience: readingCategoryToAudience(effectiveCat),
     coverUrl: m.cover_url || undefined,
     fileUrl: m.pdf_url || '',
     signedFileUrl: m.signed_pdf_url || undefined,
@@ -201,6 +210,9 @@ export function fromReadingMaterial(m: {
     isFeatured: false,
     createdAt: m.created_at,
     updatedAt: m.updated_at,
+    // 展示分类 (从 metadata 读取)
+    displayCategoryL1: meta.display_category_l1 || undefined,
+    displayCategoryL2: meta.display_category_l2 || undefined,
   };
 }
 
@@ -208,30 +220,39 @@ export function fromReadingMaterial(m: {
 export function fromResource(r: {
   id: string;
   title: string;
-  category: string;
+  category: string | null;
   pdf_url?: string | null;
   sort_order?: number;
   is_active: boolean;
+  metadata?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
   signed_pdf_url?: string | null;
 }): ResourceItem {
-  const cat = r.category || 'phonics';
+  const isDraftR = r.category === '__draft__' || !r.category;
+  const effectiveRCat = isDraftR ? 'phonics' : r.category!;
+  const meta = r.metadata || {};
   return {
     id: r.id,
     source: 'resource',
     title: r.title,
-    library: resourceCategoryToLibrary(cat),
-    collection: resourceCategoryToCollection(cat),
-    category: cat,
-    audience: resourceCategoryToAudience(cat),
+    subtitle: meta.subtitle || undefined,
+    summary: meta.description || undefined,
+    library: resourceCategoryToLibrary(effectiveRCat),
+    collection: isDraftR ? '未分类' : resourceCategoryToCollection(effectiveRCat),
+    category: isDraftR ? '__draft__' : effectiveRCat,
+    tags: meta.tags || undefined,
+    audience: resourceCategoryToAudience(effectiveRCat),
+    coverUrl: meta.cover_url || undefined,
     fileUrl: r.pdf_url || '',
     signedFileUrl: r.signed_pdf_url || undefined,
     sortOrder: r.sort_order || 0,
     isActive: r.is_active,
-    isFeatured: cat === 'recommended',
+    isFeatured: effectiveRCat === 'recommended',
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    displayCategoryL1: meta.display_category_l1 || undefined,
+    displayCategoryL2: meta.display_category_l2 || undefined,
   };
 }
 

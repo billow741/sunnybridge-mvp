@@ -20,10 +20,13 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, InputNumber, Switch, Typography, Alert } from 'antd';
 import type { Resource } from '../../services/resource';
-import {
-  RESOURCE_CATEGORY_OPTIONS,
-  PENDING_UPLOAD_URL,
-} from '../../services/resource';
+import { VALID_CATEGORIES, CATEGORY_LABELS } from '../../constants/resource';
+
+// 从常量构建选项
+const RESOURCE_CATEGORY_OPTIONS = VALID_CATEGORIES.resource!.map(v => ({
+  value: v,
+  label: CATEGORY_LABELS[v] || v,
+}));
 
 const { Text } = Typography;
 
@@ -63,9 +66,8 @@ const ResourceForm: React.FC<ResourceFormProps> = ({
         });
       } else {
         form.resetFields();
-        // Set defaults for create mode
+        // Set defaults for create mode (草稿态 pdf_url 可空)
         form.setFieldsValue({
-          pdf_url: PENDING_UPLOAD_URL,
           sort_order: 0,
           is_active: true,
         });
@@ -124,7 +126,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({
         <Form.Item
           name="category"
           label="分类"
-          rules={[{ required: true, message: '请选择分类' }]}
+          rules={[{ required: false }]}
         >
           <Select
             placeholder="选择分类"
@@ -138,7 +140,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({
         {/* Edit mode: show current pdf status */}
         {isEdit && resource && (
           <Form.Item label="PDF 文件">
-            {resource.pdf_url && resource.pdf_url !== PENDING_UPLOAD_URL ? (
+            {resource.pdf_url ? (
               <Text type="success" copyable={{ text: resource.pdf_url }}>
                 已上传 ({resource.pdf_url})
               </Text>

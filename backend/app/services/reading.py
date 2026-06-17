@@ -56,10 +56,14 @@ CATEGORY_LABELS = {
     "read_aloud": "跟读",
 }
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def get_cover_url(record: dict) -> str | None:
+    """统一读取封面 URL: reading 用 record 的 cover_url 字段."""
+    return record.get("cover_url")
+
 
 def _extract_page_count(file_bytes: bytes) -> int:
     """Extract page count from PDF bytes using PyMuPDF."""
@@ -74,19 +78,29 @@ def _extract_page_count(file_bytes: bytes) -> int:
 # ---------------------------------------------------------------------------
 
 async def create_material(body: MaterialCreate) -> MaterialOut:
-    """Create a reading material. Admin only."""
+    """Create a reading material. Admin only. 草稿态允许只填 title.
+    
+    DB NOT NULL约束: level, category 必须有值。
+    草稿态传占位值 '__draft__'，后续上传后回填真实值。
+    """
     sb = get_supabase()
 
-    data = {
-        "title": body.title,
-        "level": body.level,
-        "category": body.category,
-        "cover_url": body.cover_url,
-        "pdf_url": body.pdf_url,
-        "page_count": body.page_count,
-        "sort_order": body.sort_order,
-        "is_active": body.is_active,
-    }
+    data = {"title": body.title}
+    # DB NOT NULL + CHECK(L1-L6) — 草稿态默认 L1，后续可修改
+    data["level"] = body.level if body.level is not None else "L1"
+    # DB NOT NULL — 草稿态用占位值
+    data["category"] = body.category if body.category is not None else "__draft__"
+    if body.cover_url is not None:
+        data["cover_url"] = body.cover_url
+    if body.pdf_url is not None:
+        data["pdf_url"] = body.pdf_url
+    else:
+        data["pdf_url"] = ""  # DB NOT NULL, 草稿态用空串
+    data["page_count"] = body.page_count
+    data["sort_order"] = body.sort_order
+    data["is_active"] = body.is_active
+    if body.metadata is not None:
+        data["metadata"] = body.metadata
     result = sb.table("reading_materials").insert(data).execute()
     if not result.data:
         raise HTTPException(
@@ -122,6 +136,8 @@ async def update_material(material_id: UUID, body: MaterialUpdate) -> MaterialOu
         update_data["sort_order"] = body.sort_order
     if body.is_active is not None:
         update_data["is_active"] = body.is_active
+    if body.metadata is not None:
+        update_data["metadata"] = body.metadata
 
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()

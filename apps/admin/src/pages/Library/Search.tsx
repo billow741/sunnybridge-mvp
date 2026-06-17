@@ -42,8 +42,8 @@ export default function LibrarySearch() {
         getResourceList({ page_size: 999, is_active: null as unknown as undefined } as any),
       ]);
       const all = [
-        ...mRes.items.map(fromReadingMaterial),
-        ...rRes.items.map(fromResource),
+        ...mRes.items.map(m => fromReadingMaterial(m)),
+                ...rRes.items.map(r => fromResource(r)),
       ];
       setAllItems(all);
     } catch (e) {
