@@ -109,7 +109,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
 
     setOptionsLoadError(false);
     setOptionsLoading(true);
-    Promise.all([getTeacherList(1, 200), getStudentList(1, 200)])
+    Promise.all([getTeacherList(1, 100), getStudentList(1, 100)])
       .then(([teacherRes, studentRes]) => {
         // Filter only active teachers
         const activeTeachers = teacherRes.items.filter((t: Teacher) => t.is_active);
@@ -126,8 +126,10 @@ const CourseForm: React.FC<CourseFormProps> = ({
           })),
         );
       })
-      .catch(() => {
-        message.error('加载教师/学生列表失败，请关闭弹窗重试');
+      .catch((err) => {
+        console.error('加载教师/学生列表失败:', err?.response?.data || err);
+        const detail = err?.response?.data?.detail?.[0]?.msg || err.message || '未知错误';
+        message.error(`加载教师/学生列表失败: ${detail}`);
         setOptionsLoadError(true);
       })
       .finally(() => {
