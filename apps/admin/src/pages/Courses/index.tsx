@@ -210,19 +210,10 @@ const CoursesPage: React.FC = () => {
     {
       title: '上课学生',
       key: 'children',
-      width: 160,
+      width: 120,
       render: (_: unknown, record: Course) => {
-        if (!record.children || record.children.length === 0) return '—';
-        const names = record.children.map((c) => c.name).join('、');
-        // If too long, show count with tooltip
-        if (names.length > 15) {
-          return (
-            <Tooltip title={names}>
-              {record.children.length} 名学生
-            </Tooltip>
-          );
-        }
-        return names;
+        const first = record.children?.[0];
+        return first ? first.name : '—';
       },
     },
     {

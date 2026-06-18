@@ -1,24 +1,18 @@
 /**
  * Admin layout with sidebar.
  *
- * Menu structure:
+ * MVP 菜单结构 (6项):
  * 1. 首页概览 (Dashboard)
- * 2. 课程管理 (A-COURSE)
- * 3. 教师管理 (A-TEACHER)
- * 4. 学生管理 (A-STUDENT)
- * 5. 阅读馆管理 (A-READING)
- * 6. 资源馆 (Library — SubMenu)
- *    ├── 总览
- *    ├── 馆藏目录
- *    ├── 资源编目
- *    ├── 资源检索
- *    ├── 专题陈列
- *    └── 使用记录
+ * 2. 课程管理 (1v1)
+ * 3. 教师管理
+ * 4. 学生管理
+ * 5. 阅读材料管理
+ * 6. 资源管理
  */
 
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Typography, theme } from 'antd';
+import { Layout, Menu, Button, theme } from 'antd';
 import {
   DashboardOutlined,
   BookOutlined,
@@ -27,14 +21,10 @@ import {
   ReadOutlined,
   FolderOutlined,
   LogoutOutlined,
-  AppstoreOutlined,
-  EditOutlined,
-  StarOutlined,
 } from '@ant-design/icons';
 import { logout } from '../api/auth';
 
 const { Sider, Header, Content } = Layout;
-const { Text } = Typography;
 
 const menuItems = [
   {
@@ -60,18 +50,12 @@ const menuItems = [
   {
     key: '/reading',
     icon: <ReadOutlined />,
-    label: '阅读馆管理',
+    label: '阅读材料',
   },
   {
-    key: '/library',
-    icon: <BookOutlined />,
-    label: '资源馆',
-    children: [
-      { key: '/library/overview', icon: <AppstoreOutlined />, label: '总览' },
-      { key: '/library/list', icon: <EditOutlined />, label: '资源列表' },
-      { key: '/library/categories', icon: <FolderOutlined />, label: '分类管理' },
-      { key: '/library/curation', icon: <StarOutlined />, label: '推荐配置' },
-    ],
+    key: '/resources',
+    icon: <FolderOutlined />,
+    label: '资源管理',
   },
 ];
 
@@ -90,13 +74,7 @@ const AdminLayout: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Flatten all keys (including submenu children) for matching
-  const allKeys = menuItems.flatMap(item =>
-    'children' in item ? [item.key, ...item.children!.map(c => c.key)] : [item.key]
-  );
-  const selectedKey = allKeys.find(key => location.pathname.startsWith(key)) ?? '/dashboard';
-  // Open the submenu if on a library page
-  const openKeys = location.pathname.startsWith('/library') ? ['/library'] : [];
+  const selectedKey = menuItems.find(item => location.pathname.startsWith(item.key))?.key ?? '/dashboard';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -104,9 +82,10 @@ const AdminLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        width={208}
         style={{ background: themeToken.colorBgContainer }}
       >
-        {/* Logo */}
+        {/* Brand */}
         <div
           style={{
             height: 48,
@@ -117,15 +96,14 @@ const AdminLayout: React.FC = () => {
             margin: '0 0 8px',
           }}
         >
-          <Text strong={!collapsed} style={{ fontSize: collapsed ? 14 : 16 }}>
+          <span style={{ fontSize: collapsed ? 14 : 16, fontWeight: collapsed ? 400 : 600, color: '#5AA0DC' }}>
             {collapsed ? 'SB' : 'SunnyBridge'}
-          </Text>
+          </span>
         </div>
 
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
-          defaultOpenKeys={openKeys}
           items={menuItems}
           onClick={handleMenuClick}
         />
@@ -137,13 +115,16 @@ const AdminLayout: React.FC = () => {
             background: themeToken.colorBgContainer,
             padding: '0 24px',
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: `1px solid ${themeToken.colorBorderSecondary}`,
             height: 48,
             lineHeight: '48px',
           }}
         >
+          <span style={{ fontSize: 13, color: themeToken.colorTextSecondary }}>
+            管理后台
+          </span>
           <Button
             type="text"
             icon={<LogoutOutlined />}
@@ -153,7 +134,7 @@ const AdminLayout: React.FC = () => {
           </Button>
         </Header>
 
-        <Content style={{ margin: 24 }}>
+        <Content style={{ margin: 24, background: '#FAFAFA', minHeight: 280 }}>
           <Outlet />
         </Content>
       </Layout>

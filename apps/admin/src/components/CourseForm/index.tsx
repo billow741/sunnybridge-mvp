@@ -47,7 +47,7 @@ export interface CourseFormValues {
   start_time: Dayjs;
   end_time: Dayjs;
   teacher_id: string;
-  child_ids: string[];
+  child_id: string;
   meeting_link?: string;
   status?: CourseStatus;
 }
@@ -135,7 +135,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
           start_time: dayjs(course.start_time, 'HH:mm:ss'),
           end_time: dayjs(course.end_time, 'HH:mm:ss'),
           teacher_id: course.teacher_id,
-          child_ids: course.children.map((c) => c.id),
+          child_id: course.children[0]?.id || '',  // 1v1: 取首个学生
           meeting_link: course.meeting_link || undefined,
           status: course.status,
         });
@@ -153,7 +153,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
         start_time: values.start_time.format('HH:mm'),
         end_time: values.end_time.format('HH:mm'),
         teacher_id: values.teacher_id,
-        child_ids: values.child_ids,
+        child_ids: [values.child_id],  // 1v1: 单选转数组
         // BUG-005 fix: send null when meeting_link is empty, not empty string
         meeting_link: values.meeting_link || undefined,
         // BUG-002 fix: include status in edit mode
@@ -268,20 +268,12 @@ const CourseForm: React.FC<CourseFormProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="child_ids"
+            name="child_id"
             label="上课学生"
-            rules={[
-              { required: true, message: '请至少选择一名学生' },
-              {
-                type: 'array',
-                min: 1,
-                message: '请至少选择一名学生',
-              },
-            ]}
+            rules={[{ required: true, message: '请选择学生' }]}
           >
             <Select
-              mode="multiple"
-              placeholder="选择学生（支持多选）"
+              placeholder="选择学生（1v1）"
               showSearch
               optionFilterProp="label"
               loading={optionsLoading}
