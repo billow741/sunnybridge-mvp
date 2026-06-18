@@ -1,14 +1,14 @@
 /**
  * App routes — React Router v6 configuration.
  *
- * /login → LoginPage (public)
- * / → AuthGuard → AdminLayout (sidebar + outlet)
- * /dashboard → DashboardPage (首页概览)
- * /courses → CoursesPage (A-COURSE) ← ADMIN-04
- * /teachers → TeachersPage (A-TEACHER) ← ADMIN-02
- * /students → StudentsPage (A-STUDENT) ← ADMIN-03
- * /reading → ReadingPage (A-READING) ← ADMIN-05
- * /resources → PlaceholderPage (A-RESOURCE, disabled in sidebar)
+ * MVP 菜单结构 (6项 + login):
+ * ├── /login            登录页
+ * ├── /dashboard        首页概览
+ * ├── /courses          课程管理(1v1)
+ * ├── /teachers         教师管理
+ * ├── /students         学生管理
+ * ├── /reading          阅读材料管理
+ * └── /resources         资源管理
  */
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
@@ -44,16 +44,16 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-      path: 'courses',
-      element: <CoursesPage />,
+        path: 'courses',
+        element: <CoursesPage />,
       },
       {
         path: 'teachers',
         element: <TeachersPage />,
       },
       {
-       path: 'students',
-       element: <StudentsPage />,
+        path: 'students',
+        element: <StudentsPage />,
       },
       {
         path: 'reading',

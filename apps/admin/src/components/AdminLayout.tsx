@@ -1,66 +1,62 @@
 /**
- * Admin layout with sidebar — 6 menu items per SPRINT-1 ADMIN-01.
+ * Admin layout with sidebar.
  *
- * Menu items (from IA.md + Sprint 验收标准 ④):
+ * MVP 菜单结构 (6项):
  * 1. 首页概览 (Dashboard)
- * 2. 课程管理 (A-COURSE)
- * 3. 教师管理 (A-TEACHER)
- * 4. 学生管理 (A-STUDENT)
- * 5. 阅读馆管理 (A-READING) — P1
- * 6. 资源库管理 (A-RESOURCE) — P1
- *
- * P1 items: 阅读馆管理 (A-READING) now implemented (ADMIN-05).
- * Resource management (A-RESOURCE) remains disabled.
+ * 2. 课程管理 (1v1)
+ * 3. 教师管理
+ * 4. 学生管理
+ * 5. 阅读材料管理
+ * 6. 资源管理
  */
 
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Typography, theme } from 'antd';
+import { Layout, Menu, Button, theme } from 'antd';
 import {
- DashboardOutlined,
- BookOutlined,
- TeamOutlined,
- UserOutlined,
- ReadOutlined,
- FolderOutlined,
- LogoutOutlined,
+  DashboardOutlined,
+  BookOutlined,
+  TeamOutlined,
+  UserOutlined,
+  ReadOutlined,
+  FolderOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
 import { logout } from '../api/auth';
 
 const { Sider, Header, Content } = Layout;
-const { Text } = Typography;
 
 const menuItems = [
- {
- key: '/dashboard',
- icon: <DashboardOutlined />,
- label: '首页概览',
- },
- {
- key: '/courses',
- icon: <BookOutlined />,
- label: '课程管理',
- },
- {
- key: '/teachers',
- icon: <TeamOutlined />,
- label: '教师管理',
- },
- {
- key: '/students',
- icon: <UserOutlined />,
- label: '学生管理',
- },
- {
-  key: '/reading',
-  icon: <ReadOutlined />,
-  label: '阅读馆管理',
- },
- {
- key: '/resources',
- icon: <FolderOutlined />,
- label: '资源库管理',
- },
+  {
+    key: '/dashboard',
+    icon: <DashboardOutlined />,
+    label: '首页概览',
+  },
+  {
+    key: '/courses',
+    icon: <BookOutlined />,
+    label: '课程管理',
+  },
+  {
+    key: '/teachers',
+    icon: <TeamOutlined />,
+    label: '教师管理',
+  },
+  {
+    key: '/students',
+    icon: <UserOutlined />,
+    label: '学生管理',
+  },
+  {
+    key: '/reading',
+    icon: <ReadOutlined />,
+    label: '阅读材料',
+  },
+  {
+    key: '/resources',
+    icon: <FolderOutlined />,
+    label: '资源管理',
+  },
 ];
 
 const AdminLayout: React.FC = () => {
@@ -78,10 +74,7 @@ const AdminLayout: React.FC = () => {
     navigate('/login', { replace: true });
   };
 
-  // Determine active menu key from path
-  const selectedKey = menuItems.find((item) =>
-    location.pathname.startsWith(item.key),
-  )?.key ?? '/courses';
+  const selectedKey = menuItems.find(item => location.pathname.startsWith(item.key))?.key ?? '/dashboard';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -89,9 +82,10 @@ const AdminLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
+        width={208}
         style={{ background: themeToken.colorBgContainer }}
       >
-        {/* Logo */}
+        {/* Brand */}
         <div
           style={{
             height: 48,
@@ -102,9 +96,9 @@ const AdminLayout: React.FC = () => {
             margin: '0 0 8px',
           }}
         >
-          <Text strong={!collapsed} style={{ fontSize: collapsed ? 14 : 16 }}>
+          <span style={{ fontSize: collapsed ? 14 : 16, fontWeight: collapsed ? 400 : 600, color: '#5AA0DC' }}>
             {collapsed ? 'SB' : 'SunnyBridge'}
-          </Text>
+          </span>
         </div>
 
         <Menu
@@ -121,13 +115,16 @@ const AdminLayout: React.FC = () => {
             background: themeToken.colorBgContainer,
             padding: '0 24px',
             display: 'flex',
-            justifyContent: 'flex-end',
+            justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: `1px solid ${themeToken.colorBorderSecondary}`,
             height: 48,
             lineHeight: '48px',
           }}
         >
+          <span style={{ fontSize: 13, color: themeToken.colorTextSecondary }}>
+            管理后台
+          </span>
           <Button
             type="text"
             icon={<LogoutOutlined />}
@@ -137,7 +134,7 @@ const AdminLayout: React.FC = () => {
           </Button>
         </Header>
 
-        <Content style={{ margin: 24 }}>
+        <Content style={{ margin: 24, background: '#FAFAFA', minHeight: 280 }}>
           <Outlet />
         </Content>
       </Layout>

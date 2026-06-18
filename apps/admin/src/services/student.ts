@@ -33,10 +33,14 @@ export interface Student {
   id: string;
   name: string;
   english_name: string | null;
+  phone: string | null;
+  avatar_url: string | null;
   birth_date: string | null; // ISO date string or null
   level: Level | null;
   parent_id: string;
   parent: ParentBrief | null;
+  parent_phone: string | null;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -1,14 +1,10 @@
 /**
- * StudentsPage — A-STUDENTS (ADMIN-03).
+ * StudentsPage — A-STUDENT (ADMIN-03).
  *
- * Features:
- * - Paginated student list (Ant Design Table)
- * - Create student → Modal form → parent_phone auto-find/create parent
- * - Edit student → Modal form (pre-filled)
- * - Delete student → Popconfirm → confirm
- *
- * Auth: relies on ADMIN-01 AuthGuard + Axios interceptor.
- * API: consumes API-05 endpoints via services/student.ts.
+ * 设计方案:
+ * - 列表列: 学生(头像+姓名+手机号)、年级、家长电话、状态Tag、操作
+ * - 新建/编辑 → StudentForm Modal
+ * - 删除 → Popconfirm
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -19,16 +15,14 @@ import {
   Space,
   Popconfirm,
   message,
-  Typography,
+  Avatar,
   Card,
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { AxiosError } from 'axios';
 import StudentForm from '../../components/StudentForm';
 import {
   getStudentList,
@@ -36,31 +30,25 @@ import {
   updateStudent,
   deleteStudent,
 } from '../../services/student';
-import type { Student, StudentUpdateParams, Level } from '../../services/student';
+import type { Student, Level } from '../../services/student';
 
-const LEVEL_COLORS: Record<string, string> = {
-  L1: 'green',
-  L2: 'cyan',
-  L3: 'blue',
-  L4: 'purple',
-  L5: 'orange',
-  L6: 'red',
+const LEVEL_GRADE_MAP: Record<string, string> = {
+  L1: '一年级', L2: '二年级', L3: '三年级',
+  L4: '四年级', L5: '五年级', L6: '六年级',
 };
 
 const StudentsPage: React.FC = () => {
-  // ── List state ──────────────────────────────────
   const [students, setStudents] = useState<Student[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [listLoading, setListLoading] = useState(false);
 
-  // ── Form modal state ────────────────────────────
   const [formOpen, setFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // ── Fetch list ──────────────────────────────────
+  // ── Fetch ────────────────────────────────────────
   const fetchList = useCallback(async () => {
     setListLoading(true);
     try {
@@ -74,83 +62,30 @@ const StudentsPage: React.FC = () => {
     }
   }, [page, pageSize]);
 
-  useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  useEffect(() => { fetchList(); }, [fetchList]);
 
-  // ── Create / Edit submit ────────────────────────
-  const handleFormSubmit = async (values: {
-    name: string;
-    parent_phone: string;
-    english_name?: string;
-    birth_date?: string;
-    level?: Level;
-  }) => {
+  // ── Create / Edit ────────────────────────────────
+  const handleFormSubmit = async (values: { name: string; parent_phone: string; english_name?: string; birth_date?: string; level?: Level }) => {
     setFormLoading(true);
     try {
       if (editingStudent) {
-        // BUG-001 fix: Edit mode — only send changed fields (diff)
-        const originalPhone = editingStudent.parent?.phone || '';
-        const changed: StudentUpdateParams = {};
-        if (values.name !== editingStudent.name) changed.name = values.name;
-        if ((values.english_name || undefined) !== (editingStudent.english_name || undefined)) {
-          changed.english_name = values.english_name;
-        }
-        if ((values.birth_date || undefined) !== (editingStudent.birth_date || undefined)) {
-          changed.birth_date = values.birth_date;
-        }
-        if ((values.level || undefined) !== (editingStudent.level || undefined)) {
-          changed.level = values.level;
-        }
-        if (values.parent_phone !== originalPhone) {
-          changed.parent_phone = values.parent_phone;
-        }
-
-        if (Object.keys(changed).length === 0) {
-          message.info('没有修改');
-          setFormOpen(false);
-          setEditingStudent(null);
-          return;
-        }
-
-        await updateStudent(editingStudent.id, changed);
-        message.success('学生信息已更新');
-        setFormOpen(false);
-        setEditingStudent(null);
-        fetchList();
+        await updateStudent(editingStudent.id, values);
+        message.success('学生已更新');
       } else {
-        // Create mode
         await createStudent(values);
         message.success('学生创建成功');
-        setFormOpen(false);
-        // BUG-002 fix: jump back to page 1 so admin sees the new record
-        setPage(1);
       }
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { code?: string; message?: string } }>;
+      setFormOpen(false);
+      setEditingStudent(null);
+      setPage(1);
+      fetchList();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
       const detail = axiosErr.response?.data?.detail;
-      if (axiosErr.response?.status === 409) {
-        const code = detail?.code;
-        if (code === 'CHILD_PARENT_DUPLICATE' || code === 'PARENT_ALREADY_HAS_CHILD') {
-          message.error('该家长已关联一个学生，一个家长只能有一个孩子');
-        } else if (code === 'INVALID_PARENT_ROLE') {
-          message.error(detail?.message || '该手机号无法作为家长关联');
-        } else {
-          message.error(detail?.message || '数据冲突，请检查输入');
-        }
-      } else if (axiosErr.response?.status === 422) {
-        message.error(detail?.message || '数据格式错误，请检查输入');
-      } else {
-        message.error(detail?.message || '操作失败，请重试');
-      }
+      message.error(typeof detail === 'string' ? detail : '操作失败');
     } finally {
       setFormLoading(false);
     }
-  };
-
-  const handleFormCancel = () => {
-    setFormOpen(false);
-    setEditingStudent(null);
   };
 
   // ── Delete ──────────────────────────────────────
@@ -159,123 +94,79 @@ const StudentsPage: React.FC = () => {
       await deleteStudent(id);
       message.success('学生已删除');
       fetchList();
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { message?: string } }>;
-      message.error(axiosErr.response?.data?.detail?.message || '删除失败');
+    } catch {
+      message.error('删除失败');
     }
   };
 
   // ── Table columns ───────────────────────────────
   const columns: ColumnsType<Student> = [
     {
-      title: '姓名',
-      dataIndex: 'name',
+      title: '学生',
       key: 'name',
-      width: 100,
-    },
-    {
-      title: '英文名',
-      dataIndex: 'english_name',
-      key: 'english_name',
-      width: 100,
-      render: (v: string | null) => v || '—',
-    },
-    {
-      title: '出生日期',
-      dataIndex: 'birth_date',
-      key: 'birth_date',
-      width: 120,
-      render: (v: string | null) => (v ? new Date(v).toLocaleDateString('zh-CN') : '—'),
-    },
-    {
-      title: '级别',
-      dataIndex: 'level',
-      key: 'level',
-      width: 70,
-      render: (level: Level | null) => (
-        <Tag color={level ? LEVEL_COLORS[level] || 'default' : 'default'}>
-          {level || '—'}
-        </Tag>
+      render: (_: unknown, record: Student) => (
+        <Space>
+          <Avatar size={40} icon={<UserOutlined />} src={record.avatar_url || undefined}
+            style={{ backgroundColor: '#5AA0DC20', color: '#5AA0DC' }}>
+            {record.name?.[0]}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 600 }}>{record.name}</div>
+            <span style={{ fontSize: 12, color: '#999' }}>{record.phone}</span>
+          </div>
+        </Space>
       ),
     },
     {
-      title: '家长手机号',
+      title: '年级',
+      dataIndex: 'level',
+      key: 'level',
+      width: 80,
+      render: (level: string) => LEVEL_GRADE_MAP[level] || level || '—',
+    },
+    {
+      title: '家长电话',
+      dataIndex: 'parent_phone',
       key: 'parent_phone',
-      width: 140,
-      render: (_: unknown, record: Student) => {
-        const phone = record.parent?.phone;
-        if (!phone) return '—';
-        return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
-      },
+      width: 130,
+      render: (v: string) => v || '—',
     },
     {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 170,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      width: 170,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      title: '状态',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      width: 80,
+      render: (v: boolean) => (
+        <Tag color={v ? 'success' : 'error'}>{v ? '启用' : '禁用'}</Tag>
+      ),
     },
     {
       title: '操作',
       key: 'action',
-      width: 140,
+      width: 100,
       render: (_: unknown, record: Student) => (
         <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingStudent(record);
-              setFormOpen(true);
-            }}
-          >
+          <Button type="link" size="small" onClick={() => { setEditingStudent(record); setFormOpen(true); }}>
             编辑
           </Button>
-          <Popconfirm
-            title="永久删除该学生？"
-            description="此操作不可撤销，学生数据将从数据库中彻底删除"
-            onConfirm={() => handleDelete(record.id)}
-            okText="确定删除"
-            cancelText="取消"
-            okButtonProps={{ danger: true }}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
+          <Popconfirm title="确认删除此学生？" onConfirm={() => handleDelete(record.id)} okText="删除" cancelText="取消">
+            <Button type="link" size="small" danger>删除</Button>
           </Popconfirm>
         </Space>
       ),
     },
   ];
 
-  // ── Render ──────────────────────────────────────
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          学生管理
-        </Typography.Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingStudent(null);
-            setFormOpen(true);
-          }}
-        >
+        <span style={{ fontSize: 16, fontWeight: 600 }}>学生管理</span>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingStudent(null); setFormOpen(true); }}>
           新建学生
         </Button>
       </div>
 
-      <Table<Student>
+      <Table
         rowKey="id"
         columns={columns}
         dataSource={students}
@@ -284,14 +175,9 @@ const StudentsPage: React.FC = () => {
           current: page,
           pageSize,
           total,
-          showSizeChanger: true,
           showTotal: (t) => `共 ${t} 条`,
-          onChange: (p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          },
+          onChange: (p, ps) => { setPage(p); setPageSize(ps); },
         }}
-        scroll={{ x: 900 }}
       />
 
       <StudentForm
@@ -299,7 +185,7 @@ const StudentsPage: React.FC = () => {
         student={editingStudent}
         loading={formLoading}
         onSubmit={handleFormSubmit}
-        onCancel={handleFormCancel}
+        onCancel={() => { setFormOpen(false); setEditingStudent(null); }}
       />
     </Card>
   );

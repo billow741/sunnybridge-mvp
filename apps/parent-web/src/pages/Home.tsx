@@ -1,105 +1,92 @@
-import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography, Spin } from 'antd';
-
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageContainer from '../components/PageContainer';
-import ChildCard from '../components/ChildCard';
-import CourseStatusTag from '../components/CourseStatusTag';
+import { Card, Row, Col, Typography, Avatar, Button } from 'antd';
+import { CalendarOutlined, ReadOutlined, FolderOutlined, HistoryOutlined } from '@ant-design/icons';
 import apiClient from '../api/client';
-import type { ChildOut, CourseOut, ProgressOut } from '../types';
-import { formatTime, getGreeting } from '../utils/dayjs';
+import type { CourseOut } from '../types';
+import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../components/shared';
+import { useAuthStore } from '../store/authStore';
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 
-export default function Home() {
+const quickLinks = [
+  { key: 'courses', icon: <CalendarOutlined style={{ fontSize: 24, color: '#F4A230' }} />, label: '今日课程', path: '/courses/today' },
+  { key: 'history', icon: <HistoryOutlined style={{ fontSize: 24, color: '#5CAADF' }} />, label: '课程记录', path: '/courses/history' },
+  { key: 'library', icon: <ReadOutlined style={{ fontSize: 24, color: '#E53E3E' }} />, label: '分级阅读', path: '/library' },
+  { key: 'resources', icon: <FolderOutlined style={{ fontSize: 24, color: '#38A169' }} />, label: '资源库', path: '/resources' },
+];
+
+export default function HomePage() {
   const navigate = useNavigate();
-  const [children, setChildren] = useState<ChildOut[]>([]);
+  const { children: childList, currentChildId, fetchChildren } = useAuthStore();
   const [courses, setCourses] = useState<CourseOut[]>([]);
-  const [progress, setProgress] = useState<ProgressOut[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      apiClient.get<ChildOut[]>('/children/me').catch(() => ({ data: [] })),
-      apiClient.get<CourseOut[]>('/courses/today').catch(() => ({ data: [] })),
-      apiClient.get<ProgressOut[]>('/reading/progress').catch(() => ({ data: [] })),
-    ]).then(([childrenRes, coursesRes, progressRes]) => {
-      setChildren(childrenRes.data || []);
-      setCourses(coursesRes.data || []);
-      setProgress(progressRes.data || []);
-    }).finally(() => setLoading(false));
+    if (childList.length === 0) fetchChildren();
+    fetchTodayCourses();
   }, []);
 
-  if (loading) return <PageContainer><Spin size="large" style={{ display: 'block', margin: '64px auto' }} /></PageContainer>;
+  const fetchTodayCourses = async () => {
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await apiClient.get('/courses', { params: { date: today, page_size: 20 } });
+      const data = res.data;
+      setCourses(Array.isArray(data) ? data : data.items || []);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || '获取课程失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const activeReading = progress.filter((p) => !p.completed).length;
-  const completedReading = progress.filter((p) => p.completed).length;
+  const currentChild = childList.find(c => c.id === currentChildId);
 
   return (
-    <PageContainer title={`${getGreeting()}，家长`}>
-      {/* 孩子信息 */}
-      {children.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <Title level={5} style={{ marginBottom: 12 }}>我的孩子</Title>
-          <Row gutter={[16, 12]}>
-            {children.map((c) => (
-              <Col xs={24} sm={12} md={8} key={c.id}>
-                <ChildCard child={c} />
-              </Col>
-            ))}
-          </Row>
-        </div>
-      )}
+    <div className="page-container">
+      <div style={{ marginBottom: 20 }}>
+        <Title level={4} style={{ marginBottom: 4 }}>
+          {currentChild ? `${currentChild.english_name || currentChild.name}，你好！` : '你好！'}
+        </Title>
+        <Typography.Text style={{ color: '#A0AEC0', fontSize: 14 }}>
+          {new Date().toLocaleDateString('zh-CN', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </Typography.Text>
+      </div>
 
-      <Row gutter={16}>
-        {/* 今日课程 */}
-        <Col xs={24} lg={14} style={{ marginBottom: 16 }}>
-          <Card title="今日课程" extra={<a onClick={() => navigate('/courses/today')}>查看全部</a>} style={{ borderRadius: 12 }}>
-            {courses.length === 0 ? (
-              <Text type="secondary">今天没有课程安排 🌤️</Text>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {courses.slice(0, 4).map((c) => (
-                  <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 8, background: '#FFFDF7' }}>
-                    <div>
-                      <Text strong>{formatTime(c.start_time)} - {formatTime(c.end_time)}</Text>
-                      <Text type="secondary" style={{ marginLeft: 8 }}>老师：{c.teacher?.name || '—'}</Text>
-                    </div>
-                    <CourseStatusTag status={c.status} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </Col>
-
-        {/* 阅读概览 */}
-        <Col xs={24} lg={10} style={{ marginBottom: 16 }}>
-          <Card title="阅读进度" extra={<a onClick={() => navigate('/reading')}>查看全部</a>} style={{ borderRadius: 12 }}>
-            <Row gutter={12} style={{ marginBottom: 16 }}>
-              <Col span={12}>
-                <div style={{ textAlign: 'center', padding: '16px 0', background: '#FFFDF7', borderRadius: 8 }}>
-                  <div style={{ fontSize: 28, fontWeight: 600, color: '#FFA726' }}>{activeReading}</div>
-                  <Text type="secondary">进行中</Text>
-                </div>
-              </Col>
-              <Col span={12}>
-                <div style={{ textAlign: 'center', padding: '16px 0', background: '#F0FFF4', borderRadius: 8 }}>
-                  <div style={{ fontSize: 28, fontWeight: 600, color: '#48BB78' }}>{completedReading}</div>
-                  <Text type="secondary">已完成</Text>
-                </div>
-              </Col>
-            </Row>
-            {progress.filter((p) => !p.completed).slice(0, 2).map((p) => (
-              <div key={p.id} style={{ padding: '8px 0', borderTop: '1px solid #F0E6D6' }}>
-                <Text>{p.title || '未知材料'}</Text>
-                <Text type="secondary" style={{ float: 'right' }}>{p.current_page}/{p.page_count || '?'} 页</Text>
-              </div>
-            ))}
-            {progress.length === 0 && <Text type="secondary">还没有开始阅读哦 📖</Text>}
-          </Card>
-        </Col>
+      {/* 快捷入口 */}
+      <Row gutter={12} style={{ marginBottom: 24 }}>
+        {quickLinks.map(q => (
+          <Col span={6} key={q.key}>
+            <Card
+              hoverable
+              onClick={() => navigate(q.path)}
+              bodyStyle={{ padding: '14px 8px', textAlign: 'center' }}
+              style={{ borderRadius: 14, border: '1px solid #F0E6D6' }}
+            >
+              {q.icon}
+              <div style={{ fontSize: 12, color: '#4A5568', marginTop: 6 }}>{q.label}</div>
+            </Card>
+          </Col>
+        ))}
       </Row>
-    </PageContainer>
+
+      {/* 今日课程 */}
+      <Title level={5} className="section-title">今日课程</Title>
+      {loading ? <LoadingPage rows={2} /> :
+        error ? <ErrorBanner message={error} onRetry={fetchTodayCourses} /> :
+          courses.length === 0 ? (
+            <EmptyState
+              icon={<CalendarOutlined />}
+              title="今日暂无课程"
+              description="看看阅读库有没有新内容吧"
+              action={<Button type="primary" onClick={() => navigate('/library')}>去读书</Button>}
+            />
+          ) : courses.map(c => (
+            <CourseCard key={c.id} course={c} onClick={id => navigate(`/courses/${id}`)} />
+          ))
+      }
+    </div>
   );
 }

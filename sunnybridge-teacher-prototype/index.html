@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SunnyBridge Teacher</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
+      brand: { 400: '#6BB3E8', 500: '#5AA0DC', 600: '#4A90CC' },
+      accent: { 400: '#FBBF24', 500: '#F0A028', 600: '#D97706' },
+      mint: { 400: '#34D399', 500: '#10B981', 600: '#059669' }
+    }}}}
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    #sidebar { transition: width 0.25s cubic-bezier(0.4,0,0.2,1); }
+    #main-content { transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .sidebar-item { transition: all 0.15s ease; white-space: nowrap; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.05); }
+    .sidebar-item.active { border-right: 3px solid #10B981; background: linear-gradient(90deg, rgba(16,185,129,0.15), transparent); }
+    .bento-card { transition: all 0.2s ease; }
+    .bento-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+    .progress-ring { transform: rotate(-90deg); }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+<!-- Teacher Sidebar — mint accent -->
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 flex flex-col overflow-hidden z-50" 
+       style="background: linear-gradient(180deg, #134E4A 0%, #0F3D3A 100%);">
+  <div class="flex items-center gap-3 px-4 py-4 h-14 shrink-0">
+    <button id="sidebar-toggle" class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <span class="text-white font-semibold text-lg sidebar-text">SunnyBridge</span>
+  </div>
+
+  <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto overflow-x-hidden">
+    <a href="#" data-page="overview" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zm10 0a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z"/></svg>
+      <span class="sidebar-text">教学概览</span>
+    </a>
+    <a href="#" data-page="classes" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.282-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.282.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="sidebar-text">我的班级</span>
+    </a>
+    <a href="#" data-page="assignment" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span class="sidebar-text">作业管理</span>
+    </a>
+    <a href="#" data-page="resources" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      <span class="sidebar-text">教学资源</span>
+    </a>
+    <a href="#" data-page="progress" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      <span class="sidebar-text">学习进度</span>
+    </a>
+    <a href="#" data-page="messages" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span class="sidebar-text">家长沟通</span>
+    </a>
+  </nav>
+
+  <div class="px-4 py-3 border-t border-white/10 shrink-0">
+    <div class="flex items-center gap-3 sidebar-text">
+      <img src="https://ui-avatars.com/api/?name=Miss+Li&background=10B981&color=fff" class="w-8 h-8 rounded-full shrink-0" alt="">
+      <div class="min-w-0">
+        <p class="text-white text-sm font-medium truncate">李老师</p>
+        <p class="text-gray-500 text-xs">星星中班</p>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<main id="main-content" class="ml-64 min-h-screen">
+  <header class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+    <span class="font-medium text-gray-900 dark:text-white" id="page-title">教学概览</span>
+    <div class="flex items-center gap-3">
+      <div class="hidden md:flex items-center gap-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-1.5 w-56">
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" placeholder="搜索学生、资源..." class="bg-transparent outline-none text-sm w-full dark:text-white">
+      </div>
+      <button class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 relative">
+        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.039-.595 1.436L4 17h5m0 0v1a2 2 0 104 0v-1m-4 0h4"/></svg>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-mint-500 rounded-full"></span>
+      </button>
+    </div>
+  </header>
+
+  <div id="page-container" class="p-6">
+
+    <!-- 教学概览 — Bento Layout -->
+    <div id="page-overview" class="page-section">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">教学概览</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">早上好，李老师 ✨</p>
+      </div>
+
+      <!-- Bento Grid -->
+      <div class="grid grid-cols-4 gap-4 mb-6" style="grid-auto-rows: minmax(120px, auto);">
+        <!-- 大卡：班级情况 -->
+        <div class="bento-card col-span-2 row-span-2 bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-6 flex flex-col justify-between" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
+          <div>
+            <p class="text-emerald-100 text-sm font-medium">今日班级</p>
+            <h2 class="text-3xl font-bold text-white mt-2">星星中班</h2>
+            <p class="text-emerald-100 text-sm mt-1">32 名学生 · 3 项待批作业</p>
+          </div>
+          <div class="flex gap-3">
+            <button class="px-4 py-2 bg-white/20 rounded-lg text-sm font-medium text-white hover:bg-white/30 transition">查看详情</button>
+            <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-emerald-700 hover:bg-gray-50 transition">布置作业</button>
+          </div>
+        </div>
+
+        <!-- 待批作业 -->
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500 dark:text-gray-400">待批作业</span>
+            <div class="p-2 rounded-lg bg-amber-50 dark:bg-amber-900/30"><svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></div>
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">12</div>
+          <p class="text-xs text-gray-500 mt-1">较昨日 -3</p>
+        </div>
+
+        <!-- 完成率 -->
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500 dark:text-gray-400">本周完成率</span>
+            <div class="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/30"><svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg></div>
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">87%</div>
+          <p class="text-xs text-emerald-500 mt-1">↑ 5% 较上周</p>
+        </div>
+
+        <!-- 家长消息 -->
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500 dark:text-gray-400">家长消息</span>
+            <div class="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30"><svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg></div>
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">5</div>
+          <p class="text-xs text-amber-500 mt-1">2 条未读</p>
+        </div>
+
+        <!-- 教学资源 -->
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm text-gray-500 dark:text-gray-400">本月已用资源</span>
+            <div class="p-2 rounded-lg bg-purple-50 dark:bg-purple-900/30"><svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg></div>
+          </div>
+          <div class="text-3xl font-bold text-gray-900 dark:text-white">48</div>
+          <p class="text-xs text-gray-500 mt-1">本月使用 48 个资源</p>
+        </div>
+      </div>
+
+      <!-- 今日课表 -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-gray-900 dark:text-white">今日课表</h3>
+          <button class="text-mint-500 text-sm hover:underline">编辑课表</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <div class="text-2xl">📖</div>
+            <div><p class="font-medium text-sm text-gray-900 dark:text-white">绘本阅读课</p><p class="text-xs text-gray-500 mt-0.5">09:00 - 09:40 · 全班</p><p class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">好饿的毛毛虫</p></div>
+          </div>
+          <div class="flex items-start gap-3 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+            <div class="text-2xl">🔤</div>
+            <div><p class="font-medium text-sm text-gray-900 dark:text-white">识字课</p><p class="text-xs text-gray-500 mt-0.5">10:00 - 10:40 · A组</p><p class="text-xs text-blue-600 dark:text-blue-400 mt-1">字母认知卡</p></div>
+          </div>
+          <div class="flex items-start gap-3 p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+            <div class="text-2xl">🎵</div>
+            <div><p class="font-medium text-sm text-gray-900 dark:text-white">音乐课</p><p class="text-xs text-gray-500 mt-0.5">14:00 - 14:40 · 全班</p><p class="text-xs text-purple-600 dark:text-purple-400 mt-1">小星星儿歌</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 我的班级 -->
+    <div id="page-classes" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">我的班级</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">管理班级和学生</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="h-2 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-gray-900 dark:text-white">星星中班</h3>
+              <span class="text-xs bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2 py-0.5 rounded-full">活跃</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center mb-4">
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">32</p><p class="text-xs text-gray-500">学生</p></div>
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">87%</p><p class="text-xs text-gray-500">出勤</p></div>
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">12</p><p class="text-xs text-gray-500">待批</p></div>
+            </div>
+            <div class="flex -space-x-2">
+              <img src="https://ui-avatars.com/api/?name=A&background=10B981&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <img src="https://ui-avatars.com/api/?name=B&background=F0A028&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <img src="https://ui-avatars.com/api/?name=C&background=5AA0DC&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <img src="https://ui-avatars.com/api/?name=D&background=8B5CF6&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-gray-500">+28</div>
+            </div>
+          </div>
+        </div>
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="h-2 bg-gradient-to-r from-blue-400 to-blue-600"></div>
+          <div class="p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="font-semibold text-gray-900 dark:text-white">向日葵小班</h3>
+              <span class="text-xs bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2 py-0.5 rounded-full">活跃</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center mb-4">
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">28</p><p class="text-xs text-gray-500">学生</p></div>
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">92%</p><p class="text-xs text-gray-500">出勤</p></div>
+              <div><p class="text-lg font-bold text-gray-900 dark:text-white">5</p><p class="text-xs text-gray-500">待批</p></div>
+            </div>
+            <div class="flex -space-x-2">
+              <img src="https://ui-avatars.com/api/?name=E&background=EC4899&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <img src="https://ui-avatars.com/api/?name=F&background=10B981&size=32" class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800" alt="">
+              <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs text-gray-500">+26</div>
+            </div>
+          </div>
+        </div>
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-600 overflow-hidden flex items-center justify-center min-h-[200px] cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50">
+          <div class="text-center">
+            <svg class="w-8 h-8 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <p class="text-sm text-gray-500">创建新班级</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作业管理 -->
+    <div id="page-assignment" class="page-section hidden">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">作业管理</h1>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">查看和批改学生作业</p>
+        </div>
+        <button class="px-4 py-2 bg-mint-500 text-white rounded-lg text-sm font-medium hover:bg-mint-600 transition">+ 布置作业</button>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400">
+              <tr>
+                <th class="px-4 py-3 text-left font-medium">作业</th>
+                <th class="px-4 py-3 text-left font-medium">班级</th>
+                <th class="px-4 py-3 text-left font-medium">已交/总数</th>
+                <th class="px-4 py-3 text-left font-medium">已批</th>
+                <th class="px-4 py-3 text-left font-medium">截止</th>
+                <th class="px-4 py-3 text-left font-medium">状态</th>
+                <th class="px-4 py-3 text-left font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y dark:divide-gray-700">
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30"><td class="px-4 py-3 font-medium text-gray-900 dark:text-white">绘本读后感</td><td class="px-4 py-3 text-gray-500">星星中班</td><td class="px-4 py-3 text-gray-900 dark:text-white">28/32</td><td class="px-4 py-3 text-gray-500">20</td><td class="px-4 py-3 text-gray-500">今天 17:00</td><td class="px-4 py-3"><span class="text-xs bg-amber-50 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300 px-2 py-0.5 rounded-full">进行中</span></td><td class="px-4 py-3"><button class="text-mint-500 hover:underline text-sm">批改</button></td></tr>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30"><td class="px-4 py-3 font-medium text-gray-900 dark:text-white">字母描红</td><td class="px-4 py-3 text-gray-500">向日葵小班</td><td class="px-4 py-3 text-gray-900 dark:text-white">25/28</td><td class="px-4 py-3 text-gray-500">15</td><td class="px-4 py-3 text-gray-500">明天 12:00</td><td class="px-4 py-3"><span class="text-xs bg-amber-50 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300 px-2 py-0.5 rounded-full">进行中</span></td><td class="px-4 py-3"><button class="text-mint-500 hover:underline text-sm">批改</button></td></tr>
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30"><td class="px-4 py-3 font-medium text-gray-900 dark:text-white">数字连线</td><td class="px-4 py-3 text-gray-500">星星中班</td><td class="px-4 py-3 text-gray-900 dark:text-white">32/32</td><td class="px-4 py-3 text-gray-500">32</td><td class="px-4 py-3 text-gray-500">昨天</td><td class="px-4 py-3"><span class="text-xs bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2 py-0.5 rounded-full">已完成</span></td><td class="px-4 py-3"><button class="text-mint-500 hover:underline text-sm">查看</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学习进度 -->
+    <div id="page-progress" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">学习进度</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">追踪学生学习情况和成长轨迹</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <h3 class="font-semibold text-sm text-gray-900 dark:text-white mb-4">阅读进度 Top 5</h3>
+          <div class="space-y-3">
+            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=美美&background=10B981&size=28" class="w-7 h-7 rounded-full" alt=""><div class="flex-1"><div class="flex justify-between text-sm mb-1"><span class="text-gray-900 dark:text-white">美美</span><span class="text-emerald-500 font-medium">95%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-emerald-500 h-2 rounded-full" style="width:95%"></div></div></div></div>
+            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=小明&background=5AA0DC&size=28" class="w-7 h-7 rounded-full" alt=""><div class="flex-1"><div class="flex justify-between text-sm mb-1"><span class="text-gray-900 dark:text-white">小明</span><span class="text-brand-500 font-medium">88%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-brand-500 h-2 rounded-full" style="width:88%"></div></div></div></div>
+            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=小花&background=EC4899&size=28" class="w-7 h-7 rounded-full" alt=""><div class="flex-1"><div class="flex justify-between text-sm mb-1"><span class="text-gray-900 dark:text-white">小花</span><span class="text-purple-500 font-medium">82%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width:82%"></div></div></div></div>
+            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=大海&background=F0A028&size=28" class="w-7 h-7 rounded-full" alt=""><div class="flex-1"><div class="flex justify-between text-sm mb-1"><span class="text-gray-900 dark:text-white">大海</span><span class="text-accent-500 font-medium">75%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-accent-500 h-2 rounded-full" style="width:75%"></div></div></div></div>
+            <div class="flex items-center gap-3"><img src="https://ui-avatars.com/api/?name=小强&background=8B5CF6&size=28" class="w-7 h-7 rounded-full" alt=""><div class="flex-1"><div class="flex justify-between text-sm mb-1"><span class="text-gray-900 dark:text-white">小强</span><span class="text-gray-500 font-medium">68%</span></div><div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-gray-400 h-2 rounded-full" style="width:68%"></div></div></div></div>
+          </div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <h3 class="font-semibold text-sm text-gray-900 dark:text-white mb-4">需要关注</h3>
+          <div class="space-y-3">
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <div class="text-xl">⚠️</div>
+              <div class="flex-1"><p class="text-sm font-medium text-gray-900 dark:text-white">大海 连续 3 天未提交</p><p class="text-xs text-gray-500 mt-0.5">星星中班 · 字母描红</p></div>
+              <button class="text-xs text-mint-500 hover:underline">联系家长</button>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
+              <div class="text-xl">📉</div>
+              <div class="flex-1"><p class="text-sm font-medium text-gray-900 dark:text-white">小强 阅读量下降 40%</p><p class="text-xs text-gray-500 mt-0.5">星星中班 · 本周统计</p></div>
+              <button class="text-xs text-mint-500 hover:underline">查看详情</button>
+            </div>
+            <div class="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div class="text-xl">📚</div>
+              <div class="flex-1"><p class="text-sm font-medium text-gray-900 dark:text-white">小花 请求额外阅读材料</p><p class="text-xs text-gray-500 mt-0.5">向日葵小班 · 昨天</p></div>
+              <button class="text-xs text-mint-500 hover:underline">推荐</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 教学资源 -->
+    <div id="page-resources" class="page-section hidden">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">教学资源</h1>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">浏览和推荐教学材料</p>
+        </div>
+        <button class="px-4 py-2 bg-mint-500 text-white rounded-lg text-sm font-medium hover:bg-mint-600 transition">+ 推荐资源</button>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="aspect-[4/3] bg-blue-50 dark:bg-blue-900/20 relative flex items-center justify-center text-5xl">📖</div>
+          <div class="p-4"><h4 class="font-medium text-sm text-gray-900 dark:text-white">好饿的毛毛虫</h4><p class="text-xs text-gray-500 mt-1">图画书 · 3-5岁 · 48次使用</p><div class="flex items-center gap-1 mt-2"><span class="text-amber-400 text-xs">★★★★★</span><span class="text-xs text-gray-400 ml-1">4.9</span></div></div>
+        </div>
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="aspect-[4/3] bg-amber-50 dark:bg-amber-900/20 relative flex items-center justify-center text-5xl">🔤</div>
+          <div class="p-4"><h4 class="font-medium text-sm text-gray-900 dark:text-white">ABC 字母卡</h4><p class="text-xs text-gray-500 mt-1">识字卡片 · 3-5岁 · 35次使用</p><div class="flex items-center gap-1 mt-2"><span class="text-amber-400 text-xs">★★★★☆</span><span class="text-xs text-gray-400 ml-1">4.6</span></div></div>
+        </div>
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="aspect-[4/3] bg-purple-50 dark:bg-purple-900/20 relative flex items-center justify-center text-5xl">🎵</div>
+          <div class="p-4"><h4 class="font-medium text-sm text-gray-900 dark:text-white">小星星儿歌</h4><p class="text-xs text-gray-500 mt-1">儿歌音频 · 2-4岁 · 22次使用</p><div class="flex items-center gap-1 mt-2"><span class="text-amber-400 text-xs">★★★★★</span><span class="text-xs text-gray-400 ml-1">4.8</span></div></div>
+        </div>
+        <div class="bento-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+          <div class="aspect-[4/3] bg-emerald-50 dark:bg-emerald-900/20 relative flex items-center justify-center text-5xl">🔢</div>
+          <div class="p-4"><h4 class="font-medium text-sm text-gray-900 dark:text-white">1-100 认知</h4><p class="text-xs text-gray-500 mt-1">互动练习 · 4-6岁 · 18次使用</p><div class="flex items-center gap-1 mt-2"><span class="text-amber-400 text-xs">★★★★☆</span><span class="text-xs text-gray-400 ml-1">4.5</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 家长沟通 -->
+    <div id="page-messages" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">家长沟通</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">与家长保持联系</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 divide-y dark:divide-gray-700">
+        <div class="p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+          <img src="https://ui-avatars.com/api/?name=张妈妈&background=5AA0DC&size=40" class="w-10 h-10 rounded-full" alt="">
+          <div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-900 dark:text-white">张妈妈</p><p class="text-xs text-gray-500 truncate">老师好，小明的阅读材料收到了...</p></div>
+          <div class="text-right shrink-0"><p class="text-xs text-gray-400">10:30</p><span class="inline-block w-5 h-5 bg-mint-500 text-white text-xs rounded-full text-center leading-5">2</span></div>
+        </div>
+        <div class="p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+          <img src="https://ui-avatars.com/api/?name=李爸爸&background=F0A028&size=40" class="w-10 h-10 rounded-full" alt="">
+          <div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-900 dark:text-white">李爸爸</p><p class="text-xs text-gray-500 truncate">谢谢老师的反馈！</p></div>
+          <div class="text-right shrink-0"><p class="text-xs text-gray-400">昨天</p></div>
+        </div>
+        <div class="p-4 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 cursor-pointer">
+          <img src="https://ui-avatars.com/api/?name=王妈妈&background=8B5CF6&size=40" class="w-10 h-10 rounded-full" alt="">
+          <div class="flex-1 min-w-0"><p class="text-sm font-medium text-gray-900 dark:text-white">王妈妈</p><p class="text-xs text-gray-500 truncate">请问下学期选课什么时候开始？</p></div>
+          <div class="text-right shrink-0"><p class="text-xs text-gray-400">2天前</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const pages = { overview:'page-overview', classes:'page-classes', assignment:'page-assignment', resources:'page-resources', progress:'page-progress', messages:'page-messages' };
+  const titles = { overview:'教学概览', classes:'我的班级', assignment:'作业管理', resources:'教学资源', progress:'学习进度', messages:'家长沟通' };
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const p = item.dataset.page; if (!p) return;
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
+      const el = document.getElementById(pages[p]);
+      if (el) { el.classList.remove('hidden'); el.classList.add('fade-in'); }
+      document.getElementById('page-title').textContent = titles[p]||'';
+    });
+  });
+  let collapsed = false;
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    collapsed = !collapsed;
+    document.getElementById('sidebar').style.width = collapsed ? '64px' : '256px';
+    document.getElementById('main-content').style.marginLeft = collapsed ? '64px' : '256px';
+  });
+</script>
+</body>
+</html>

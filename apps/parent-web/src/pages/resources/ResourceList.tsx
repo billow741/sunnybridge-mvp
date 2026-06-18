@@ -1,68 +1,74 @@
-import { useState, useEffect } from 'react';
-import { Card, Select, Row, Col, Tag, Typography } from 'antd';
-import { FolderOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
+import { Typography, Select, Space } from 'antd';
+import { FolderOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
-import type { ResourceOut, PaginatedResponse } from '../../types';
-import { resourceCategoryLabels } from '../../utils/labels';
+import type { ResourceOut } from '../../types';
+import { ResourceCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
 
-const categoryOptions = [{ value: '', label: '全部类型' }, ...Object.entries(resourceCategoryLabels).map(([v, l]) => ({ value: v, label: l }))];
-const categoryColors: Record<string, string> = { phonics: '#54C5F8', word_card: '#48BB78', recommended: '#ED8936' };
+const { Title } = Typography;
 
-export default function ResourceList() {
+export default function ResourceListPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<PaginatedResponse<ResourceOut>>({ items: [], total: 0, page: 1, page_size: 20 });
+  const [resources, setResources] = useState<ResourceOut[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const [category, setCategory] = useState('');
-
-  const fetchResources = () => {
-    setLoading(true);
-    setError(null);
-    const params: Record<string, string> = { page: '1', page_size: '20' };
-    if (category) params.category = category;
-    apiClient.get<PaginatedResponse<ResourceOut>>('/resources', { params })
-      .then((res) => setData(res.data))
-      .catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-      .finally(() => setLoading(false));
-  };
 
   useEffect(() => { fetchResources(); }, [category]);
 
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      const params: any = { page_size: 100, is_active: true };
+      if (category) params.category = category;
+      const res = await apiClient.get('/resources', { params });
+      const data = res.data;
+      setResources(Array.isArray(data) ? data : data.items || []);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || '获取资源失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <PageContainer title="学习资源" extra={<Select value={category} onChange={setCategory} options={categoryOptions} style={{ width: 140 }} />}>
-      {loading ? <LoadingState /> : error ? <ErrorState message={error} onRetry={fetchResources} /> :
-        data.items.length === 0 ? <EmptyState title="暂无学习资源" /> : (
-          <Row gutter={[16, 16]}>
-            {data.items.map((r) => (
-              <Col xs={24} sm={12} md={8} key={r.id}>
-                <Card hoverable onClick={() => navigate(`/resources/${r.id}`)} style={{ borderRadius: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: 10,
-                      background: `${categoryColors[r.category] || '#54C5F8'}15`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 20, color: categoryColors[r.category] || '#54C5F8',
-                    }}>
-                      <FolderOutlined />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <Typography.Text strong style={{ fontSize: 15 }}>{r.title}</Typography.Text>
-                      <div style={{ marginTop: 4 }}>
-                        <Tag color={categoryColors[r.category] || 'blue'}>{resourceCategoryLabels[r.category] || r.category}</Tag>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )
+    <div className="page-container">
+      <Title level={4} className="page-title">
+        <FolderOutlined style={{ color: '#F4A230', marginRight: 8 }} />
+        资源库
+      </Title>
+
+      <Select
+        value={category || undefined}
+        onChange={v => setCategory(v || '')}
+        allowClear
+        placeholder="全部分类"
+        style={{ width: '100%', marginBottom: 12, borderRadius: 12 }}
+        options={[
+          { value: '', label: '全部' },
+          { value: 'phonics', label: '自然拼读' },
+          { value: 'word_card', label: '单词卡' },
+          { value: 'recommended', label: '推荐资源' },
+        ]}
+      />
+
+      {loading ? <LoadingPage rows={4} /> :
+        error ? <ErrorBanner message={error} onRetry={fetchResources} /> :
+          resources.length === 0 ? (
+            <EmptyState
+              icon={<FolderOutlined />}
+              title="暂无资源"
+              description="换个分类试试"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {resources.map(r => (
+                <ResourceCard key={r.id} resource={r} onClick={id => navigate(`/resources/${id}`)} />
+              ))}
+            </div>
+          )
       }
-    </PageContainer>
+    </div>
   );
 }

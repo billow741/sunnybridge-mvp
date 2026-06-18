@@ -1,43 +1,75 @@
-import { useState, useEffect } from 'react';
-import { Card, Descriptions, Button, Space } from 'antd';
-import { ArrowLeftOutlined, FilePdfOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
+import { Typography, Button, Card } from 'antd';
+import { ArrowLeftOutlined, FilePdfOutlined, DownloadOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
-import type { ResourceDetail } from '../../types';
-import { resourceCategoryLabels } from '../../utils/labels';
+import type { ResourceOut } from '../../types';
+import { LoadingPage, ErrorBanner } from '../../components/shared';
 
-export default function ResourceDetail() {
+const { Title, Text } = Typography;
+
+export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [resource, setResource] = useState<ResourceDetail | null>(null);
+  const [resource, setResource] = useState<ResourceOut | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    apiClient.get<ResourceDetail>(`/resources/${id}`)
-      .then((res) => setResource(res.data))
-      .catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-      .finally(() => setLoading(false));
+    if (!id) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await apiClient.get(`/resources/${id}`);
+        setResource(res.data);
+      } catch (e: any) {
+        setError(e?.response?.data?.detail || '获取资源详情失败');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
 
-  if (loading) return <PageContainer><LoadingState /></PageContainer>;
-  if (error || !resource) return <PageContainer><ErrorState message={error || '未找到'} onRetry={() => navigate(-1)} /></PageContainer>;
+  if (loading) return <LoadingPage rows={4} />;
+  if (error) return <div className="page-container"><ErrorBanner message={error} /></div>;
+  if (!resource) return null;
 
   return (
-    <PageContainer title={resource.title} extra={
-      <Space>
-        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
-        <Button type="primary" icon={<FilePdfOutlined />} onClick={() => window.open(resource.signed_pdf_url || resource.pdf_url, '_blank')}>打开PDF</Button>
-      </Space>
-    }>
-      <Card style={{ borderRadius: 12 }}>
-        <Descriptions column={1}>
-          <Descriptions.Item label="类型">{resourceCategoryLabels[resource.category] || resource.category}</Descriptions.Item>
-        </Descriptions>
+    <div className="page-container">
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}
+        style={{ marginBottom: 12, padding: 0, color: '#F4A230' }}>
+        返回
+      </Button>
+
+      <Card style={{ borderRadius: 14, marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 12, background: '#FFF5E6',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <FilePdfOutlined style={{ fontSize: 26, color: '#F4A230' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <Title level={4} style={{ margin: '0 0 4px 0' }}>{resource.title}</Title>
+            {resource.category && <span className="sun-tag">{resource.category}</span>}
+          </div>
+        </div>
       </Card>
-    </PageContainer>
+
+      {resource.pdf_url ? (
+        <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid #F0E6D6', background: '#fff' }}>
+          <iframe
+            src={resource.pdf_url}
+            title={resource.title}
+            style={{ width: '100%', height: '70vh', border: 'none' }}
+          />
+        </div>
+      ) : (
+        <Card style={{ borderRadius: 14, textAlign: 'center', padding: 48 }}>
+          <FilePdfOutlined style={{ fontSize: 48, color: '#E2E8F0', marginBottom: 12 }} />
+          <div style={{ color: '#A0AEC0' }}>暂无 PDF 文件</div>
+        </Card>
+      )}
+    </div>
   );
 }

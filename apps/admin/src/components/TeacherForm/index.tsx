@@ -6,22 +6,28 @@
  * - Edit:   PUT /teachers/:id
  *
  * Validation rules per API-04 schema:
- * - username: required, 1-50 chars, alphanumeric + underscore only
- * - phone: required, Chinese mobile ^1[3-9]\d{9}$
  * - name: required, 1-50 chars
+ * - phone: required, Chinese mobile ^1[3-9]\d{9}$
+ * - email: optional, valid email
+ * - bio: optional, max 500 chars
  */
 
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Alert, Typography } from 'antd';
+import { Modal, Form, Input, Alert, Card } from 'antd';
 import type { Teacher } from '../../services/teacher';
 
-const { Text } = Typography;
+interface TeacherFormValues {
+  name: string;
+  phone: string;
+  email?: string;
+  bio?: string;
+}
 
 interface TeacherFormProps {
   open: boolean;
-  teacher: Teacher | null; // null = create mode, non-null = edit mode
+  teacher: Teacher | null;
   loading: boolean;
-  onSubmit: (values: { username: string; phone: string; name: string }) => void;
+  onSubmit: (values: { name: string; phone: string; email?: string; bio?: string }) => void;
   onCancel: () => void;
   /** initial_password returned after create — displayed in parent */
   initialPassword?: string | null;
@@ -35,7 +41,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
   onCancel,
   initialPassword,
 }) => {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<TeacherFormValues>();
   const isEdit = teacher !== null;
 
   // Populate form when editing
@@ -43,9 +49,10 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
     if (open) {
       if (teacher) {
         form.setFieldsValue({
-          username: teacher.username,
-          phone: teacher.phone,
           name: teacher.name,
+          phone: teacher.phone,
+          email: teacher.email || undefined,
+          bio: teacher.bio || undefined,
         });
       } else {
         form.resetFields();
@@ -87,14 +94,14 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
           message="教师创建成功"
           description={
             <>
-              <Text>初始密码：</Text>
-              <Text strong copyable style={{ fontFamily: 'monospace', fontSize: 16 }}>
+              <span>初始密码：</span>
+              <span style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold' }}>
                 {initialPassword}
-              </Text>
+              </span>
               <br />
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                请将初始密码告知教师，首次登录后需修改密码
-              </Text>
+              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>
+                请将此密码转交教师，首次登录后需修改密码
+              </span>
             </>
           }
         />
@@ -104,51 +111,68 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
         form={form}
         layout="vertical"
         autoComplete="off"
-        disabled={!!initialPassword} // lock form after create success
+        disabled={!!initialPassword}
       >
-        <Form.Item
-          name="username"
-          label="用户名"
-          rules={[
-            { required: true, message: '请输入用户名' },
-            { max: 50, message: '用户名最多50个字符' },
-            {
-              pattern: /^[a-zA-Z0-9_]+$/,
-              message: '仅支持英文字母、数字和下划线',
-            },
-          ]}
+        <Card
+          size="small"
+          title="基本信息"
+          bordered={false}
+          style={{ marginBottom: 16, background: '#fafafa' }}
         >
-          <Input
-            placeholder="如: teacher_wang"
-            maxLength={50}
-            disabled={isEdit}
-          />
-        </Form.Item>
+          <Form.Item
+            name="name"
+            label="姓名"
+            rules={[
+              { required: true, message: '请输入姓名' },
+              { max: 50, message: '姓名最多50个字符' },
+            ]}
+          >
+            <Input placeholder="请输入姓名" maxLength={50} />
+          </Form.Item>
 
-        <Form.Item
-          name="phone"
-          label="手机号"
-          rules={[
-            { required: true, message: '请输入手机号' },
-            {
-              pattern: /^1[3-9]\d{9}$/,
-              message: '请输入正确的11位手机号',
-            },
-          ]}
-        >
-          <Input placeholder="如: 13812345678" maxLength={11} />
-        </Form.Item>
+          <Form.Item
+            name="phone"
+            label="手机号"
+            rules={[
+              { required: true, message: '请输入手机号' },
+              {
+                pattern: /^1[3-9]\d{9}$/,
+                message: '请输入正确的11位手机号',
+              },
+            ]}
+          >
+            <Input
+              placeholder="请输入手机号"
+              maxLength={11}
+              prefix="+86"
+            />
+          </Form.Item>
 
-        <Form.Item
-          name="name"
-          label="姓名"
-          rules={[
-            { required: true, message: '请输入教师姓名' },
-            { max: 50, message: '姓名最多50个字符' },
-          ]}
-        >
-          <Input placeholder="如: 王老师" maxLength={50} />
-        </Form.Item>
+          <Form.Item
+            name="email"
+            label="邮箱"
+            rules={[
+              { type: 'email', message: '请输入有效的邮箱地址' },
+            ]}
+          >
+            <Input placeholder="请输入邮箱" />
+          </Form.Item>
+
+          <Form.Item
+            name="bio"
+            label="个人简介"
+            rules={[
+              { max: 500, message: '个人简介最多500个字符' },
+            ]}
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder="请输入个人简介"
+              maxLength={500}
+              showCount
+            />
+          </Form.Item>
+        </Card>
       </Form>
     </Modal>
   );

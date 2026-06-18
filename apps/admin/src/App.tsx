@@ -15,6 +15,7 @@ const App: React.FC = () => (
       token: {
         colorPrimary: '#5AA0DC',
         borderRadius: 8,
+        colorBgLayout: '#FAFAFA',
       },
     }}
   >

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SunnyBridge Parent</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: {
+      brand: { 400: '#6BB3E8', 500: '#5AA0DC', 600: '#4A90CC' },
+      accent: { 400: '#FBBF24', 500: '#F0A028', 600: '#D97706' },
+      coral: { 400: '#FB923C', 500: '#F97316', 600: '#EA580C' },
+      warm: { 50: '#FFFBEB', 100: '#FEF3C7', 500: '#F59E0B', 600: '#D97706' }
+    }}}}
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    #sidebar { transition: width 0.25s cubic-bezier(0.4,0,0.2,1); }
+    #main-content { transition: margin-left 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .sidebar-item { transition: all 0.15s ease; white-space: nowrap; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.05); }
+    .sidebar-item.active { border-right: 3px solid #F97316; background: linear-gradient(90deg, rgba(249,115,22,0.15), transparent); }
+    .warm-card { transition: all 0.2s ease; }
+    .warm-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(249,115,22,0.15); }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+    .badge-bounce { animation: bounce 0.5s ease; }
+    @keyframes bounce { 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.2) } }
+  </style>
+</head>
+<body class="bg-warm-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+
+<!-- Parent Sidebar — warm coral accent -->
+<aside id="sidebar" class="fixed left-0 top-0 h-full w-64 flex flex-col overflow-hidden z-50" 
+       style="background: linear-gradient(180deg, #7C2D12 0%, #6B2710 100%);">
+  <div class="flex items-center gap-3 px-4 py-4 h-14 shrink-0">
+    <button id="sidebar-toggle" class="p-1.5 rounded-lg hover:bg-white/10 text-gray-400">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <span class="text-white font-semibold text-lg sidebar-text">SunnyBridge</span>
+  </div>
+
+  <nav class="flex-1 px-2 py-2 space-y-1 overflow-y-auto overflow-x-hidden">
+    <a href="#" data-page="home" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="sidebar-text">家庭首页</span>
+    </a>
+    <a href="#" data-page="child" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span class="sidebar-text">孩子动态</span>
+    </a>
+    <a href="#" data-page="reading" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      <span class="sidebar-text">阅读空间</span>
+    </a>
+    <a href="#" data-page="homework" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      <span class="sidebar-text">作业与反馈</span>
+    </a>
+    <a href="#" data-page="chat" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span class="sidebar-text">与老师沟通</span>
+    </a>
+    <a href="#" data-page="profile" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white text-sm">
+      <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="sidebar-text">我的</span>
+    </a>
+  </nav>
+
+  <div class="px-4 py-3 border-t border-white/10 shrink-0">
+    <div class="flex items-center gap-3 sidebar-text">
+      <img src="https://ui-avatars.com/api/?name=张妈妈&background=F97316&color=fff" class="w-8 h-8 rounded-full shrink-0" alt="">
+      <div class="min-w-0">
+        <p class="text-white text-sm font-medium truncate">张妈妈</p>
+        <p class="text-gray-500 text-xs">小明的家长</p>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<main id="main-content" class="ml-64 min-h-screen">
+  <header class="bg-white/80 dark:bg-gray-800/80 backdrop-blur border-b dark:border-gray-700 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+    <span class="font-medium text-gray-900 dark:text-white" id="page-title">家庭首页</span>
+    <div class="flex items-center gap-3">
+      <button class="p-2 rounded-lg hover:bg-orange-50 dark:hover:bg-gray-700 relative">
+        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.039-.595 1.436L4 17h5m0 0v1a2 2 0 104 0v-1m-4 0h4"/></svg>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-coral-500 rounded-full"></span>
+      </button>
+      <button id="theme-toggle" class="p-2 rounded-lg hover:bg-orange-50 dark:hover:bg-gray-700">
+        <svg class="w-5 h-5 text-gray-600 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        <svg class="w-5 h-5 text-gray-300 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="page-container" class="p-6">
+
+    <!-- 家庭首页 -->
+    <div id="page-home" class="page-section">
+      <!-- 小明卡片 -->
+      <div class="warm-card mb-6 rounded-2xl p-6 text-white overflow-hidden relative" style="background: linear-gradient(135deg, #F97316 0%, #EA580C 50%, #C2410C 100%);">
+        <div class="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/4"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4"></div>
+        <div class="relative flex items-center gap-4">
+          <img src="https://ui-avatars.com/api/?name=小明&background=fff&color=F97316&size=64" class="w-16 h-16 rounded-2xl border-2 border-white/30" alt="">
+          <div class="flex-1">
+            <h2 class="text-2xl font-bold">小明今天表现很棒！🌟</h2>
+            <p class="text-orange-100 mt-1">星星中班 · 连续打卡 7 天</p>
+          </div>
+          <div class="text-right">
+            <div class="text-3xl font-bold">A+</div>
+            <p class="text-orange-100 text-sm">本周评级</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Row -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl p-4 border dark:border-gray-700 text-center">
+          <div class="text-3xl mb-1">📚</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white">12</div>
+          <p class="text-xs text-gray-500">本周阅读</p>
+        </div>
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl p-4 border dark:border-gray-700 text-center">
+          <div class="text-3xl mb-1">✅</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white">5/6</div>
+          <p class="text-xs text-gray-500">作业完成</p>
+        </div>
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl p-4 border dark:border-gray-700 text-center">
+          <div class="text-3xl mb-1">🔥</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white">7天</div>
+          <p class="text-xs text-gray-500">连续打卡</p>
+        </div>
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl p-4 border dark:border-gray-700 text-center">
+          <div class="text-3xl mb-1">⭐</div>
+          <div class="text-xl font-bold text-gray-900 dark:text-white">28</div>
+          <p class="text-xs text-gray-500">获得星星</p>
+        </div>
+      </div>
+
+      <!-- 今日任务 + 老师留言 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-4">📌 今日任务</h3>
+          <div class="space-y-3">
+            <label class="flex items-center gap-3 p-3 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 cursor-pointer">
+              <input type="checkbox" checked class="w-5 h-5 rounded text-coral-500 border-gray-300 focus:ring-coral-500">
+              <div class="flex-1"><p class="text-sm text-gray-900 dark:text-white line-through opacity-60">阅读《好饿的毛毛虫》</p><p class="text-xs text-gray-400">图画书 · 15分钟</p></div>
+              <span class="badge-bounce text-lg">⭐</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 cursor-pointer">
+              <input type="checkbox" class="w-5 h-5 rounded text-coral-500 border-gray-300 focus:ring-coral-500">
+              <div class="flex-1"><p class="text-sm text-gray-900 dark:text-white">字母描红 A-D</p><p class="text-xs text-gray-400">写字练习 · 10分钟</p></div>
+              <span class="text-lg opacity-30">☆</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 cursor-pointer">
+              <input type="checkbox" class="w-5 h-5 rounded text-coral-500 border-gray-300 focus:ring-coral-500">
+              <div class="flex-1"><p class="text-sm text-gray-900 dark:text-white">听儿歌：小星星</p><p class="text-xs text-gray-400">音乐 · 5分钟</p></div>
+              <span class="text-lg opacity-30">☆</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-4">💬 老师留言</h3>
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+              <div class="flex items-center gap-2 mb-1">
+                <img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=24" class="w-6 h-6 rounded-full" alt="">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">李老师</span>
+                <span class="text-xs text-gray-400 ml-auto">今天 14:30</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-300">小明今天在阅读课上表现非常积极，主动回答问题，还帮助了其他小朋友！继续加油 🎉</p>
+            </div>
+            <div class="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-600">
+              <div class="flex items-center gap-2 mb-1">
+                <img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=24" class="w-6 h-6 rounded-full" alt="">
+                <span class="text-sm font-medium text-gray-900 dark:text-white">李老师</span>
+                <span class="text-xs text-gray-400 ml-auto">昨天</span>
+              </div>
+              <p class="text-sm text-gray-600 dark:text-gray-300">明天的音乐课需要准备彩色画笔，请提醒小明带上。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 孩子动态 -->
+    <div id="page-child" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">小明的成长轨迹 🌱</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">追踪点点滴滴的进步</p>
+      </div>
+      <!-- 周报概要 -->
+      <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-6 mb-6" style="background: linear-gradient(135deg, rgba(249,115,22,0.05), rgba(249,115,22,0.02));">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-4">📊 本周报告</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="text-center p-3 rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600">
+            <div class="text-2xl font-bold text-coral-500">12</div>
+            <p class="text-xs text-gray-500 mt-1">阅读篇数</p>
+            <p class="text-xs text-emerald-500">↑ 3 较上周</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600">
+            <div class="text-2xl font-bold text-coral-500">45min</div>
+            <p class="text-xs text-gray-500 mt-1">日均阅读</p>
+            <p class="text-xs text-emerald-500">↑ 10min</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600">
+            <div class="text-2xl font-bold text-coral-500">28</div>
+            <p class="text-xs text-gray-500 mt-1">识字量</p>
+            <p class="text-xs text-emerald-500">↑ 4 新字</p>
+          </div>
+          <div class="text-center p-3 rounded-xl bg-white dark:bg-gray-700 border dark:border-gray-600">
+            <div class="text-2xl font-bold text-coral-500">A+</div>
+            <p class="text-xs text-gray-500 mt-1">综合评级</p>
+            <p class="text-xs text-emerald-500">↑ 1 级</p>
+          </div>
+        </div>
+      </div>
+      <!-- 时间线 -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-4">📅 最近动态</h3>
+        <div class="space-y-4 relative before:absolute before:left-[18px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200 dark:before:bg-gray-700">
+          <div class="flex gap-4 relative">
+            <div class="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-lg shrink-0 z-10">📖</div>
+            <div class="flex-1 pb-4"><p class="text-sm font-medium text-gray-900 dark:text-white">完成阅读《好饿的毛毛虫》</p><p class="text-xs text-gray-500 mt-0.5">今天 09:30 · 获得星星 ⭐</p></div>
+          </div>
+          <div class="flex gap-4 relative">
+            <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-lg shrink-0 z-10">✍️</div>
+            <div class="flex-1 pb-4"><p class="text-sm font-medium text-gray-900 dark:text-white">完成字母描红 A-D</p><p class="text-xs text-gray-500 mt-0.5">昨天 16:00 · 得到老师好评 👍</p></div>
+          </div>
+          <div class="flex gap-4 relative">
+            <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-lg shrink-0 z-10">🏆</div>
+            <div class="flex-1 pb-4"><p class="text-sm font-medium text-gray-900 dark:text-white">获得「阅读小达人」成就</p><p class="text-xs text-gray-500 mt-0.5">2天前 · 累计阅读 50 本</p></div>
+          </div>
+          <div class="flex gap-4 relative">
+            <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center text-lg shrink-0 z-10">🎵</div>
+            <div class="flex-1"><p class="text-sm font-medium text-gray-900 dark:text-white">完成音乐课：小星星跟唱</p><p class="text-xs text-gray-500 mt-0.5">3天前 · 表现优秀</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阅读空间 -->
+    <div id="page-reading" class="page-section hidden">
+      <div class="mb-6 flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold">阅读空间 📚</h1>
+          <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">和小明一起享受阅读时光</p>
+        </div>
+      </div>
+      <!-- 推荐阅读 -->
+      <div class="mb-6">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-3">🎯 老师推荐</h3>
+        <div class="flex gap-4 overflow-x-auto pb-2">
+          <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden min-w-[200px]">
+            <div class="h-32 bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-5xl">📖</div>
+            <div class="p-3">
+              <h4 class="font-medium text-sm text-gray-900 dark:text-white">好饿的毛毛虫</h4>
+              <p class="text-xs text-gray-500 mt-1">Eric Carle · 图画书</p>
+              <button class="mt-2 w-full py-1.5 bg-coral-500 text-white rounded-lg text-xs font-medium hover:bg-coral-600 transition">开始阅读</button>
+            </div>
+          </div>
+          <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden min-w-[200px]">
+            <div class="h-32 bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-5xl">🌳</div>
+            <div class="p-3">
+              <h4 class="font-medium text-sm text-gray-900 dark:text-white">小树的故事</h4>
+              <p class="text-xs text-gray-500 mt-1">Shel Silverstein · 图画书</p>
+              <button class="mt-2 w-full py-1.5 bg-coral-500 text-white rounded-lg text-xs font-medium hover:bg-coral-600 transition">开始阅读</button>
+            </div>
+          </div>
+          <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden min-w-[200px]">
+            <div class="h-32 bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-5xl">🌙</div>
+            <div class="p-3">
+              <h4 class="font-medium text-sm text-gray-900 dark:text-white">月亮的味道</h4>
+              <p class="text-xs text-gray-500 mt-1">Michael Grejniec · 图画书</p>
+              <button class="mt-2 w-full py-1.5 bg-coral-500 text-white rounded-lg text-xs font-medium hover:bg-coral-600 transition">开始阅读</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 最近阅读 -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+        <h3 class="font-semibold text-gray-900 dark:text-white mb-4">📖 最近读过</h3>
+        <div class="space-y-3">
+          <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/30">
+            <div class="w-12 h-14 rounded-lg bg-blue-100 flex items-center justify-center text-xl shrink-0">📚</div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">好饿的毛毛虫</p>
+              <p class="text-xs text-gray-500">今天 · 已读完 · 获得 ⭐</p>
+            </div>
+            <div class="text-right"><span class="text-amber-400 text-sm">★★★★★</span><p class="text-xs text-gray-400 mt-0.5">自评 5/5</p></div>
+          </div>
+          <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/30">
+            <div class="w-12 h-14 rounded-lg bg-amber-100 flex items-center justify-center text-xl shrink-0">🔤</div>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-gray-900 dark:text-white">ABC 认知卡</p>
+              <p class="text-xs text-gray-500">昨天 · 进度 80%</p>
+            </div>
+            <div class="text-right"><div class="w-12 bg-gray-200 dark:bg-gray-700 rounded-full h-2"><div class="bg-coral-500 h-2 rounded-full" style="width:80%"></div></div><p class="text-xs text-gray-400 mt-0.5">4/5 完成</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 作业与反馈 -->
+    <div id="page-homework" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">作业与反馈 ✍️</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">查看作业和老师的反馈</p>
+      </div>
+      <div class="space-y-3">
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-medium text-gray-900 dark:text-white">绘本读后感</h3>
+            <span class="text-xs bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 px-2 py-0.5 rounded-full">已批改 ✓</span>
+          </div>
+          <p class="text-sm text-gray-500 mb-3">好饿的毛毛虫读后感 - 画一幅关于毛毛虫变蝴蝶的画</p>
+          <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+            <div class="flex items-center gap-2 mb-1">
+              <img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=20" class="w-5 h-5 rounded-full" alt="">
+              <span class="text-xs font-medium text-gray-900 dark:text-white">李老师的反馈</span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-300">画面非常丰富！小明对蝴蝶的理解很好，颜色搭配也非常有创意。继续保持！🌟</p>
+          </div>
+          <div class="flex items-center gap-3 mt-3 text-sm text-gray-400"><span>📝 2天前提交</span><span>·</span><span>批改：昨天</span></div>
+        </div>
+        <div class="warm-card bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-5">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-medium text-gray-900 dark:text-white">字母描红 A-D</h3>
+            <span class="text-xs bg-amber-50 dark:bg-amber-900/50 text-amber-600 dark:text-amber-300 px-2 py-0.5 rounded-full">待提交</span>
+          </div>
+          <p class="text-sm text-gray-500 mb-3">完成 A B C D 四个字母的描红练习</p>
+          <div class="flex items-center gap-3 mt-3">
+            <button class="px-4 py-2 bg-coral-500 text-white rounded-lg text-sm font-medium hover:bg-coral-600 transition">开始完成</button>
+            <span class="text-sm text-gray-400">截止：明天 17:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 与老师沟通 -->
+    <div id="page-chat" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">与老师沟通 💬</h1>
+        <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">随时了解孩子在校情况</p>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 overflow-hidden">
+        <div class="p-4 border-b dark:border-gray-700 flex items-center gap-3">
+          <img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=40" class="w-10 h-10 rounded-full" alt="">
+          <div><p class="text-sm font-medium text-gray-900 dark:text-white">李老师</p><p class="text-xs text-emerald-500">在线</p></div>
+        </div>
+        <div class="p-4 h-80 space-y-3 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
+          <div class="flex gap-2"><img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=28" class="w-7 h-7 rounded-full shrink-0 mt-0.5" alt=""><div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm p-3 max-w-[70%] border dark:border-gray-700"><p class="text-sm text-gray-900 dark:text-white">张妈妈好！小明今天在课上表现很棒 👍</p><p class="text-xs text-gray-400 mt-1">14:30</p></div></div>
+          <div class="flex gap-2 justify-end"><div class="bg-coral-500 rounded-2xl rounded-tr-sm p-3 max-w-[70%]"><p class="text-sm text-white">谢谢老师！他在家也有看书，很开心他能积极回答问题</p><p class="text-xs text-orange-200 mt-1">14:35</p></div></div>
+          <div class="flex gap-2"><img src="https://ui-avatars.com/api/?name=李老师&background=10B981&size=28" class="w-7 h-7 rounded-full shrink-0 mt-0.5" alt=""><div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm p-3 max-w-[70%] border dark:border-gray-700"><p class="text-sm text-gray-900 dark:text-white">是的！另外明天记得带上彩色画笔哦 🎨</p><p class="text-xs text-gray-400 mt-1">14:36</p></div></div>
+        </div>
+        <div class="p-4 border-t dark:border-gray-700 flex items-center gap-3">
+          <input type="text" placeholder="输入消息..." class="flex-1 bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2 text-sm outline-none dark:text-white">
+          <button class="p-2 bg-coral-500 rounded-lg hover:bg-coral-600 transition"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-7"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 我的 -->
+    <div id="page-profile" class="page-section hidden">
+      <div class="mb-6">
+        <h1 class="text-2xl font-bold">我的 👤</h1>
+      </div>
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border dark:border-gray-700 p-6 max-w-md">
+        <div class="flex items-center gap-4 mb-6">
+          <img src="https://ui-avatars.com/api/?name=张妈妈&background=F97316&size=64&color=fff" class="w-16 h-16 rounded-full" alt="">
+          <div><h3 class="font-semibold text-gray-900 dark:text-white">张妈妈</h3><p class="text-sm text-gray-500">小明的家长 · 星星中班</p></div>
+        </div>
+        <div class="space-y-4 divide-y dark:divide-gray-700">
+          <div class="flex items-center justify-between py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2">
+            <span class="text-sm text-gray-900 dark:text-white">孩子信息</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="flex items-center justify-between py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2">
+            <span class="text-sm text-gray-900 dark:text-white">消息通知设置</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="flex items-center justify-between py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2">
+            <span class="text-sm text-gray-900 dark:text-white">阅读偏好</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="flex items-center justify-between py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded-lg px-2">
+            <span class="text-sm text-gray-900 dark:text-white">隐私与安全</span>
+            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const pages = { home:'page-home', child:'page-child', reading:'page-reading', homework:'page-homework', chat:'page-chat', profile:'page-profile' };
+  const titles = { home:'家庭首页', child:'孩子动态', reading:'阅读空间', homework:'作业与反馈', chat:'与老师沟通', profile:'我的' };
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const p = item.dataset.page; if (!p) return;
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      document.querySelectorAll('.page-section').forEach(s => s.classList.add('hidden'));
+      const el = document.getElementById(pages[p]);
+      if (el) { el.classList.remove('hidden'); el.classList.add('fade-in'); }
+      document.getElementById('page-title').textContent = titles[p]||'';
+    });
+  });
+  let collapsed = false;
+  document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    collapsed = !collapsed;
+    document.getElementById('sidebar').style.width = collapsed ? '64px' : '256px';
+    document.getElementById('main-content').style.marginLeft = collapsed ? '64px' : '256px';
+  });
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    document.documentElement.classList.toggle('dark');
+  });
+</script>
+</body>
+</html>
