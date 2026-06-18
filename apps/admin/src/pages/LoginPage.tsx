@@ -111,7 +111,7 @@ const LoginPage: React.FC = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #5AA0DC 0%, #4090C0 100%)',
       }}
     >
       <Card
@@ -127,13 +127,13 @@ const LoginPage: React.FC = () => {
                 height: 64,
                 margin: '0 auto 16px',
                 borderRadius: 16,
-                background: 'rgba(22, 119, 255, 0.1)',
+                background: 'rgba(90, 160, 220, 0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <UserOutlined style={{ fontSize: 28, color: '#1677ff' }} />
+              <UserOutlined style={{ fontSize: 28, color: '#5AA0DC' }} />
             </div>
             <Title level={3} style={{ margin: 0 }}>
               SunnyBridge

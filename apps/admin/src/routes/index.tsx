@@ -1,11 +1,14 @@
 /**
  * App routes — React Router v6 configuration.
- * 
- * 资源馆菜单结构 (4项):
- * ├── 总览
- * ├── 资源列表
- * ├── 分类管理
- * └── 推荐配置
+ *
+ * /login → LoginPage (public)
+ * / → AuthGuard → AdminLayout (sidebar + outlet)
+ * /dashboard → DashboardPage (首页概览)
+ * /courses → CoursesPage (A-COURSE) ← ADMIN-04
+ * /teachers → TeachersPage (A-TEACHER) ← ADMIN-02
+ * /students → StudentsPage (A-STUDENT) ← ADMIN-03
+ * /reading → ReadingPage (A-READING) ← ADMIN-05
+ * /resources → PlaceholderPage (A-RESOURCE, disabled in sidebar)
  */
 
 import { createBrowserRouter, Navigate } from 'react-router-dom';
@@ -18,12 +21,6 @@ import StudentsPage from '../pages/Students';
 import CoursesPage from '../pages/Courses';
 import ReadingPage from '../pages/Reading';
 import ResourcesPage from '../pages/Resources';
-
-// Library pages — 4项
-import LibraryOverview from '../pages/Library/Overview';
-import ResourceListPage from '../pages/Library/ResourceList';
-import CategoryManagePage from '../pages/Library/CategoryManage';
-import CurationPage from '../pages/Library/CurationManage';
 
 export const router = createBrowserRouter([
   {
@@ -47,16 +44,16 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: 'courses',
-        element: <CoursesPage />,
+      path: 'courses',
+      element: <CoursesPage />,
       },
       {
         path: 'teachers',
         element: <TeachersPage />,
       },
       {
-        path: 'students',
-        element: <StudentsPage />,
+       path: 'students',
+       element: <StudentsPage />,
       },
       {
         path: 'reading',
@@ -65,23 +62,6 @@ export const router = createBrowserRouter([
       {
         path: 'resources',
         element: <ResourcesPage />,
-      },
-      // ── 资源馆 (4项) ──
-      {
-        path: 'library/overview',
-        element: <LibraryOverview />,
-      },
-      {
-        path: 'library/list',
-        element: <ResourceListPage />,
-      },
-      {
-        path: 'library/categories',
-        element: <CategoryManagePage />,
-      },
-      {
-        path: 'library/curation',
-        element: <CurationPage />,
       },
     ],
   },

@@ -1,34 +1,69 @@
 /**
- * 阅读材料 API service — 更新版
- * 
- * 变更:
- * - 类型加 metadata JSONB 字段
- * - createParams 允许草稿态 (level/category/pdf_url 可选)
- * - 新增 uploadMaterialCover 封面上传
- * - downloadUrl 返回下载端点
+ * Reading material management API service (API-08).
+ *
+ * Consumed by ADMIN-05 A-READING / A-READING-FORM.
+ * All endpoints require admin role — auth handled by client.ts interceptor.
+ *
+ * Endpoints:
+ * - GET    /reading/materials              — paginated list (level/category/is_active filter)
+ * - POST   /reading/materials              — create material
+ * - GET    /reading/materials/:id          — material detail
+ * - PUT    /reading/materials/:id          — update material
+ * - DELETE /reading/materials/:id          — delete material
+ * - POST   /reading/materials/:id/upload   — upload PDF (multipart/form-data)
  */
 
 import client from '../api/client';
-import type { ResourceMetadata } from '../constants/resource';
+
+// ── Constants ────────────────────────────────────
+
+/** Level enum — L1 through L6 */
+export const LEVEL_OPTIONS = [
+  { value: 'L1', label: 'L1' },
+  { value: 'L2', label: 'L2' },
+  { value: 'L3', label: 'L3' },
+  { value: 'L4', label: 'L4' },
+  { value: 'L5', label: 'L5' },
+  { value: 'L6', label: 'L6' },
+] as const;
+
+/** Category enum — matches backend schema regex */
+export const CATEGORY_OPTIONS = [
+  { value: 'picture_book', label: '绘本' },
+  { value: 'short_text', label: '短文' },
+  { value: 'story', label: '故事' },
+  { value: 'read_aloud', label: '跟读' },
+] as const;
+
+/** Map category value → Chinese label */
+export const CATEGORY_LABEL_MAP: Record<string, string> = {
+  picture_book: '绘本',
+  short_text: '短文',
+  story: '故事',
+  read_aloud: '跟读',
+};
+
+/** Placeholder pdf_url for materials created before PDF upload */
+export const PENDING_UPLOAD_URL = 'pending_upload';
 
 // ── Types ────────────────────────────────────────
 
 export interface ReadingMaterial {
   id: string;
   title: string;
-  level: string | null;
-  category: string | null;
+  level: string;
+  category: string;
   cover_url: string | null;
   pdf_url: string | null;
   page_count: number;
   sort_order: number;
   is_active: boolean;
-  metadata: ResourceMetadata | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ReadingMaterialDetail extends ReadingMaterial {
+  pdf_url: string | null;
   signed_pdf_url: string | null;
 }
 
@@ -39,34 +74,29 @@ export interface PaginatedMaterials {
   page_size: number;
 }
 
-/** 草稿态: 只有 title 必填 */
 export interface MaterialCreateParams {
   title: string;
-  level?: string | null;
-  category?: string | null;
+  level: string;
+  category: string;
   cover_url?: string | null;
-  pdf_url?: string | null;
+  pdf_url: string;
   page_count?: number;
   sort_order?: number;
   is_active?: boolean;
-  metadata?: ResourceMetadata;
 }
 
 export interface MaterialUpdateParams {
   title?: string;
-  level?: string | null;
-  category?: string | null;
+  level?: string;
+  category?: string;
   cover_url?: string | null;
-  pdf_url?: string | null;
-  page_count?: number;
   sort_order?: number;
   is_active?: boolean;
-  metadata?: ResourceMetadata;
 }
 
 // ── API functions ────────────────────────────────
 
-/** GET /reading/materials — 分页列表 */
+/** GET /reading/materials — paginated list with optional filters */
 export async function getMaterialList(params?: {
   level?: string;
   category?: string;
@@ -80,38 +110,45 @@ export async function getMaterialList(params?: {
   };
   if (params?.level) queryParams.level = params.level;
   if (params?.category) queryParams.category = params.category;
+  // For admin: default is no is_active filter (see all); explicitly pass if provided
   if (params?.is_active !== undefined && params?.is_active !== null) {
     queryParams.is_active = params.is_active;
   }
-  const res = await client.get<PaginatedMaterials>('/reading/materials', { params: queryParams });
+
+  const res = await client.get<PaginatedMaterials>('/reading/materials', {
+    params: queryParams,
+  });
   return res.data;
 }
 
-/** GET /reading/materials/:id — 详情 */
+/** GET /reading/materials/:id — material detail */
 export async function getMaterialDetail(id: string): Promise<ReadingMaterialDetail> {
   const res = await client.get<ReadingMaterialDetail>(`/reading/materials/${id}`);
   return res.data;
 }
 
-/** POST /reading/materials — 创建 (草稿态) */
+/** POST /reading/materials — create material */
 export async function createMaterial(params: MaterialCreateParams): Promise<ReadingMaterial> {
   const res = await client.post<ReadingMaterial>('/reading/materials', params);
   return res.data;
 }
 
-/** PUT /reading/materials/:id — 更新 */
-export async function updateMaterial(id: string, params: MaterialUpdateParams): Promise<ReadingMaterial> {
+/** PUT /reading/materials/:id — update material */
+export async function updateMaterial(
+  id: string,
+  params: MaterialUpdateParams,
+): Promise<ReadingMaterial> {
   const res = await client.put<ReadingMaterial>(`/reading/materials/${id}`, params);
   return res.data;
 }
 
-/** DELETE /reading/materials/:id */
+/** DELETE /reading/materials/:id — delete material */
 export async function deleteMaterial(id: string): Promise<{ message: string; material_id: string }> {
   const res = await client.delete(`/reading/materials/${id}`);
   return res.data;
 }
 
-/** POST /reading/materials/:id/upload — 上传 PDF */
+/** POST /reading/materials/:id/upload — upload PDF (multipart/form-data) */
 export async function uploadMaterialPdf(
   id: string,
   file: File,
@@ -119,43 +156,19 @@ export async function uploadMaterialPdf(
 ): Promise<ReadingMaterialDetail> {
   const formData = new FormData();
   formData.append('file', file);
+
   const res = await client.post<ReadingMaterialDetail>(
     `/reading/materials/${id}/upload`,
     formData,
     {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
-        if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+        if (e.total && onProgress) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
       },
-      timeout: 120_000,
+      timeout: 120_000, // PDF may be large — 2min timeout
     },
   );
   return res.data;
-}
-
-/** POST /reading/materials/:id/cover — 上传封面 */
-export async function uploadMaterialCover(
-  id: string,
-  file: File,
-  onProgress?: (percent: number) => void,
-): Promise<ReadingMaterialDetail> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await client.post<ReadingMaterialDetail>(
-    `/reading/materials/${id}/cover`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => {
-        if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
-      },
-      timeout: 60_000,
-    },
-  );
-  return res.data;
-}
-
-/** 下载 URL */
-export function getReadingDownloadUrl(id: string): string {
-  return `/api/v1/reading/materials/${id}/download`;
 }

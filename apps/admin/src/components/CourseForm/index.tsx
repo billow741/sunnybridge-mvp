@@ -1,21 +1,8 @@
 /**
  * CourseForm — A-COURSE-FORM Modal (create / edit reuse).
- *
- * ADMIN-04 scope:
- * - Create: POST /courses → date + start_time + end_time + teacher_id + child_ids + meeting_link
- * - Edit: PUT /courses/:id → same fields + status
- *
- * Validation rules per API-06 CourseCreate/CourseUpdate schema:
- * - date: required
- * - start_time: required
- * - end_time: required, must be after start_time
- * - teacher_id: required
- * - child_ids: required, at least 1 student, no duplicates
- * - meeting_link: optional, URL format if provided
- * - status: only shown in edit mode, required when editing
- *
- * Teacher options: GET /teachers (is_active=true only)
- * Student options: GET /children (all)
+ * 
+ * 1v1 课程: 一个课程 = 一个教师 + 一个学生
+ * 后端仍用 child_ids: list[UUID], 前端单选后包装为 [child_id]
  */
 
 import React, { useEffect, useState } from 'react';
@@ -47,7 +34,7 @@ export interface CourseFormValues {
   start_time: Dayjs;
   end_time: Dayjs;
   teacher_id: string;
-  child_ids: string[];
+  child_id: string;
   meeting_link?: string;
   status?: CourseStatus;
 }
@@ -64,7 +51,7 @@ const STATUS_OPTIONS: { value: CourseStatus; label: string }[] = [
 
 interface CourseFormProps {
   open: boolean;
-  course: Course | null; // null = create mode, non-null = edit mode
+  course: Course | null;
   loading: boolean;
   onSubmit: (values: {
     date: string;
@@ -88,21 +75,18 @@ const CourseForm: React.FC<CourseFormProps> = ({
   const [form] = Form.useForm<CourseFormValues>();
   const isEdit = course !== null;
 
-  // Options state
   const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
   const [studentOptions, setStudentOptions] = useState<StudentOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsLoadError, setOptionsLoadError] = useState(false);
 
-  // Load teacher + student options when modal opens
+  // 加载教师+学生选项
   useEffect(() => {
     if (!open) return;
-
     setOptionsLoadError(false);
     setOptionsLoading(true);
     Promise.all([getTeacherList(1, 200), getStudentList(1, 200)])
       .then(([teacherRes, studentRes]) => {
-        // Filter only active teachers
         const activeTeachers = teacherRes.items.filter((t: Teacher) => t.is_active);
         setTeacherOptions(
           activeTeachers.map((t) => ({
@@ -126,7 +110,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
       });
   }, [open]);
 
-  // Populate form when editing
+  // 编辑模式填充表单
   useEffect(() => {
     if (open) {
       if (course) {
@@ -135,7 +119,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
           start_time: dayjs(course.start_time, 'HH:mm:ss'),
           end_time: dayjs(course.end_time, 'HH:mm:ss'),
           teacher_id: course.teacher_id,
-          child_ids: course.children.map((c) => c.id),
+          child_id: course.children[0]?.id || '',
           meeting_link: course.meeting_link || undefined,
           status: course.status,
         });
@@ -148,19 +132,18 @@ const CourseForm: React.FC<CourseFormProps> = ({
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
+      // 1v1: 单选 child_id 包装为 child_ids 数组
       onSubmit({
         date: values.date.format('YYYY-MM-DD'),
         start_time: values.start_time.format('HH:mm'),
         end_time: values.end_time.format('HH:mm'),
         teacher_id: values.teacher_id,
-        child_ids: values.child_ids,
-        // BUG-005 fix: send null when meeting_link is empty, not empty string
+        child_ids: [values.child_id],
         meeting_link: values.meeting_link || undefined,
-        // BUG-002 fix: include status in edit mode
         status: isEdit ? values.status : undefined,
       });
     } catch {
-      // validation failed — antd shows field errors
+      // validation failed
     }
   };
 
@@ -178,12 +161,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
       width={560}
     >
       <Spin spinning={optionsLoading} tip="加载选项数据...">
-        <Form
-          form={form}
-          layout="vertical"
-          autoComplete="off"
-        >
-          {/* BUG-002: Status field only in edit mode */}
+        <Form form={form} layout="vertical" autoComplete="off">
           {isEdit && (
             <Form.Item
               name="status"
@@ -205,10 +183,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
             label="课程日期"
             rules={[{ required: true, message: '请选择课程日期' }]}
           >
-            <DatePicker
-              style={{ width: '100%' }}
-              placeholder="选择日期"
-            />
+            <DatePicker style={{ width: '100%' }} placeholder="选择日期" />
           </Form.Item>
 
           <Form.Item
@@ -216,11 +191,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
             label="开始时间"
             rules={[{ required: true, message: '请选择开始时间' }]}
           >
-            <TimePicker
-              style={{ width: '100%' }}
-              format="HH:mm"
-              placeholder="选择开始时间"
-            />
+            <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="选择开始时间" />
           </Form.Item>
 
           <Form.Item
@@ -240,11 +211,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
               }),
             ]}
           >
-            <TimePicker
-              style={{ width: '100%' }}
-              format="HH:mm"
-              placeholder="选择结束时间"
-            />
+            <TimePicker style={{ width: '100%' }} format="HH:mm" placeholder="选择结束时间" />
           </Form.Item>
 
           <Form.Item
@@ -257,7 +224,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
               showSearch
               optionFilterProp="label"
               loading={optionsLoading}
-              notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无教师'}
+              notFoundContent={optionsLoadError ? '加载失败' : '暂无教师'}
             >
               {teacherOptions.map((opt) => (
                 <Select.Option key={opt.value} value={opt.value} label={opt.label}>
@@ -268,24 +235,16 @@ const CourseForm: React.FC<CourseFormProps> = ({
           </Form.Item>
 
           <Form.Item
-            name="child_ids"
+            name="child_id"
             label="上课学生"
-            rules={[
-              { required: true, message: '请至少选择一名学生' },
-              {
-                type: 'array',
-                min: 1,
-                message: '请至少选择一名学生',
-              },
-            ]}
+            rules={[{ required: true, message: '请选择上课学生' }]}
           >
             <Select
-              mode="multiple"
-              placeholder="选择学生（支持多选）"
+              placeholder="选择学生"
               showSearch
               optionFilterProp="label"
               loading={optionsLoading}
-              notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无学生'}
+              notFoundContent={optionsLoadError ? '加载失败' : '暂无学生'}
             >
               {studentOptions.map((opt) => (
                 <Select.Option key={opt.value} value={opt.value} label={opt.label}>
@@ -301,7 +260,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
             rules={[
               {
                 pattern: /^https?:\/\/.+|^wemeet:\/\/.+/i,
-                message: '请输入有效的链接（https:// 或 wemeet://）',
+                message: '请输入有效的链接',
               },
             ]}
           >

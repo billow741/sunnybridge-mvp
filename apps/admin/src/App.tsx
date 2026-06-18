@@ -13,7 +13,7 @@ const App: React.FC = () => (
     locale={zhCN}
     theme={{
       token: {
-        colorPrimary: '#1677ff',
+        colorPrimary: '#5AA0DC',
         borderRadius: 8,
       },
     }}

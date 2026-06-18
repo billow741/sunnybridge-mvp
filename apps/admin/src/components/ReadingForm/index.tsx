@@ -7,8 +7,8 @@
  *
  * Fields:
  * - title (required, 1-200 chars)
- * - level (可选, L1-L6, 草稿态可空→后端默认L1)
- * - category (可选, Select受限, 草稿态可空→后端默认__draft__)
+ * - level (required, L1-L6 enum)
+ * - category (required, picture_book/short_text/story/read_aloud enum)
  * - cover_url (optional, URL string)
  * - pdf_url (create: auto-filled pending_upload, edit: read-only display)
  * - page_count (optional, number ≥0)
@@ -19,14 +19,11 @@
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, Select, InputNumber, Switch, Typography, Alert } from 'antd';
 import type { ReadingMaterial } from '../../services/reading';
-import { LEVEL_OPTIONS } from '../../constants/resource';
-import { VALID_CATEGORIES, CATEGORY_LABELS } from '../../constants/resource';
-
-// 从常量构建旧接口需要的选项格式
-const CATEGORY_OPTIONS = VALID_CATEGORIES.reading!.map(v => ({
-  value: v,
-  label: CATEGORY_LABELS[v] || v,
-}));
+import {
+  LEVEL_OPTIONS,
+  CATEGORY_OPTIONS,
+  PENDING_UPLOAD_URL,
+} from '../../services/reading';
 
 const { Text } = Typography;
 
@@ -72,8 +69,9 @@ const ReadingForm: React.FC<ReadingFormProps> = ({
         });
       } else {
         form.resetFields();
-        // Set defaults for create mode (草稿态 pdf_url 可空)
+        // Set defaults for create mode
         form.setFieldsValue({
+          pdf_url: PENDING_UPLOAD_URL,
           page_count: 0,
           sort_order: 0,
           is_active: true,
@@ -134,7 +132,7 @@ const ReadingForm: React.FC<ReadingFormProps> = ({
           <Form.Item
             name="level"
             label="级别"
-            rules={[{ required: false }]}
+            rules={[{ required: true, message: '请选择级别' }]}
             style={{ flex: 1 }}
           >
             <Select placeholder="选择级别" options={[...LEVEL_OPTIONS]} />
@@ -143,7 +141,7 @@ const ReadingForm: React.FC<ReadingFormProps> = ({
           <Form.Item
             name="category"
             label="分类"
-            rules={[{ required: false }]}
+            rules={[{ required: true, message: '请选择分类' }]}
             style={{ flex: 1 }}
           >
             <Select
