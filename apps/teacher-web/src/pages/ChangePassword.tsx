@@ -1,64 +1,156 @@
-import { Form, Input, Button, message } from 'antd';
+import React, { useState } from 'react';
+import { Form, Input, Button, Alert, Typography } from 'antd';
+import { LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { LockOutlined } from '@ant-design/icons';
-import PageContainer from '../components/PageContainer';
-import apiClient from '../api/client';
+import AppLogo from '../components/AppLogo';
 import { useAuthStore } from '../store/authStore';
+import apiClient from '../api/client';
 
-export default function ChangePassword() {
+const { Text } = Typography;
+
+export default function ChangePasswordPage() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const mustChangePassword = useAuthStore((s) => s.mustChangePassword);
+  const { logout } = useAuthStore();
 
-  const handleSubmit = async (values: { old_password: string; new_password: string }) => {
+  const onFinish = async (values: { current_password: string; new_password: string }) => {
+    setLoading(true);
+    setError('');
     try {
       await apiClient.post('/auth/teacher/change-password', {
-        old_password: values.old_password,
+        current_password: values.current_password,
         new_password: values.new_password,
       });
-      message.success('密码修改成功');
-      useAuthStore.setState({ mustChangePassword: false });
-      navigate('/dashboard', { replace: true });
+      setSuccess(true);
+      setTimeout(async () => {
+        await logout();
+        navigate('/login', { replace: true });
+      }, 2000);
     } catch (err: any) {
-      const msg = err.response?.data?.detail?.message || '修改失败';
-      message.error(msg);
+      const msg = err?.response?.data?.detail || 'Failed to update password. Please try again.';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const validateNewPassword = (_: any, value: string) => {
+    if (!value) return Promise.reject(new Error('Please enter a new password'));
+    if (value.length < 8) return Promise.reject(new Error('At least 8 characters'));
+    if (!/[A-Z]/.test(value)) return Promise.reject(new Error('Must include an uppercase letter'));
+    if (!/[0-9]/.test(value)) return Promise.reject(new Error('Must include a number'));
+    return Promise.resolve();
+  };
+
   return (
-    <PageContainer title="修改密码">
-      <div style={{ maxWidth: 480, margin: '0 auto' }}>
-        {mustChangePassword && (
-          <div style={{ padding: 16, background: '#FFF8E1', borderRadius: 8, marginBottom: 24, color: '#E65100' }}>
-            首次登录需要修改密码后才能继续使用
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#F7FAFC',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: 400,
+        padding: '40px 32px',
+        background: '#FFFFFF',
+        borderRadius: 12,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <AppLogo size="md" />
+          <div style={{ fontSize: 15, color: '#64748B', marginTop: 8 }}>Change Password</div>
+        </div>
+
+        {success && (
+          <Alert
+            type="success"
+            message="Password updated successfully!"
+            description="Redirecting to login..."
+            showIcon
+            icon={<CheckCircleOutlined />}
+            style={{ marginBottom: 20 }}
+          />
         )}
-        <Form layout="vertical" onFinish={handleSubmit} autoComplete="off">
-          <Form.Item name="old_password" label="当前密码" rules={[{ required: true, message: '请输入当前密码' }]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="输入当前密码" />
+
+        {error && (
+          <Alert
+            type="error"
+            message={error}
+            showIcon
+            closable
+            onClose={() => setError('')}
+            style={{ marginBottom: 20 }}
+          />
+        )}
+
+        <Form layout="vertical" onFinish={onFinish} size="large" disabled={success}>
+          <Form.Item
+            name="current_password"
+            label="Current Password"
+            rules={[{ required: true, message: 'Please enter your current password' }]}
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
+              placeholder="Current password"
+            />
           </Form.Item>
-          <Form.Item name="new_password" label="新密码" rules={[
-            { required: true, message: '请输入新密码' },
-            { min: 8, message: '密码至少8位' },
-            { pattern: /^(?=.*[a-zA-Z])(?=.*\d)/, message: '密码需同时包含字母和数字' },
-          ]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="输入新密码" />
+
+          <Form.Item
+            name="new_password"
+            label="New Password"
+            rules={[{ validator: validateNewPassword }]}
+            hasFeedback
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
+              placeholder="New password"
+            />
           </Form.Item>
-          <Form.Item name="confirm" label="确认新密码" dependencies={['new_password']} rules={[
-            { required: true, message: '请确认新密码' },
-            ({ getFieldValue }) => ({
-              validator(_, value) {
-                if (!value || getFieldValue('new_password') === value) return Promise.resolve();
-                return Promise.reject(new Error('两次密码输入不一致'));
-              },
-            }),
-          ]}>
-            <Input.Password prefix={<LockOutlined />} placeholder="再次输入新密码" />
+
+          <Form.Item
+            name="confirm_password"
+            label="Confirm New Password"
+            dependencies={['new_password']}
+            rules={[
+              { required: true, message: 'Please confirm your new password' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('new_password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+            hasFeedback
+          >
+            <Input.Password
+              prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
+              placeholder="Confirm new password"
+            />
           </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" block>确认修改</Button>
+
+          <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16, lineHeight: '20px' }}>
+            Password requirements: ≥8 characters, 1 uppercase letter, 1 number
+          </div>
+
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+              style={{ height: 44, fontWeight: 600 }}
+            >
+              Update Password
+            </Button>
           </Form.Item>
         </Form>
       </div>
-    </PageContainer>
+    </div>
   );
 }

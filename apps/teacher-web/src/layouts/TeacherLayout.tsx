@@ -1,12 +1,8 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Button } from 'antd';
 import {
-  DashboardOutlined,
   CalendarOutlined,
   HistoryOutlined,
-  ReadOutlined,
-  FolderOutlined,
-  AppstoreOutlined,
   UserOutlined,
   KeyOutlined,
   LogoutOutlined,
@@ -20,14 +16,9 @@ import { useAuthStore } from '../store/authStore';
 const { Sider, Header, Content } = Layout;
 
 const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: '仪表盘' },
-  { key: '/courses/today', icon: <CalendarOutlined />, label: '今日课程' },
-  { key: '/courses/history', icon: <HistoryOutlined />, label: '历史课程' },
-  { key: '/teaching-resources', icon: <AppstoreOutlined />, label: '教学资源库' },
-  { key: '/reading', icon: <ReadOutlined />, label: '阅读材料' },
-  { key: '/resources', icon: <FolderOutlined />, label: '资源列表' },
-  { key: '/profile', icon: <UserOutlined />, label: '个人信息' },
-  { key: '/change-password', icon: <KeyOutlined />, label: '修改密码' },
+  { key: '/courses/today', icon: <CalendarOutlined />, label: 'Today' },
+  { key: '/courses/history', icon: <HistoryOutlined />, label: 'All Courses' },
+  { key: '/change-password', icon: <KeyOutlined />, label: 'Change Password' },
 ];
 
 export default function TeacherLayout() {
@@ -36,29 +27,26 @@ export default function TeacherLayout() {
   const location = useLocation();
   const { user, logout, fetchMe } = useAuthStore();
 
-  useEffect(() => {
-    fetchMe();
-  }, [fetchMe]);
+  useEffect(() => { fetchMe(); }, [fetchMe]);
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
-  const dropdownItems = [
-    { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
-    { key: 'password', icon: <KeyOutlined />, label: '修改密码' },
-    { type: 'divider' as const, key: 'd1' },
-    { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true },
-  ];
+  // Determine active menu key
+  const selectedKey = menuItems.find(m => location.pathname.startsWith(m.key))?.key || '';
 
-  const handleDropdown = ({ key }: { key: string }) => {
-    if (key === 'logout') handleLogout();
-    else if (key === 'profile') navigate('/profile');
-    else if (key === 'password') navigate('/change-password');
-  };
-
-  const selectedKey = menuItems.find((m) => location.pathname.startsWith(m.key))?.key || '/dashboard';
+  const userMenu = (
+    <Menu
+      items={[
+        { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
+        { key: 'password', icon: <KeyOutlined />, label: 'Change Password', onClick: () => navigate('/change-password') },
+        { type: 'divider' as const },
+        { key: 'logout', icon: <LogoutOutlined />, label: 'Sign Out', danger: true, onClick: handleLogout },
+      ]}
+    />
+  );
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -68,31 +56,85 @@ export default function TeacherLayout() {
         onCollapse={setCollapsed}
         trigger={null}
         width={220}
-        style={{ background: '#01579B', overflow: 'auto', height: '100vh', position: 'sticky', top: 0 }}
+        collapsedWidth={72}
+        style={{
+          background: '#FFFFFF',
+          borderRight: '1px solid #E2E8F0',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
-        <div style={{ padding: '16px', display: 'flex', justifyContent: 'center' }}>
-          <AppLogo size={collapsed ? 'sm' : 'md'} variant="sidebar" />
+        {/* Logo area */}
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '0 16px' : '0 20px',
+          borderBottom: '1px solid #E2E8F0',
+        }}>
+          <AppLogo size={collapsed ? 'sm' : 'md'} collapsed={collapsed} />
         </div>
+
+        {/* Menu */}
         <Menu
-          theme="dark"
           mode="inline"
           selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-          style={{ borderRight: 0, background: 'transparent' }}
+          style={{
+            border: 'none',
+            flex: 1,
+            padding: '8px 0',
+          }}
         />
+
+        {/* Collapse toggle at bottom */}
+        <div style={{
+          borderTop: '1px solid #E2E8F0',
+          padding: '12px 0',
+          textAlign: 'center',
+        }}>
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{ color: '#64748B' }}
+          />
+        </div>
       </Sider>
+
       <Layout>
-        <Header style={{ background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #E2E8F0', height: 56 }}>
-          <Button type="text" icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} />
-          <Dropdown menu={{ items: dropdownItems, onClick: handleDropdown }} placement="bottomRight">
-            <Button type="text" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Avatar size="small" icon={<UserOutlined />} style={{ background: '#54C5F8' }} />
-              <span>{user?.teacher_id ? '老师' : '教师'}</span>
-            </Button>
+        <Header style={{
+          background: '#FFFFFF',
+          padding: '0 24px',
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          borderBottom: '1px solid #E2E8F0',
+          height: 64,
+        }}>
+          <Dropdown overlay={userMenu} trigger={['click']}>
+            <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Avatar
+                size={32}
+                icon={<UserOutlined />}
+                style={{ backgroundColor: '#5CAADF' }}
+              />
+              {!collapsed && (
+                <span style={{ fontSize: 14, color: '#1A2B4A' }}>
+                  {user?.role || 'Teacher'}
+                </span>
+              )}
+            </div>
           </Dropdown>
         </Header>
-        <Content style={{ padding: 24, background: '#F7FAFC', minHeight: 'calc(100vh - 56px)' }}>
+
+        <Content style={{
+          background: '#F7FAFC',
+          padding: '0 0 24px 0',
+          overflow: 'auto',
+        }}>
           <Outlet />
         </Content>
       </Layout>

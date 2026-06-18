@@ -1,64 +1,85 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Tag, Space } from 'antd';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import CourseStatusTag from '../../components/CourseStatusTag';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
+import { Button, Space } from 'antd';
+import { CalendarOutlined, FormOutlined } from '@ant-design/icons';
+const formatDate = () => {
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
+};
 import apiClient from '../../api/client';
 import type { CourseOut } from '../../types';
-import { formatTime } from '../../utils/dayjs';
+import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
 
-export default function TodayCourses() {
+export default function TodayCoursesPage() {
   const [courses, setCourses] = useState<CourseOut[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const fetchCourses = () => {
+  const fetchToday = async () => {
     setLoading(true);
-    setError(null);
-    apiClient.get<CourseOut[]>('/courses/today')
-      .then((res) => setCourses(res.data))
-      .catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-      .finally(() => setLoading(false));
+    setError('');
+    try {
+      const res = await apiClient.get('/courses/today');
+      setCourses(res.data?.items || res.data || []);
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || 'Failed to load today\'s classes');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchCourses(); }, []);
+  useEffect(() => { fetchToday(); }, []);
 
-  if (loading) return <PageContainer><LoadingState /></PageContainer>;
-  if (error) return <PageContainer><ErrorState message={error} onRetry={fetchCourses} /></PageContainer>;
+  if (loading) return <LoadingPage rows={4} />;
+  if (error) return <div style={{ padding: 24 }}><ErrorBanner message={error} onRetry={fetchToday} /></div>;
 
-  const columns = [
-    { title: '时间', key: 'time', render: (_: unknown, r: CourseOut) => `${formatTime(r.start_time)} - ${formatTime(r.end_time)}` },
-    { title: '学生', key: 'children', render: (_: unknown, r: CourseOut) => r.children.map((c) => c.name).join('、') || '—' },
-    { title: '状态', key: 'status', render: (_: unknown, r: CourseOut) => <CourseStatusTag status={r.status} /> },
-    {
-      title: '反馈', key: 'feedback',
-      render: (_: unknown, r: CourseOut) => {
-        // We don't have feedback info in CourseOut, will check on detail page
-        return r.status === 'completed' ? <Tag color="orange">待填写</Tag> : <Tag>—</Tag>;
-      },
-    },
-    {
-      title: '操作', key: 'actions',
-      render: (_: unknown, r: CourseOut) => (
-        <Space>
-          <a onClick={() => navigate(`/courses/${r.id}`)}>查看详情</a>
-          {r.meeting_link && <Button type="link" size="small" href={r.meeting_link} target="_blank">进入课堂</Button>}
-        </Space>
-      ),
-    },
-  ];
+  const today = formatDate();
 
   return (
-    <PageContainer title="今日课程安排">
+    <div style={{ padding: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1A2B4A', margin: 0 }}>Today's Classes</h1>
+          <div style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{today}</div>
+        </div>
+      </div>
+
       {courses.length === 0 ? (
-        <EmptyState title="今天没有课程安排 🌤️" />
+        <EmptyState
+          icon={<CalendarOutlined style={{ fontSize: 40, color: '#CBD5E1' }} />}
+          title="No classes today"
+          description="Enjoy your break! 🎉"
+        />
       ) : (
-        <Table dataSource={courses} columns={columns} rowKey="id" pagination={false} />
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          {courses.map(course => (
+            <CourseCard
+              key={course.id}
+              course={course}
+              onClick={() => navigate(`/courses/${course.id}`)}
+              action={
+                course.status === 'completed' && !course.feedback ? (
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<FormOutlined />}
+                    style={{ color: '#5CAADF', padding: 0, height: 'auto' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/courses/${course.id}`, { state: { openFeedback: true } });
+                    }}
+                  >
+                    Feedback
+                  </Button>
+                ) : undefined
+              }
+            />
+          ))}
+        </Space>
       )}
-    </PageContainer>
+    </div>
   );
 }
