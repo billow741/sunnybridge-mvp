@@ -1,5 +1,5 @@
 /**
- * CoursesPage — A-COURSES (ADMIN-04).
+ * CoursesPage — A-COURSE (ADMIN-04).
  *
  * Features:
  * - Paginated course list (Ant Design Table)
@@ -20,16 +20,12 @@ import {
   Space,
   Popconfirm,
   message,
-  Typography,
   Card,
-  Tooltip,
   DatePicker,
+  Avatar,
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  LinkOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { AxiosError } from 'axios';
@@ -46,8 +42,13 @@ import type { Course, CourseStatus } from '../../services/course';
 
 // ── Status color map ─────────────────────────────
 
-const STATUS_CONFIG: Record<CourseStatus, { color: string; label: string }> = {
-  pending: { color: 'orange', label: '待上课' },
+interface StatusConfig {
+  color: 'gold' | 'blue' | 'green' | 'red' | string;
+  label: string;
+}
+
+const STATUS_CONFIG: Record<CourseStatus, StatusConfig> = {
+  pending: { color: 'blue', label: '进行中' },
   completed: { color: 'green', label: '已完成' },
   cancelled: { color: 'red', label: '已取消' },
 };
@@ -114,9 +115,7 @@ const CoursesPage: React.FC = () => {
         if (values.end_time !== origEndTime) changed.end_time = values.end_time;
         if (values.teacher_id !== origTeacherId) changed.teacher_id = values.teacher_id;
         if ([...values.child_ids].sort().join(',') !== origChildIds) changed.child_ids = values.child_ids;
-        // BUG-005 fix: send null when meeting_link is cleared, not empty string
         if ((values.meeting_link || '') !== origMeetingLink) changed.meeting_link = values.meeting_link || null;
-        // BUG-002 fix: include status in diff
         if (values.status && values.status !== origStatus) changed.status = values.status;
 
         if (Object.keys(changed).length === 0) {
@@ -151,7 +150,6 @@ const CoursesPage: React.FC = () => {
           message.error(detail?.message || '资源不存在');
         }
       } else if (axiosErr.response?.status === 422) {
-        // Backend CourseCreate validator: start_time >= end_time
         message.error(detail?.message || '数据格式错误，请检查时间是否合法');
       } else {
         message.error(detail?.message || '操作失败，请重试');
@@ -181,103 +179,104 @@ const CoursesPage: React.FC = () => {
   // ── Table columns ───────────────────────────────
   const columns: ColumnsType<Course> = [
     {
-      title: '日期',
-      dataIndex: 'date',
-      key: 'date',
-      width: 110,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD'),
+      title: '课程名称',
+      key: 'name',
+      width: 240,
+      render: (_: unknown, record: Course) => (
+        <div>
+          <span style={{ fontWeight: 'bold', display: 'block' }}>
+            {dayjs(record.date).format('YYYY-MM-DD')} 阅读课
+          </span>
+          <span style={{ fontSize: 12, color: '#999' }}>
+            阅读课
+          </span>
+        </div>
+      ),
     },
     {
-      title: '开始时间',
-      dataIndex: 'start_time',
-      key: 'start_time',
-      width: 90,
-      render: (v: string) => v.substring(0, 5), // HH:mm
-    },
-    {
-      title: '结束时间',
-      dataIndex: 'end_time',
-      key: 'end_time',
-      width: 90,
-      render: (v: string) => v.substring(0, 5), // HH:mm
-    },
-    {
-      title: '授课教师',
+      title: '教师',
       key: 'teacher',
       width: 120,
-      render: (_: unknown, record: Course) => record.teacher?.name || '—',
-    },
-    {
-      title: '上课学生',
-      key: 'children',
-      width: 120,
       render: (_: unknown, record: Course) => {
-        const first = record.children?.[0];
-        return first ? first.name : '—';
+        const teacher = record.teacher;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Avatar
+              size={32}
+              src={undefined}
+              style={{ backgroundColor: '#5AA0DC', flexShrink: 0 }}
+            >
+              {teacher?.name?.[0] || '?'}
+            </Avatar>
+            <span>{teacher?.name || '—'}</span>
+          </div>
+        );
       },
     },
     {
-      title: '会议链接',
-      dataIndex: 'meeting_link',
-      key: 'meeting_link',
-      width: 80,
-      render: (v: string | null) =>
-        v ? (
-          <Tooltip title={v}>
-            <a href={v} target="_blank" rel="noopener noreferrer">
-              <LinkOutlined /> 链接
-            </a>
-          </Tooltip>
-        ) : (
-          '—'
-        ),
+      title: '学生',
+      key: 'students',
+      width: 120,
+      render: (_: unknown, record: Course) => {
+        const student = record.children?.[0];
+        if (!student) return <span>—</span>;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Avatar
+              size={32}
+              src={undefined}
+              style={{ backgroundColor: '#52C41A', flexShrink: 0 }}
+            >
+              {student.name?.[0] || '?'}
+            </Avatar>
+            <span>{student.name}</span>
+          </div>
+        );
+      },
     },
     {
-      title: '状态',
+      title: '上课时间',
+      key: 'schedule',
+      width: 160,
+      render: (_: unknown, record: Course) => {
+        const start = record.start_time.substring(0, 5);
+        const end = record.end_time.substring(0, 5);
+        return (
+        <span>
+            {dayjs(record.date).format('YYYY-MM-DD')} {start}-{end}
+        </span>
+        );
+      },
+    },
+    {
+      title: '课程状态',
       dataIndex: 'status',
       key: 'status',
-      width: 90,
+      width: 100,
       render: (status: CourseStatus) => {
         const cfg = STATUS_CONFIG[status] || { color: 'default', label: status };
         return <Tag color={cfg.color}>{cfg.label}</Tag>;
       },
     },
     {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 170,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      width: 170,
-      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
-    },
-    {
       title: '操作',
       key: 'action',
-      width: 140,
+      width: 100,
       render: (_: unknown, record: Course) => {
         const isEditable = record.status === 'pending';
         return (
           <Space size="small">
-            <Tooltip title={!isEditable ? '已完成或已取消的课程不可编辑' : undefined}>
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                disabled={!isEditable}
-                onClick={() => {
-                  setEditingCourse(record);
-                  setFormOpen(true);
-                }}
-              >
-                编辑
-              </Button>
-            </Tooltip>
+            <Button
+              type="link"
+              size="small"
+              disabled={!isEditable}
+              onClick={() => {
+                setEditingCourse(record);
+                setFormOpen(true);
+              }}
+            >
+              编辑
+            </Button>
             <Popconfirm
               title="确定删除该课程？"
               description="此操作不可撤销，课程及关联的学生选课和反馈数据将被彻底删除"
@@ -286,7 +285,7 @@ const CoursesPage: React.FC = () => {
               cancelText="取消"
               okButtonProps={{ danger: true }}
             >
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              <Button type="link" size="small" danger>
                 删除
               </Button>
             </Popconfirm>
@@ -299,23 +298,27 @@ const CoursesPage: React.FC = () => {
   // ── Render ──────────────────────────────────────
   return (
     <Card>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            课程管理
-          </Typography.Title>
-          <DatePicker
-            picker="month"
-            placeholder="筛选月份"
-            value={monthFilter}
-            onChange={(val) => {
-              setMonthFilter(val);
-              setPage(1);
-            }}
-            allowClear
-            style={{ width: 160 }}
-          />
-        </div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <DatePicker
+          picker="month"
+          placeholder="筛选月份"
+          value={monthFilter}
+          onChange={(val) => {
+            setMonthFilter(val);
+            setPage(1);
+          }}
+          allowClear
+          style={{ width: 160 }}
+        />
         <Button
           type="primary"
           icon={<PlusOutlined />}
@@ -344,7 +347,7 @@ const CoursesPage: React.FC = () => {
             setPageSize(ps);
           },
         }}
-        scroll={{ x: 1200 }}
+        scroll={{ x: 800 }}
       />
 
       <CourseForm

@@ -1,15 +1,11 @@
 /**
- * TeachersPage — A-TEACHERS (ADMIN-02).
+ * TeachersPage — A-TEACHER (ADMIN-02).
  *
- * Features:
- * - Paginated teacher list (Ant Design Table)
- * - Create teacher → Modal form → show initial_password
- * - Edit teacher → Modal form (pre-filled)
- * - Delete teacher → Popconfirm → soft delete
- * - Reset password → Popconfirm → show new_initial_password
- *
- * Auth: relies on ADMIN-01 AuthGuard + Axios interceptor.
- * API: consumes API-04 endpoints via services/teacher.ts.
+ * 设计方案:
+ * - 列表列: 教师(头像+姓名+手机号)、邮箱、状态Tag、操作
+ * - 新建 → Modal → 显示初始密码 Alert
+ * - 编辑 → Modal (复用表单)
+ * - 删除 → Popconfirm
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -20,47 +16,37 @@ import {
   Space,
   Popconfirm,
   message,
-  Modal,
-  Typography,
+  Avatar,
   Card,
+  Alert,
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  KeyOutlined,
-  UndoOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import type { AxiosError } from 'axios';
 import TeacherForm from '../../components/TeacherForm';
 import {
   getTeacherList,
   createTeacher,
   updateTeacher,
   deleteTeacher,
-  restoreTeacher,
-  resetTeacherPassword,
 } from '../../services/teacher';
 import type { Teacher } from '../../services/teacher';
 
-const { Text, Paragraph } = Typography;
-
 const TeachersPage: React.FC = () => {
-  // ── List state ──────────────────────────────────
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [listLoading, setListLoading] = useState(false);
 
-  // ── Form modal state ────────────────────────────
   const [formOpen, setFormOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [initialPassword, setInitialPassword] = useState<string | null>(null);
 
-  // ── Fetch list ──────────────────────────────────
+  // ── Fetch ────────────────────────────────────────
   const fetchList = useCallback(async () => {
     setListLoading(true);
     try {
@@ -74,266 +60,123 @@ const TeachersPage: React.FC = () => {
     }
   }, [page, pageSize]);
 
-  useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+  useEffect(() => { fetchList(); }, [fetchList]);
 
-  // ── Create / Edit submit ────────────────────────
-  const handleFormSubmit = async (values: {
-    username: string;
-    phone: string;
-    name: string;
-  }) => {
+  // ── Create / Edit ────────────────────────────────
+  const handleFormSubmit = async (values: { name: string; phone: string; email?: string; bio?: string }) => {
     setFormLoading(true);
     try {
       if (editingTeacher) {
-        // Edit mode
         await updateTeacher(editingTeacher.id, values);
-        message.success('教师信息已更新');
-        setFormOpen(false);
-        setEditingTeacher(null);
-        fetchList();
+        message.success('教师已更新');
       } else {
-        // Create mode
-        const res = await createTeacher(values);
-        setInitialPassword(res.initial_password);
+        const createParams: { username: string; phone: string; name: string } = { ...values, username: values.phone };
+        const res = await createTeacher(createParams);
         message.success('教师创建成功');
-        // Keep modal open to show initial_password
-        // User closes manually after noting the password
-        fetchList();
-      }
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { code?: string; message?: string } }>;
-      const detail = axiosErr.response?.data?.detail;
-      if (axiosErr.response?.status === 409) {
-        const code = detail?.code;
-        if (code === 'TEACHER_USERNAME_DUPLICATE') {
-          message.error('用户名已存在，请更换');
-        } else if (code === 'TEACHER_PHONE_DUPLICATE') {
-          message.error('手机号已存在，请更换');
-        } else {
-          message.error(detail?.message || '数据重复，请检查输入');
+        if (res?.initial_password) {
+          setInitialPassword(res.initial_password);
         }
-      } else {
-        message.error(detail?.message || '操作失败，请重试');
       }
+      setFormOpen(false);
+      setEditingTeacher(null);
+      setPage(1);
+      fetchList();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
+      const detail = axiosErr.response?.data?.detail;
+      message.error(typeof detail === 'string' ? detail : '操作失败');
     } finally {
       setFormLoading(false);
     }
-  };
-
-  const handleFormCancel = () => {
-    setFormOpen(false);
-    setEditingTeacher(null);
-    setInitialPassword(null);
   };
 
   // ── Delete ──────────────────────────────────────
   const handleDelete = async (id: string) => {
     try {
       await deleteTeacher(id);
-      message.success('教师已停用');
+      message.success('教师已删除');
       fetchList();
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { message?: string } }>;
-      message.error(axiosErr.response?.data?.detail?.message || '删除失败');
-    }
-  };
-
-  // ── Restore ─────────────────────────────────────
-  const handleRestore = async (id: string) => {
-    try {
-      const res = await restoreTeacher(id);
-      Modal.success({
-        title: '教师已恢复',
-        width: 480,
-        content: (
-          <div>
-            <Paragraph>教师已重新启用，密码已自动重置。</Paragraph>
-            <Paragraph>新初始密码：</Paragraph>
-            <Text
-              strong
-              copyable
-              style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: 2 }}
-            >
-              {res.new_initial_password}
-            </Text>
-            <Paragraph type="secondary" style={{ marginTop: 12, fontSize: 12 }}>
-              请将新密码告知教师，首次登录后需修改密码
-            </Paragraph>
-          </div>
-        ),
-      });
-      fetchList();
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { message?: string } }>;
-      message.error(axiosErr.response?.data?.detail?.message || '恢复失败');
-    }
-  };
-
-  // ── Reset password ──────────────────────────────
-  const handleResetPassword = async (id: string) => {
-    try {
-      const res = await resetTeacherPassword(id);
-      Modal.success({
-        title: '密码重置成功',
-        width: 480,
-        content: (
-          <div>
-            <Paragraph>新初始密码：</Paragraph>
-            <Text
-              strong
-              copyable
-              style={{ fontFamily: 'monospace', fontSize: 18, letterSpacing: 2 }}
-            >
-              {res.new_initial_password}
-            </Text>
-            <Paragraph type="secondary" style={{ marginTop: 12, fontSize: 12 }}>
-              请将新密码告知教师，首次登录后需修改密码
-            </Paragraph>
-          </div>
-        ),
-      });
-    } catch (err) {
-      const axiosErr = err as AxiosError<{ detail?: { message?: string } }>;
-      message.error(axiosErr.response?.data?.detail?.message || '重置密码失败');
+    } catch {
+      message.error('删除失败');
     }
   };
 
   // ── Table columns ───────────────────────────────
   const columns: ColumnsType<Teacher> = [
     {
-      title: '用户名',
-      dataIndex: 'username',
-      key: 'username',
-      width: 140,
-    },
-    {
-      title: '姓名',
-      dataIndex: 'name',
+      title: '教师',
       key: 'name',
-      width: 120,
+      render: (_: unknown, record: Teacher) => (
+        <Space>
+          <Avatar size={40} icon={<UserOutlined />} src={record.avatar_url || undefined}
+            style={{ backgroundColor: '#5AA0DC20', color: '#5AA0DC' }}>
+            {record.name?.[0]}
+          </Avatar>
+          <div>
+            <div style={{ fontWeight: 600 }}>{record.name}</div>
+            <span style={{ fontSize: 12, color: '#999' }}>{record.phone}</span>
+          </div>
+        </Space>
+      ),
     },
     {
-      title: '手机号',
-      dataIndex: 'phone',
-      key: 'phone',
-      width: 140,
-      render: (phone: string) => phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2'),
+      title: '邮箱',
+      dataIndex: 'email',
+      key: 'email',
+      width: 180,
+      render: (v: string) => v || '—',
     },
     {
       title: '状态',
       dataIndex: 'is_active',
       key: 'is_active',
       width: 80,
-      render: (isActive: boolean) =>
-        isActive ? (
-          <Tag color="green">启用</Tag>
-        ) : (
-          <Tag color="red">停用</Tag>
-        ),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'created_at',
-      key: 'created_at',
-      width: 180,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'updated_at',
-      key: 'updated_at',
-      width: 180,
-      render: (v: string) => new Date(v).toLocaleString('zh-CN'),
+      render: (v: boolean) => (
+        <Tag color={v ? 'success' : 'error'}>{v ? '启用' : '禁用'}</Tag>
+      ),
     },
     {
       title: '操作',
       key: 'action',
-      width: 240,
+      width: 100,
       render: (_: unknown, record: Teacher) => (
         <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditingTeacher(record);
-              setInitialPassword(null);
-              setFormOpen(true);
-            }}
-          >
+          <Button type="link" size="small" onClick={() => { setEditingTeacher(record); setFormOpen(true); }}>
             编辑
           </Button>
-          <Popconfirm
-            title="确定重置该教师的密码吗？"
-            description="重置后原密码失效，需将新密码告知教师"
-            onConfirm={() => handleResetPassword(record.id)}
-            okText="确定"
-            cancelText="取消"
-            disabled={!record.is_active}
-          >
-            <Button
-              type="link"
-              size="small"
-              icon={<KeyOutlined />}
-              disabled={!record.is_active}
-            >
-              重置密码
-            </Button>
+          <Popconfirm title="确认删除此教师？" onConfirm={() => handleDelete(record.id)} okText="删除" cancelText="取消">
+            <Button type="link" size="small" danger>删除</Button>
           </Popconfirm>
-          {record.is_active ? (
-            <Popconfirm
-              title="确定停用该教师吗？"
-              description="停用后教师将无法登录"
-              onConfirm={() => handleDelete(record.id)}
-              okText="确定停用"
-              cancelText="取消"
-              okButtonProps={{ danger: true }}
-            >
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-                停用
-              </Button>
-            </Popconfirm>
-          ) : (
-            <Popconfirm
-              title="确定恢复该教师吗？"
-              description="恢复后教师可以正常登录"
-              onConfirm={() => handleRestore(record.id)}
-              okText="确定恢复"
-              cancelText="取消"
-            >
-              <Button type="link" size="small" icon={<UndoOutlined />}>
-                恢复
-              </Button>
-            </Popconfirm>
-          )}
         </Space>
       ),
     },
   ];
 
-  // ── Render ──────────────────────────────────────
   return (
     <Card>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          教师管理
-        </Typography.Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingTeacher(null);
-            setInitialPassword(null);
-            setFormOpen(true);
-          }}
-        >
+        <span style={{ fontSize: 16, fontWeight: 600 }}>教师管理</span>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingTeacher(null); setFormOpen(true); }}>
           新建教师
         </Button>
       </div>
 
-      <Table<Teacher>
+      {initialPassword && (
+        <Alert
+          type="success"
+          closable
+          onClose={() => setInitialPassword(null)}
+          message="教师创建成功"
+          description={
+            <span>
+              初始密码：<strong>{initialPassword}</strong>，请将此密码转交教师
+            </span>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
+      <Table
         rowKey="id"
         columns={columns}
         dataSource={teachers}
@@ -342,14 +185,9 @@ const TeachersPage: React.FC = () => {
           current: page,
           pageSize,
           total,
-          showSizeChanger: true,
           showTotal: (t) => `共 ${t} 条`,
-          onChange: (p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          },
+          onChange: (p, ps) => { setPage(p); setPageSize(ps); },
         }}
-        scroll={{ x: 900 }}
       />
 
       <TeacherForm
@@ -357,8 +195,7 @@ const TeachersPage: React.FC = () => {
         teacher={editingTeacher}
         loading={formLoading}
         onSubmit={handleFormSubmit}
-        onCancel={handleFormCancel}
-        initialPassword={initialPassword}
+        onCancel={() => { setFormOpen(false); setEditingTeacher(null); }}
       />
     </Card>
   );

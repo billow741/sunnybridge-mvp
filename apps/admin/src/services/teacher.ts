@@ -21,6 +21,8 @@ export interface Teacher {
   username: string;
   phone: string;
   name: string;
+  email: string | null;
+  bio: string | null;
   avatar_url: string | null;
   is_active: boolean;
   must_change_password: boolean;

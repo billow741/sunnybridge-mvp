@@ -19,7 +19,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, DatePicker, TimePicker, Select, Input, Spin, message } from 'antd';
+import { Modal, Form, DatePicker, TimePicker, Select, Input, Spin, message, Card, Space, Button } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import type { Course, CourseStatus } from '../../services/course';
@@ -43,21 +43,30 @@ interface StudentOption {
 // ── Form values ──────────────────────────────────
 
 export interface CourseFormValues {
-  date: Dayjs;
-  start_time: Dayjs;
-  end_time: Dayjs;
+  // 基本信息
+  name: string;
+  description?: string;
+  course_type: string;
+  status?: CourseStatus;
+  // 排课信息
   teacher_id: string;
   child_id: string;
+  start_date: Dayjs;
+  end_date?: Dayjs;
+  time_range: [Dayjs, Dayjs];
   meeting_link?: string;
-  status?: CourseStatus;
 }
 
 // ── Status options ───────────────────────────────
 
 const STATUS_OPTIONS: { value: CourseStatus; label: string }[] = [
-  { value: 'pending', label: '待上课' },
+  { value: 'pending', label: '进行中' },
   { value: 'completed', label: '已完成' },
   { value: 'cancelled', label: '已取消' },
+];
+
+const COURSE_TYPE_OPTIONS = [
+  { value: 'reading', label: '阅读课' },
 ];
 
 // ── Props ────────────────────────────────────────
@@ -131,16 +140,27 @@ const CourseForm: React.FC<CourseFormProps> = ({
     if (open) {
       if (course) {
         form.setFieldsValue({
-          date: dayjs(course.date),
-          start_time: dayjs(course.start_time, 'HH:mm:ss'),
-          end_time: dayjs(course.end_time, 'HH:mm:ss'),
-          teacher_id: course.teacher_id,
-          child_id: course.children[0]?.id || '',  // 1v1: 取首个学生
-          meeting_link: course.meeting_link || undefined,
+          // 基本信息
+          name: `阅读课 - ${dayjs(course.date).format('YYYY-MM-DD')}`,
+          description: '',
+          course_type: 'reading',
           status: course.status,
+          // 排课信息
+          teacher_id: course.teacher_id,
+          child_id: course.children[0]?.id || '',
+          start_date: dayjs(course.date),
+          end_date: undefined,
+          time_range: [
+            dayjs(course.start_time, 'HH:mm:ss'),
+            dayjs(course.end_time, 'HH:mm:ss'),
+          ],
+          meeting_link: course.meeting_link || undefined,
         });
       } else {
         form.resetFields();
+        form.setFieldsValue({
+          course_type: 'reading',
+        });
       }
     }
   }, [open, course, form]);
@@ -149,14 +169,12 @@ const CourseForm: React.FC<CourseFormProps> = ({
     try {
       const values = await form.validateFields();
       onSubmit({
-        date: values.date.format('YYYY-MM-DD'),
-        start_time: values.start_time.format('HH:mm'),
-        end_time: values.end_time.format('HH:mm'),
+        date: values.start_date.format('YYYY-MM-DD'),
+        start_time: values.time_range[0].format('HH:mm'),
+        end_time: values.time_range[1].format('HH:mm'),
         teacher_id: values.teacher_id,
-        child_ids: [values.child_id],  // 1v1: 单选转数组
-        // BUG-005 fix: send null when meeting_link is empty, not empty string
+        child_ids: [values.child_id],
         meeting_link: values.meeting_link || undefined,
-        // BUG-002 fix: include status in edit mode
         status: isEdit ? values.status : undefined,
       });
     } catch {
@@ -168,125 +186,168 @@ const CourseForm: React.FC<CourseFormProps> = ({
     <Modal
       title={isEdit ? '编辑课程' : '新建课程'}
       open={open}
-      onOk={handleOk}
       onCancel={onCancel}
-      confirmLoading={loading}
-      okButtonProps={{ disabled: optionsLoadError }}
-      okText={isEdit ? '保存' : '创建'}
-      cancelText="取消"
-      destroyOnClose
       width={560}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Button onClick={onCancel}>取消</Button>
+          <Button
+            type="primary"
+            loading={loading}
+            disabled={optionsLoadError}
+            onClick={handleOk}
+          >
+            保存
+          </Button>
+        </div>
+      }
+      destroyOnClose
     >
       <Spin spinning={optionsLoading} tip="加载选项数据...">
         <Form
           form={form}
           layout="vertical"
           autoComplete="off"
+          style={{ marginTop: 8 }}
         >
-          {/* BUG-002: Status field only in edit mode */}
-          {isEdit && (
+          {/* ── 基本信息 ─────────────────────────────── */}
+          <Card
+            title="基本信息"
+            size="small"
+            style={{ marginBottom: 16 }}
+            bodyStyle={{ padding: 16 }}
+          >
             <Form.Item
-              name="status"
-              label="课程状态"
-              rules={[{ required: true, message: '请选择课程状态' }]}
+              name="name"
+              label="课程名称"
+              rules={[{ required: true, message: '请输入课程名称' }]}
             >
-              <Select placeholder="选择状态">
-                {STATUS_OPTIONS.map((opt) => (
+              <Input placeholder="请输入课程名称" />
+            </Form.Item>
+
+            <Form.Item
+              name="description"
+              label="课程描述"
+            >
+              <Input.TextArea rows={3} placeholder="请输入课程描述" />
+            </Form.Item>
+
+            <Form.Item
+              name="course_type"
+              label="课程类型"
+              rules={[{ required: true, message: '请选择课程类型' }]}
+            >
+              <Select placeholder="选择课程类型">
+                {COURSE_TYPE_OPTIONS.map((opt) => (
                   <Select.Option key={opt.value} value={opt.value}>
                     {opt.label}
                   </Select.Option>
                 ))}
               </Select>
             </Form.Item>
-          )}
 
-          <Form.Item
-            name="date"
-            label="课程日期"
-            rules={[{ required: true, message: '请选择课程日期' }]}
-          >
-            <DatePicker
-              style={{ width: '100%' }}
-              placeholder="选择日期"
-            />
-          </Form.Item>
+            {/* Status field only in edit mode */}
+            {isEdit && (
+              <Form.Item
+                name="status"
+                label="课程状态"
+                rules={[{ required: true, message: '请选择课程状态' }]}
+              >
+                <Select placeholder="选择状态">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <Select.Option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            )}
+          </Card>
 
-          <Form.Item
-            name="start_time"
-            label="开始时间"
-            rules={[{ required: true, message: '请选择开始时间' }]}
+          {/* ── 排课信息 ─────────────────────────────── */}
+          <Card
+            title="排课信息"
+            size="small"
+            style={{ marginBottom: 16 }}
+            bodyStyle={{ padding: 16 }}
           >
-            <TimePicker
-              style={{ width: '100%' }}
-              format="HH:mm"
-              placeholder="选择开始时间"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="end_time"
-            label="结束时间"
-            dependencies={['start_time']}
-            rules={[
-              { required: true, message: '请选择结束时间' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  const startTime = getFieldValue('start_time');
-                  if (!startTime || !value || value.isAfter(startTime)) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('结束时间必须晚于开始时间'));
-                },
-              }),
-            ]}
-          >
-            <TimePicker
-              style={{ width: '100%' }}
-              format="HH:mm"
-              placeholder="选择结束时间"
-            />
-          </Form.Item>
-
-          <Form.Item
-            name="teacher_id"
-            label="授课教师"
-            rules={[{ required: true, message: '请选择授课教师' }]}
-          >
-            <Select
-              placeholder="选择教师"
-              showSearch
-              optionFilterProp="label"
-              loading={optionsLoading}
-              notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无教师'}
+            <Form.Item
+              name="teacher_id"
+              label="授课教师"
+              rules={[{ required: true, message: '请选择授课教师' }]}
             >
-              {teacherOptions.map((opt) => (
-                <Select.Option key={opt.value} value={opt.value} label={opt.label}>
-                  {opt.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+              <Select
+                placeholder="搜索教师..."
+                showSearch
+                optionFilterProp="label"
+                loading={optionsLoading}
+                notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无教师'}
+              >
+                {teacherOptions.map((opt) => (
+                  <Select.Option key={opt.value} value={opt.value} label={opt.label}>
+                    {opt.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-          <Form.Item
-            name="child_id"
-            label="上课学生"
-            rules={[{ required: true, message: '请选择学生' }]}
-          >
-            <Select
-              placeholder="选择学生（1v1）"
-              showSearch
-              optionFilterProp="label"
-              loading={optionsLoading}
-              notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无学生'}
+            <Form.Item
+              name="child_id"
+              label="上课学生"
+              rules={[{ required: true, message: '请选择学生' }]}
             >
-              {studentOptions.map((opt) => (
-                <Select.Option key={opt.value} value={opt.value} label={opt.label}>
-                  {opt.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+              <Select
+                placeholder="选择学生（1v1）"
+                showSearch
+                optionFilterProp="label"
+                loading={optionsLoading}
+                notFoundContent={optionsLoadError ? '加载失败，请关闭重试' : '暂无学生'}
+              >
+                {studentOptions.map((opt) => (
+                  <Select.Option key={opt.value} value={opt.value} label={opt.label}>
+                    {opt.label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
+            <Space direction="vertical" style={{ display: 'flex' }}>
+              <Form.Item
+                name="start_date"
+                label="开始日期"
+                rules={[{ required: true, message: '请选择开始日期' }]}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  placeholder="选择开始日期"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="end_date"
+                label="结束日期"
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  placeholder="选择结束日期"
+                />
+              </Form.Item>
+            </Space>
+
+            <Form.Item
+              name="time_range"
+              label="上课时间"
+              rules={[{ required: true, message: '请选择上课时间' }]}
+            >
+              <TimePicker.RangePicker
+                style={{ width: '100%' }}
+                format="HH:mm"
+                placeholder={['开始时间', '结束时间']}
+              />
+            </Form.Item>
+          </Card>
+
+          {/* 保留 meeting_link 在排课信息末尾 */}
           <Form.Item
             name="meeting_link"
             label="腾讯会议链接"
