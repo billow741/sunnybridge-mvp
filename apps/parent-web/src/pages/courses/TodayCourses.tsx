@@ -1,67 +1,59 @@
-import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography } from 'antd';
-import { ClockCircleOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import CourseStatusTag from '../../components/CourseStatusTag';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
+import { Typography, Button } from 'antd';
+import { CalendarOutlined, HistoryOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
 import type { CourseOut } from '../../types';
-import { formatTime } from '../../utils/dayjs';
+import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
 
-const { Text } = Typography;
+const { Title } = Typography;
 
-export default function TodayCourses() {
+export default function TodayCoursesPage() {
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<CourseOut[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
-
-  const fetchCourses = () => {
-    setLoading(true);
-    setError(null);
-    apiClient.get<CourseOut[]>('/courses/today')
-      .then((res) => setCourses(res.data))
-      .catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-      .finally(() => setLoading(false));
-  };
+  const [error, setError] = useState('');
 
   useEffect(() => { fetchCourses(); }, []);
 
-  if (loading) return <PageContainer><LoadingState /></PageContainer>;
-  if (error) return <PageContainer><ErrorState message={error} onRetry={fetchCourses} /></PageContainer>;
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await apiClient.get('/courses', { params: { date: today, page_size: 50 } });
+      const data = res.data;
+      setCourses(Array.isArray(data) ? data : data.items || []);
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || '获取课程失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <PageContainer title="今日课程">
-      {courses.length === 0 ? (
-        <EmptyState title="今天没有课程安排 🌤️" />
-      ) : (
-        <Row gutter={[16, 16]}>
-          {courses.map((c) => (
-            <Col xs={24} sm={12} md={8} key={c.id}>
-              <Card hoverable onClick={() => navigate(`/courses/${c.id}`)} style={{ borderRadius: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div>
-                    <Text strong style={{ fontSize: 16 }}>
-                      <ClockCircleOutlined style={{ marginRight: 6, color: '#FFA726' }} />
-                      {formatTime(c.start_time)} - {formatTime(c.end_time)}
-                    </Text>
-                  </div>
-                  <CourseStatusTag status={c.status} />
-                </div>
-                <div>
-                  <Text type="secondary"><UserOutlined style={{ marginRight: 6 }} />老师：{c.teacher?.name || '—'}</Text>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <Text type="secondary">学生：{c.children.map((ch:{name:string}) => ch.name).join('、') || '—'}</Text>
-                </div>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-    </PageContainer>
+    <div className="page-container">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <Title level={4} style={{ margin: 0 }}>
+          <CalendarOutlined style={{ color: '#F4A230', marginRight: 8 }} />
+          今日课程
+        </Title>
+        <Button type="link" icon={<HistoryOutlined />} onClick={() => navigate('/courses/history')}>
+          课程记录
+        </Button>
+      </div>
+
+      {loading ? <LoadingPage rows={3} /> :
+        error ? <ErrorBanner message={error} onRetry={fetchCourses} /> :
+          courses.length === 0 ? (
+            <EmptyState
+              icon={<CalendarOutlined />}
+              title="今天没有课程"
+              description="查看课程记录或去阅读库"
+            />
+          ) : courses.map(c => (
+            <CourseCard key={c.id} course={c} onClick={id => navigate(`/courses/${id}`)} />
+          ))
+      }
+    </div>
   );
 }

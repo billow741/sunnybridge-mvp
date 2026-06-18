@@ -1,67 +1,109 @@
-import { useState, useEffect } from 'react';
-import { Card, Descriptions, Button, Space, Typography } from 'antd';
-import { ArrowLeftOutlined, LinkOutlined } from '@ant-design/icons';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import CourseStatusTag from '../../components/CourseStatusTag';
-import FeedbackCard from '../../components/FeedbackCard';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
+import { Card, Descriptions, Typography, Button, Divider, Avatar } from 'antd';
+import { ArrowLeftOutlined, CalendarOutlined, ClockCircleOutlined, TeamOutlined, FormOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
 import type { CourseDetail } from '../../types';
-import { formatTime, formatDate } from '../../utils/dayjs';
+import { StatusTag, LoadingPage, ErrorBanner } from '../../components/shared';
 
-export default function CourseDetail() {
+const { Title, Text, Paragraph } = Typography;
+
+export default function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    apiClient.get<CourseDetail>(`/courses/${id}`)
-      .then((res) => setCourse(res.data))
-      .catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-      .finally(() => setLoading(false));
+    if (!id) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await apiClient.get(`/courses/${id}`);
+        setCourse(res.data);
+      } catch (e: any) {
+        setError(e?.response?.data?.detail || '获取课程详情失败');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [id]);
 
-  if (loading) return <PageContainer><LoadingState /></PageContainer>;
-  if (error || !course) return <PageContainer><ErrorState message={error || '未找到课程'} onRetry={() => navigate(-1)} /></PageContainer>;
+  if (loading) return <LoadingPage rows={6} />;
+  if (error) return <div className="page-container"><ErrorBanner message={error} /></div>;
+  if (!course) return null;
+
+  const teacherName = course.teacher?.name || '—';
+  const childrenNames = course.children?.map(c => c.english_name || c.name).join('、') || '—';
 
   return (
-    <PageContainer title="课程详情" extra={<Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>}>
-      <Card style={{ marginBottom: 16, borderRadius: 12 }}>
-        <Descriptions column={{ xs: 1, sm: 2 }}>
-          <Descriptions.Item label="日期">{formatDate(course.date)}</Descriptions.Item>
-          <Descriptions.Item label="时间">{formatTime(course.start_time)} - {formatTime(course.end_time)}</Descriptions.Item>
-          <Descriptions.Item label="老师">{course.teacher?.name || '—'}</Descriptions.Item>
-          <Descriptions.Item label="状态"><CourseStatusTag status={course.status} /></Descriptions.Item>
-          {course.meeting_link && (
-            <Descriptions.Item label="课堂链接">
-              <a href={course.meeting_link} target="_blank" rel="noreferrer"><LinkOutlined /> 进入课堂</a>
-            </Descriptions.Item>
-          )}
-        </Descriptions>
-      </Card>
+    <div className="page-container">
+      <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}
+        style={{ marginBottom: 12, padding: 0, color: '#F4A230' }}>
+        返回
+      </Button>
 
-      <Card title={`学生 (${course.children.length})`} style={{ marginBottom: 16, borderRadius: 12 }}>
-        <Space wrap>
-          {course.children.map((c: {id:string;name:string;english_name?:string}) => (
-            <span key={c.id} style={{ padding: '4px 12px', background: '#FFFDF7', borderRadius: 16, fontSize: 14 }}>
-              {c.name}{c.english_name ? ` (${c.english_name})` : ''}
-            </span>
-          ))}
-          {course.children.length === 0 && <Typography.Text type="secondary">无学生信息</Typography.Text>}
-        </Space>
-      </Card>
+      <Card style={{ borderRadius: 14, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <Title level={4} style={{ margin: 0 }}>{course.date} 课程</Title>
+          <StatusTag status={course.status} />
+        </div>
 
-      <Card title="老师反馈" style={{ borderRadius: 12 }}>
-        {course.feedback ? (
-          <FeedbackCard feedback={course.feedback} />
-        ) : (
-          <Typography.Text type="secondary">老师还没有提交反馈</Typography.Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#718096' }}>
+          <CalendarOutlined style={{ color: '#F4A230' }} />
+          <span>{course.date}</span>
+          <ClockCircleOutlined style={{ marginLeft: 12, color: '#F4A230' }} />
+          <span>{course.start_time} - {course.end_time}</span>
+        </div>
+
+        <Divider style={{ margin: '12px 0' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <Avatar size={32} style={{ background: '#5CAADF', color: '#fff' }}>{teacherName[0]}</Avatar>
+          <div>
+            <div style={{ fontSize: 12, color: '#A0AEC0' }}>授课老师</div>
+            <div style={{ fontWeight: 600 }}>{teacherName} 老师</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <TeamOutlined style={{ color: '#F4A230', fontSize: 18 }} />
+          <div>
+            <div style={{ fontSize: 12, color: '#A0AEC0' }}>上课学生</div>
+            <div style={{ fontWeight: 600 }}>{childrenNames}</div>
+          </div>
+        </div>
+
+        {course.meeting_link && (
+          <div style={{ marginTop: 12 }}>
+            <Button type="primary" href={course.meeting_link} target="_blank" block style={{ borderRadius: 12 }}>
+              进入会议室
+            </Button>
+          </div>
         )}
       </Card>
-    </PageContainer>
+
+      {/* 反馈 */}
+      {course.feedback && (
+        <Card style={{ borderRadius: 14 }} title={<span><FormOutlined style={{ color: '#F4A230', marginRight: 6 }} />老师反馈</span>}>
+          <Paragraph style={{ whiteSpace: 'pre-wrap', color: '#2D3748' }}>{course.feedback.content}</Paragraph>
+          {course.feedback.homework && (
+            <>
+              <Divider style={{ margin: '12px 0' }} />
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>📝 课后作业</div>
+              <Paragraph style={{ whiteSpace: 'pre-wrap', color: '#4A5568' }}>{course.feedback.homework}</Paragraph>
+            </>
+          )}
+          {course.feedback.notes && (
+            <>
+              <Divider style={{ margin: '12px 0' }} />
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>💡 备注</div>
+              <Paragraph style={{ whiteSpace: 'pre-wrap', color: '#718096', fontStyle: 'italic' }}>{course.feedback.notes}</Paragraph>
+            </>
+          )}
+        </Card>
+      )}
+    </div>
   );
 }
