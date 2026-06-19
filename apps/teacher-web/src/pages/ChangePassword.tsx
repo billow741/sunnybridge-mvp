@@ -30,7 +30,7 @@ export default function ChangePasswordPage() {
     setError('');
     try {
       await apiClient.post('/auth/teacher/change-password', {
-        current_password: values.current_password,
+        old_password: values.current_password,
         new_password: values.new_password,
       });
       setSuccess(true);
