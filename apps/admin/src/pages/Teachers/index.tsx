@@ -31,6 +31,7 @@ import {
   createTeacher,
   updateTeacher,
   deleteTeacher,
+  resetTeacherPassword,
 } from '../../services/teacher';
 import type { Teacher } from '../../services/teacher';
 
@@ -45,6 +46,7 @@ const TeachersPage: React.FC = () => {
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [initialPassword, setInitialPassword] = useState<string | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ name: string; password: string } | null>(null);
 
   // ── Fetch ────────────────────────────────────────
   const fetchList = useCallback(async () => {
@@ -63,15 +65,14 @@ const TeachersPage: React.FC = () => {
   useEffect(() => { fetchList(); }, [fetchList]);
 
   // ── Create / Edit ────────────────────────────────
-  const handleFormSubmit = async (values: { name: string; phone: string; email?: string; bio?: string }) => {
+  const handleFormSubmit = async (values: { username: string; name: string; phone: string; email?: string; bio?: string }) => {
     setFormLoading(true);
     try {
       if (editingTeacher) {
         await updateTeacher(editingTeacher.id, values);
         message.success('教师已更新');
       } else {
-        const createParams: { username: string; phone: string; name: string } = { ...values, username: values.phone };
-        const res = await createTeacher(createParams);
+        const res = await createTeacher(values);
         message.success('教师创建成功');
         if (res?.initial_password) {
           setInitialPassword(res.initial_password);
@@ -101,6 +102,16 @@ const TeachersPage: React.FC = () => {
     }
   };
 
+  // ── Reset Password ──────────────────────────────
+  const handleResetPassword = async (record: Teacher) => {
+    try {
+      const res = await resetTeacherPassword(record.id);
+      setResetPasswordResult({ name: record.name, password: res.new_initial_password });
+    } catch {
+      message.error('重置密码失败');
+    }
+  };
+
   // ── Table columns ───────────────────────────────
   const columns: ColumnsType<Teacher> = [
     {
@@ -109,7 +120,7 @@ const TeachersPage: React.FC = () => {
       render: (_: unknown, record: Teacher) => (
         <Space>
           <Avatar size={40} icon={<UserOutlined />} src={record.avatar_url || undefined}
-            style={{ backgroundColor: '#5AA0DC20', color: '#5AA0DC' }}>
+            style={{ backgroundColor: '#5CAADF20', color: '#5CAADF' }}>
             {record.name?.[0]}
           </Avatar>
           <div>
@@ -144,6 +155,9 @@ const TeachersPage: React.FC = () => {
           <Button type="link" size="small" onClick={() => { setEditingTeacher(record); setFormOpen(true); }}>
             编辑
           </Button>
+          <Popconfirm title="确认重置此教师密码？将生成新的初始密码" onConfirm={() => handleResetPassword(record)} okText="重置" cancelText="取消">
+            <Button type="link" size="small">重置密码</Button>
+          </Popconfirm>
           <Popconfirm title="确认删除此教师？" onConfirm={() => handleDelete(record.id)} okText="删除" cancelText="取消">
             <Button type="link" size="small" danger>删除</Button>
           </Popconfirm>
@@ -170,6 +184,23 @@ const TeachersPage: React.FC = () => {
           description={
             <span>
               初始密码：<strong>{initialPassword}</strong>，请将此密码转交教师
+            </span>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
+      {resetPasswordResult && (
+        <Alert
+          type="success"
+          closable
+          onClose={() => setResetPasswordResult(null)}
+          message={`${resetPasswordResult.name} 密码已重置`}
+          description={
+            <span>
+              新初始密码：<strong style={{ fontFamily: 'monospace', fontSize: 16 }}>{resetPasswordResult.password}</strong>
+              <br />
+              <span style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)' }}>请将此密码转交教师</span>
             </span>
           }
           style={{ marginBottom: 16 }}
