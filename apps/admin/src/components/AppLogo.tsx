@@ -1,3 +1,8 @@
+/**
+ * SunnyBridge Admin Logo 组件
+ * 统一品牌标识：图片Logo + 品牌色文字
+ */
+
 import logo from '../assets/logo.webp';
 
 interface AppLogoProps {

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Button, Card, Descriptions, Divider, Alert } from 'antd';
+import { Button, Card, Descriptions, Divider } from 'antd';
 import { ArrowLeftOutlined, FormOutlined, LinkOutlined } from '@ant-design/icons';
 import apiClient from '../../api/client';
 import type { CourseDetail } from '../../types';

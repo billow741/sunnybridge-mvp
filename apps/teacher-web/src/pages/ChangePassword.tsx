@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Alert, Typography } from 'antd';
+import { useState } from 'react';
+import { Form, Input, Button, Alert } from 'antd';
 import { LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import AppLogo from '../components/AppLogo';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../api/client';
-
-const { Text } = Typography;
 
 export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false);

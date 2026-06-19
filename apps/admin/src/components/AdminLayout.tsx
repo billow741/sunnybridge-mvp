@@ -1,7 +1,7 @@
 /**
  * Admin layout with sidebar.
  *
- * MVP 菜单结构 (6项):
+ * 菜单结构 (6项):
  * 1. 首页概览 (Dashboard)
  * 2. 课程管理 (1v1)
  * 3. 教师管理
@@ -12,7 +12,7 @@
 
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, theme } from 'antd';
+import { Layout, Menu, Button } from 'antd';
 import {
   DashboardOutlined,
   BookOutlined,
@@ -23,6 +23,7 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { logout } from '../api/auth';
+import AppLogo from './AppLogo';
 
 const { Sider, Header, Content } = Layout;
 
@@ -63,7 +64,6 @@ const AdminLayout: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const { token: themeToken } = theme.useToken();
 
   const handleMenuClick = (info: { key: string }) => {
     navigate(info.key);
@@ -82,23 +82,25 @@ const AdminLayout: React.FC = () => {
         collapsible
         collapsed={collapsed}
         onCollapse={setCollapsed}
-        width={208}
-        style={{ background: themeToken.colorBgContainer }}
+        width={200}
+        collapsedWidth={64}
+        style={{
+          background: '#FFFFFF',
+          borderRight: '1px solid #E2E8F0',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
-        {/* Brand */}
-        <div
-          style={{
-            height: 48,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderBottom: `1px solid ${themeToken.colorBorderSecondary}`,
-            margin: '0 0 8px',
-          }}
-        >
-          <span style={{ fontSize: collapsed ? 14 : 16, fontWeight: collapsed ? 400 : 600, color: '#5AA0DC' }}>
-            {collapsed ? 'SB' : 'SunnyBridge'}
-          </span>
+        {/* Logo area — 使用统一的 AppLogo */}
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          padding: collapsed ? '0 16px' : '0 20px',
+          borderBottom: '1px solid #E2E8F0',
+        }}>
+          <AppLogo size={collapsed ? 'sm' : 'md'} collapsed={collapsed} />
         </div>
 
         <Menu
@@ -106,23 +108,21 @@ const AdminLayout: React.FC = () => {
           selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={handleMenuClick}
+          style={{ border: 'none', flex: 1, padding: '8px 0' }}
         />
       </Sider>
 
       <Layout>
-        <Header
-          style={{
-            background: themeToken.colorBgContainer,
-            padding: '0 24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: `1px solid ${themeToken.colorBorderSecondary}`,
-            height: 48,
-            lineHeight: '48px',
-          }}
-        >
-          <span style={{ fontSize: 13, color: themeToken.colorTextSecondary }}>
+        <Header style={{
+          background: '#FFFFFF',
+          padding: '0 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid #E2E8F0',
+          height: 64,
+        }}>
+          <span style={{ fontSize: 14, color: '#64748B' }}>
             管理后台
           </span>
           <Button
@@ -134,7 +134,11 @@ const AdminLayout: React.FC = () => {
           </Button>
         </Header>
 
-        <Content style={{ margin: 24, background: '#FAFAFA', minHeight: 280 }}>
+        <Content style={{
+          background: '#F7FAFC',
+          padding: 24,
+          minHeight: 280,
+        }}>
           <Outlet />
         </Content>
       </Layout>

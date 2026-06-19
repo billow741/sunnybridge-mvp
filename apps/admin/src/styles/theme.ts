@@ -1,13 +1,13 @@
 /**
- * SunnyBridge Teacher 统一主题配置
- * 与 Admin 共享品牌色板体系
- * Teacher 角色: 蓝主色 + 橙强调色
+ * SunnyBridge Admin 统一主题配置
+ * 与 Teacher Web 共享品牌色板体系
+ * Admin 角色: 蓝主色 + 橙强调色
  */
 
 import type { ThemeConfig } from 'antd';
 import { theme } from 'antd';
 
-const teacherTheme: ThemeConfig = {
+const adminTheme: ThemeConfig = {
   algorithm: theme.defaultAlgorithm,
   token: {
     colorPrimary: '#5CAADF',
@@ -50,4 +50,4 @@ const teacherTheme: ThemeConfig = {
   },
 };
 
-export default teacherTheme;
+export default adminTheme;

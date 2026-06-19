@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Select, Space, DatePicker } from 'antd';
 import { HistoryOutlined } from '@ant-design/icons';
@@ -7,15 +7,15 @@ import type { CourseOut } from '../../types';
 import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: '', label: '全部状态' },
+  { value: 'pending', label: '待上课' },
+  { value: 'completed', label: '已完成' },
+  { value: 'cancelled', label: '已取消' },
 ];
 
 export default function CourseHistoryPage() {
   const [courses, setCourses] = useState<CourseOut[]>([]);
-  const [total, setTotal] = useState(0);
+  const [_total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

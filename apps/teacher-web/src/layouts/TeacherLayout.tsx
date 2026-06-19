@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Button } from 'antd';
 import {
   CalendarOutlined,
@@ -16,9 +16,9 @@ import { useAuthStore } from '../store/authStore';
 const { Sider, Header, Content } = Layout;
 
 const menuItems = [
-  { key: '/courses/today', icon: <CalendarOutlined />, label: 'Today' },
-  { key: '/courses/history', icon: <HistoryOutlined />, label: 'All Courses' },
-  { key: '/change-password', icon: <KeyOutlined />, label: 'Change Password' },
+  { key: '/courses/today', icon: <CalendarOutlined />, label: '今日课程' },
+  { key: '/courses/history', icon: <HistoryOutlined />, label: '全部课程' },
+  { key: '/change-password', icon: <KeyOutlined />, label: '修改密码' },
 ];
 
 export default function TeacherLayout() {
@@ -40,10 +40,10 @@ export default function TeacherLayout() {
   const userMenu = (
     <Menu
       items={[
-        { key: 'profile', icon: <UserOutlined />, label: 'Profile' },
-        { key: 'password', icon: <KeyOutlined />, label: 'Change Password', onClick: () => navigate('/change-password') },
+        { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
+        { key: 'password', icon: <KeyOutlined />, label: '修改密码', onClick: () => navigate('/change-password') },
         { type: 'divider' as const },
-        { key: 'logout', icon: <LogoutOutlined />, label: 'Sign Out', danger: true, onClick: handleLogout },
+        { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true, onClick: handleLogout },
       ]}
     />
   );
@@ -123,7 +123,7 @@ export default function TeacherLayout() {
               />
               {!collapsed && (
                 <span style={{ fontSize: 14, color: '#1A2B4A' }}>
-                  {user?.role || 'Teacher'}
+                  {user?.role === 'teacher' ? '教师' : user?.role || '教师'}
                 </span>
               )}
             </div>

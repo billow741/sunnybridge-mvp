@@ -50,6 +50,7 @@ export interface CourseOut {
   meeting_link?: string;
   status: 'pending' | 'completed' | 'cancelled';
   children: ChildBrief[];
+  feedback?: FeedbackOut;
   created_at: string;
   updated_at: string;
 }

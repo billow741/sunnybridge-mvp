@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Modal, Form, Input, Button, Alert, message } from 'antd';
 import apiClient from '../api/client';
 import type { FeedbackCreate } from '../types';
