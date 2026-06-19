@@ -17,6 +17,7 @@ import { Modal, Form, Input, Alert, Card } from 'antd';
 import type { Teacher } from '../../services/teacher';
 
 interface TeacherFormValues {
+  username: string;
   name: string;
   phone: string;
   email?: string;
@@ -27,7 +28,7 @@ interface TeacherFormProps {
   open: boolean;
   teacher: Teacher | null;
   loading: boolean;
-  onSubmit: (values: { name: string; phone: string; email?: string; bio?: string }) => void;
+  onSubmit: (values: { username: string; name: string; phone: string; email?: string; bio?: string }) => void;
   onCancel: () => void;
   /** initial_password returned after create — displayed in parent */
   initialPassword?: string | null;
@@ -49,6 +50,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
     if (open) {
       if (teacher) {
         form.setFieldsValue({
+          username: teacher.username,
           name: teacher.name,
           phone: teacher.phone,
           email: teacher.email || undefined,
@@ -119,6 +121,19 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
           bordered={false}
           style={{ marginBottom: 16, background: '#fafafa' }}
         >
+          <Form.Item
+            name="username"
+            label="登录用户名"
+            tooltip="教师登录时使用的用户名，创建后不可修改"
+            rules={[
+              { required: true, message: '请输入用户名' },
+              { max: 50, message: '用户名最多50个字符' },
+              { pattern: /^[a-zA-Z0-9_]+$/, message: '仅支持英文、数字和下划线' },
+            ]}
+          >
+            <Input placeholder="例如: teacher01" maxLength={50} disabled={isEdit} />
+          </Form.Item>
+
           <Form.Item
             name="name"
             label="姓名"
