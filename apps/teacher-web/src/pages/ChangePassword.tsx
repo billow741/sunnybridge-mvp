@@ -6,6 +6,18 @@ import AppLogo from '../components/AppLogo';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../api/client';
 
+/** 将后端错误 detail 转为可显示字符串（兼容 Pydantic V2 对象格式） */
+function extractErrorMsg(err: any, fallback: string): string {
+  const raw = err?.response?.data?.detail;
+  if (typeof raw === 'string') return raw;
+  if (Array.isArray(raw)) {
+    // Pydantic V2: [{type, loc, msg, input}, ...]
+    return raw.map((e: any) => e.msg || String(e)).join('; ');
+  }
+  if (raw?.msg) return raw.msg;
+  return fallback;
+}
+
 export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -27,18 +39,17 @@ export default function ChangePasswordPage() {
         navigate('/login', { replace: true });
       }, 2000);
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Failed to update password. Please try again.';
-      setError(msg);
+      setError(extractErrorMsg(err, '密码修改失败，请重试'));
     } finally {
       setLoading(false);
     }
   };
 
   const validateNewPassword = (_: any, value: string) => {
-    if (!value) return Promise.reject(new Error('Please enter a new password'));
-    if (value.length < 8) return Promise.reject(new Error('At least 8 characters'));
-    if (!/[A-Z]/.test(value)) return Promise.reject(new Error('Must include an uppercase letter'));
-    if (!/[0-9]/.test(value)) return Promise.reject(new Error('Must include a number'));
+    if (!value) return Promise.reject(new Error('请输入新密码'));
+    if (value.length < 8) return Promise.reject(new Error('至少8个字符'));
+    if (!/[A-Z]/.test(value)) return Promise.reject(new Error('需包含大写字母'));
+    if (!/[0-9]/.test(value)) return Promise.reject(new Error('需包含数字'));
     return Promise.resolve();
   };
 
@@ -60,14 +71,14 @@ export default function ChangePasswordPage() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <AppLogo size="md" />
-          <div style={{ fontSize: 15, color: '#64748B', marginTop: 8 }}>Change Password</div>
+          <div style={{ fontSize: 15, color: '#64748B', marginTop: 8 }}>修改密码</div>
         </div>
 
         {success && (
           <Alert
             type="success"
-            message="Password updated successfully!"
-            description="Redirecting to login..."
+            message="密码修改成功！"
+            description="即将跳转到登录页..."
             showIcon
             icon={<CheckCircleOutlined />}
             style={{ marginBottom: 20 }}
@@ -88,39 +99,39 @@ export default function ChangePasswordPage() {
         <Form layout="vertical" onFinish={onFinish} size="large" disabled={success}>
           <Form.Item
             name="current_password"
-            label="Current Password"
-            rules={[{ required: true, message: 'Please enter your current password' }]}
+            label="当前密码"
+            rules={[{ required: true, message: '请输入当前密码' }]}
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
-              placeholder="Current password"
+              placeholder="当前密码"
             />
           </Form.Item>
 
           <Form.Item
             name="new_password"
-            label="New Password"
+            label="新密码"
             rules={[{ validator: validateNewPassword }]}
             hasFeedback
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
-              placeholder="New password"
+              placeholder="新密码"
             />
           </Form.Item>
 
           <Form.Item
             name="confirm_password"
-            label="Confirm New Password"
+            label="确认新密码"
             dependencies={['new_password']}
             rules={[
-              { required: true, message: 'Please confirm your new password' },
+              { required: true, message: '请确认新密码' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('new_password') === value) {
                     return Promise.resolve();
                   }
-                  return Promise.reject(new Error('Passwords do not match'));
+                  return Promise.reject(new Error('两次密码不一致'));
                 },
               }),
             ]}
@@ -128,12 +139,12 @@ export default function ChangePasswordPage() {
           >
             <Input.Password
               prefix={<LockOutlined style={{ color: '#94A3B8' }} />}
-              placeholder="Confirm new password"
+              placeholder="确认新密码"
             />
           </Form.Item>
 
           <div style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16, lineHeight: '20px' }}>
-            Password requirements: ≥8 characters, 1 uppercase letter, 1 number
+            密码要求：至少8个字符，含1个大写字母，含1个数字
           </div>
 
           <Form.Item style={{ marginBottom: 0 }}>
@@ -144,7 +155,7 @@ export default function ChangePasswordPage() {
               loading={loading}
               style={{ height: 44, fontWeight: 600 }}
             >
-              Update Password
+              修改密码
             </Button>
           </Form.Item>
         </Form>
