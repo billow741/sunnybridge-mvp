@@ -75,6 +75,10 @@ async def _enrich_child(row: dict) -> ChildOut:
             parent_brief = ParentBrief(**p.data[0])
 
     row["parent"] = parent_brief
+    # 计算课时余额
+    row["totalhours"] = row.get("totalhours") or 0
+    row["usedhours"] = row.get("usedhours") or 0
+    row["remaining_hours"] = row["totalhours"] - row["usedhours"]
     return ChildOut(**row)
 
 
@@ -123,6 +127,8 @@ async def create_child(body: ChildCreate) -> ChildOut:
     insert_data = {
         "name": body.name,
         "parent_id": parent_id,
+        "totalhours": body.totalhours,
+        "usedhours": body.usedhours,
     }
     if body.english_name is not None:
         insert_data["english_name"] = body.english_name
@@ -176,6 +182,10 @@ async def update_child(child_id: UUID, body: ChildUpdate) -> ChildOut:
         update_data["birth_date"] = body.birth_date.isoformat()
     if body.level is not None:
         update_data["level"] = body.level
+    if body.totalhours is not None:
+        update_data["totalhours"] = body.totalhours
+    if body.usedhours is not None:
+        update_data["usedhours"] = body.usedhours
     if body.parent_phone is not None:
         # Re-assign to new parent
         new_parent_id = await _find_or_create_parent(body.parent_phone)

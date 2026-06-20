@@ -13,7 +13,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, Alert, Card } from 'antd';
+import { Modal, Form, Input, Alert, Card, InputNumber } from 'antd';
 import type { Teacher } from '../../services/teacher';
 
 interface TeacherFormValues {
@@ -22,13 +22,14 @@ interface TeacherFormValues {
   phone: string;
   email?: string;
   bio?: string;
+  hourly_rate?: number;
 }
 
 interface TeacherFormProps {
   open: boolean;
   teacher: Teacher | null;
   loading: boolean;
-  onSubmit: (values: { username: string; name: string; phone: string; email?: string; bio?: string }) => void;
+  onSubmit: (values: { username: string; name: string; phone: string; email?: string; bio?: string; hourly_rate?: number }) => void;
   onCancel: () => void;
   /** initial_password returned after create — displayed in parent */
   initialPassword?: string | null;
@@ -55,6 +56,7 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
           phone: teacher.phone,
           email: teacher.email || undefined,
           bio: teacher.bio || undefined,
+          hourly_rate: teacher.hourly_rate ?? undefined,
         });
       } else {
         form.resetFields();
@@ -186,6 +188,10 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
               maxLength={500}
               showCount
             />
+          </Form.Item>
+
+          <Form.Item label="时薪 (元/小时)" name="hourly_rate" tooltip="教师的课时费用单价">
+            <InputNumber min={0} step={10} precision={2} style={{ width: '100%' }} placeholder="可选" />
           </Form.Item>
         </Card>
       </Form>

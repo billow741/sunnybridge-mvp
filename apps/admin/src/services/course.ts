@@ -52,6 +52,7 @@ export interface Course {
   teacher: TeacherBrief | null;
   meeting_link: string | null;
   status: CourseStatus;
+  hours: number;
   children: ChildBrief[];
   created_at: string;
   updated_at: string;
@@ -78,6 +79,7 @@ export interface CourseCreateParams {
   teacher_id: string;
   meeting_link?: string;
   child_ids: string[];
+  hours?: number;
 }
 
 /** PUT /courses/:id request body (CourseUpdate). All fields optional. */
@@ -89,6 +91,7 @@ export interface CourseUpdateParams {
   meeting_link?: string | null; // null = clear the field
   status?: CourseStatus;
   child_ids?: string[]; // full replacement
+  hours?: number;
 }
 
 // ── API functions ─────────────────────────────────

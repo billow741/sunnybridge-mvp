@@ -40,6 +40,9 @@ export interface Student {
   parent_id: string;
   parent: ParentBrief | null;
   parent_phone: string | null;
+  totalhours: number;
+  usedhours: number;
+  remaining_hours: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -60,6 +63,8 @@ export interface StudentCreateParams {
   english_name?: string;
   birth_date?: string; // YYYY-MM-DD
   level?: Level;
+  totalhours?: number;
+  usedhours?: number;
 }
 
 /** PUT /children/:id request body (ChildUpdate). */
@@ -69,6 +74,8 @@ export interface StudentUpdateParams {
   birth_date?: string;
   level?: Level;
   parent_phone?: string;
+  totalhours?: number;
+  usedhours?: number;
 }
 
 // ── API functions ─────────────────────────────────

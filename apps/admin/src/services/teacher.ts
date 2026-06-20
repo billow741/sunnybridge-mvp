@@ -24,6 +24,7 @@ export interface Teacher {
   email: string | null;
   bio: string | null;
   avatar_url: string | null;
+  hourly_rate: number | null;
   is_active: boolean;
   must_change_password: boolean;
   created_at: string;
@@ -63,12 +64,14 @@ export interface TeacherCreateParams {
   username: string;
   phone: string;
   name: string;
+  hourly_rate?: number;
 }
 
 export interface TeacherUpdateParams {
   username?: string;
   phone?: string;
   name?: string;
+  hourly_rate?: number;
 }
 
 // ── API functions ─────────────────────────────────

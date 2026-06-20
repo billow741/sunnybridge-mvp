@@ -17,6 +17,7 @@ import {
   message,
   Avatar,
   Card,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
@@ -33,8 +34,8 @@ import {
 import type { Student, Level } from '../../services/student';
 
 const LEVEL_GRADE_MAP: Record<string, string> = {
-  L1: '一年级', L2: '二年级', L3: '三年级',
-  L4: '四年级', L5: '五年级', L6: '六年级',
+  L1: "一年级", L2: "二年级", L3: "三年级",
+  L4: "四年级", L5: "五年级", L6: "六年级",
 };
 
 const StudentsPage: React.FC = () => {
@@ -65,7 +66,7 @@ const StudentsPage: React.FC = () => {
   useEffect(() => { fetchList(); }, [fetchList]);
 
   // ── Create / Edit ────────────────────────────────
-  const handleFormSubmit = async (values: { name: string; parent_phone: string; english_name?: string; birth_date?: string; level?: Level }) => {
+  const handleFormSubmit = async (values: { name: string; parent_phone: string; english_name?: string; birth_date?: string; level?: Level; totalhours?: number; usedhours?: number }) => {
     setFormLoading(true);
     try {
       if (editingStudent) {
@@ -123,6 +124,31 @@ const StudentsPage: React.FC = () => {
       key: 'level',
       width: 80,
       render: (level: string) => LEVEL_GRADE_MAP[level] || level || '—',
+    },
+    {
+      title: '课时余额',
+      key: 'hours',
+      width: 120,
+      render: (_: unknown, record: Student) => {
+        const remaining = record.remaining_hours ?? 0;
+        const totalHours = record.totalhours ?? 0;
+        const usedHours = record.usedhours ?? 0;
+        
+        let color = 'green';
+        if (remaining <= 5) {
+          color = 'red';
+        } else if (remaining <= 10) {
+          color = 'orange';
+        }
+        
+        const tooltipText = `总课时: ${totalHours}, 已用: ${usedHours}, 余额: ${remaining}`;
+        
+        return (
+          <Tooltip title={tooltipText}>
+            <Tag color={color}>{remaining}/{totalHours}</Tag>
+          </Tooltip>
+        );
+      },
     },
     {
       title: '家长电话',

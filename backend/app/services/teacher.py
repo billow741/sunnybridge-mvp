@@ -19,7 +19,7 @@ from app.schemas.teacher import (
 )
 
 # Columns to select from teachers table — NEVER include password_hash
-_TEACHER_COLUMNS = "id,username,phone,name,avatar_url,is_active,must_change_password,created_at,updated_at"
+_TEACHER_COLUMNS = "id,username,phone,name,avatar_url,hourly_rate,is_active,must_change_password,created_at,updated_at"
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +60,7 @@ def list_teachers(page: int = 1, page_size: int = 20, include_inactive: bool = T
 # Create teacher
 # ---------------------------------------------------------------------------
 
-def create_teacher(username: str, phone: str, name: str) -> TeacherCreateResponse:
+def create_teacher(username: str, phone: str, name: str, hourly_rate: float | None = None) -> TeacherCreateResponse:
     """Create a teacher with auto-generated initial password.
 
     Returns the teacher record + initial_password (plaintext).
@@ -107,16 +107,19 @@ def create_teacher(username: str, phone: str, name: str) -> TeacherCreateRespons
         )
     else:
         # Insert new teacher
+        insert_payload = {
+            "username": username,
+            "phone": phone,
+            "name": name,
+            "password_hash": password_hash,
+            "must_change_password": True,
+            "is_active": True,
+        }
+        if hourly_rate is not None:
+            insert_payload["hourly_rate"] = hourly_rate
         row = (
             sb.table("teachers")
-            .insert({
-                "username": username,
-                "phone": phone,
-                "name": name,
-                "password_hash": password_hash,
-                "must_change_password": True,
-                "is_active": True,
-            })
+            .insert(insert_payload)
             .execute()
             .data[0]
         )
@@ -212,6 +215,9 @@ def update_teacher(teacher_id: UUID, **fields) -> TeacherOut | None:
 
     if "avatar_url" in fields:
         update_data["avatar_url"] = fields["avatar_url"]
+
+    if "hourly_rate" in fields:
+        update_data["hourly_rate"] = fields["hourly_rate"]
 
     if not update_data:
         return existing

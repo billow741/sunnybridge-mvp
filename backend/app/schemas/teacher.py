@@ -18,6 +18,7 @@ class TeacherCreateRequest(BaseModel):
     username: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9_]+$", description="教师登录用户名")
     phone: str = Field(..., pattern=r"^1[3-9]\d{9}$", description="手机号")
     name: str = Field(..., min_length=1, max_length=50, description="教师姓名")
+    hourly_rate: float | None = Field(None, ge=0, description="时薪 (元/小时)")
 
 
 class TeacherUpdateRequest(BaseModel):
@@ -26,6 +27,7 @@ class TeacherUpdateRequest(BaseModel):
     phone: str | None = Field(None, pattern=r"^1[3-9]\d{9}$", description="手机号")
     name: str | None = Field(None, min_length=1, max_length=50, description="教师姓名")
     avatar_url: str | None = Field(None, description="头像 URL")
+    hourly_rate: float | None = Field(None, ge=0, description="时薪 (元/小时)")
 
 
 class TeacherListParams(BaseModel):
@@ -45,6 +47,7 @@ class TeacherOut(BaseModel):
     phone: str
     name: str
     avatar_url: str | None = None
+    hourly_rate: float | None = None
     is_active: bool
     must_change_password: bool
     created_at: datetime

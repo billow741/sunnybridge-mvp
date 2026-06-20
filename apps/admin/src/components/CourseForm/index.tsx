@@ -19,7 +19,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, DatePicker, TimePicker, Select, Input, Spin, message, Card, Space, Button } from 'antd';
+import { Modal, Form, DatePicker, TimePicker, Select, Input, InputNumber, Spin, message, Card, Space, Button } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import type { Course, CourseStatus } from '../../services/course';
@@ -48,6 +48,7 @@ export interface CourseFormValues {
   description?: string;
   course_type: string;
   status?: CourseStatus;
+  hours?: number;
   // 排课信息
   teacher_id: string;
   child_id: string;
@@ -83,6 +84,7 @@ interface CourseFormProps {
     child_ids: string[];
     meeting_link?: string;
     status?: CourseStatus;
+    hours?: number;
   }) => void;
   onCancel: () => void;
 }
@@ -147,6 +149,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
           description: '',
           course_type: 'reading',
           status: course.status,
+          hours: course.hours ?? 1,
           // 排课信息
           teacher_id: course.teacher_id,
           child_id: course.children[0]?.id || '',
@@ -178,6 +181,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
         child_ids: [values.child_id],
         meeting_link: values.meeting_link || undefined,
         status: isEdit ? values.status : undefined,
+        hours: values.hours,
       });
     } catch {
       // validation failed — antd shows field errors
@@ -361,6 +365,10 @@ const CourseForm: React.FC<CourseFormProps> = ({
             ]}
           >
             <Input placeholder="如: https://meeting.tencent.com/..." allowClear />
+          </Form.Item>
+
+          <Form.Item label="消耗课时" name="hours" tooltip="本次课程消耗的课时数，默认1">
+            <InputNumber min={0} step={0.5} precision={1} style={{ width: '100%' }} placeholder="默认1课时" />
           </Form.Item>
         </Form>
       </Spin>

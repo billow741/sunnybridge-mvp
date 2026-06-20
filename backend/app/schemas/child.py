@@ -23,6 +23,8 @@ class ChildCreate(BaseModel):
     english_name: str | None = Field(None, max_length=50, description="English name")
     birth_date: date | None = Field(None, description="Birth date")
     level: str | None = Field(None, pattern=r"^L[1-6]$", description="Level L1-L6")
+    totalhours: int = Field(0, ge=0, description="总课时 (children.totalhours)")
+    usedhours: int = Field(0, ge=0, description="已用课时 (children.usedhours)")
 
 
 class ChildUpdate(BaseModel):
@@ -33,6 +35,8 @@ class ChildUpdate(BaseModel):
     level: str | None = Field(None, pattern=r"^L[1-6]$")
     parent_phone: str | None = Field(None, min_length=5, max_length=20,
                                        description="New parent phone (re-assigns parent)")
+    totalhours: int | None = Field(None, ge=0, description="总课时")
+    usedhours: int | None = Field(None, ge=0, description="已用课时")
 
 
 class ParentBrief(BaseModel):
@@ -51,6 +55,9 @@ class ChildOut(BaseModel):
     level: str | None = None
     parent_id: UUID
     parent: ParentBrief | None = None
+    totalhours: int = 0
+    usedhours: int = 0
+    remaining_hours: int = 0
     created_at: datetime
     updated_at: datetime
 
