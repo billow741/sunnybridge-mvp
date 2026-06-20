@@ -119,9 +119,12 @@ ALTER TABLE children ADD COLUMN IF NOT EXISTS total_hours NUMERIC(10,2) NOT NULL
 ALTER TABLE children ADD COLUMN IF NOT EXISTS used_hours NUMERIC(10,2) NOT NULL DEFAULT 0
   CHECK (used_hours >= 0);
 
--- 课时余额约束：used_hours 不能超过 total_hours
-ALTER TABLE children ADD CONSTRAINT chk_children_hours
-  CHECK (used_hours <= total_hours);
+-- 课时余额约束：used_hours 不能超过 total_hours（幂等）
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='chk_children_hours') THEN
+    ALTER TABLE children ADD CONSTRAINT chk_children_hours CHECK (used_hours <= total_hours);
+  END IF;
+END $$;
 
 -- 索引
 CREATE INDEX IF NOT EXISTS idx_children_status ON children(status);
@@ -166,40 +169,40 @@ CREATE INDEX IF NOT EXISTS idx_mapping_table ON mapping_old_to_new(table_name);
 -- Part D: RLS + Triggers — 新表安全 & 自动化
 -- ============================================================
 
--- ── D1. RLS 启用 ──
+-- ── D1. RLS 启用（幂等：重复执行无副作用）──
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE teacher_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
 
--- ── D2. RLS 策略（全部 deny anon，仅 service_role 可操作）──
-CREATE POLICY "No direct payment reads" ON payments
-  FOR SELECT USING (false);
-CREATE POLICY "No direct payment writes" ON payments
-  FOR INSERT WITH CHECK (false);
-CREATE POLICY "No direct payment updates" ON payments
-  FOR UPDATE USING (false);
+-- ── D2. RLS 策略（幂等：先 DROP 再 CREATE）──
+DROP POLICY IF EXISTS "No direct payment reads" ON payments;
+DROP POLICY IF EXISTS "No direct payment writes" ON payments;
+DROP POLICY IF EXISTS "No direct payment updates" ON payments;
+CREATE POLICY "No direct payment reads" ON payments FOR SELECT USING (false);
+CREATE POLICY "No direct payment writes" ON payments FOR INSERT WITH CHECK (false);
+CREATE POLICY "No direct payment updates" ON payments FOR UPDATE USING (false);
 
-CREATE POLICY "No direct tp reads" ON teacher_payments
-  FOR SELECT USING (false);
-CREATE POLICY "No direct tp writes" ON teacher_payments
-  FOR INSERT WITH CHECK (false);
-CREATE POLICY "No direct tp updates" ON teacher_payments
-  FOR UPDATE USING (false);
+DROP POLICY IF EXISTS "No direct tp reads" ON teacher_payments;
+DROP POLICY IF EXISTS "No direct tp writes" ON teacher_payments;
+DROP POLICY IF EXISTS "No direct tp updates" ON teacher_payments;
+CREATE POLICY "No direct tp reads" ON teacher_payments FOR SELECT USING (false);
+CREATE POLICY "No direct tp writes" ON teacher_payments FOR INSERT WITH CHECK (false);
+CREATE POLICY "No direct tp updates" ON teacher_payments FOR UPDATE USING (false);
 
-CREATE POLICY "No direct settings reads" ON settings
-  FOR SELECT USING (false);
-CREATE POLICY "No direct settings writes" ON settings
-  FOR INSERT WITH CHECK (false);
-CREATE POLICY "No direct settings updates" ON settings
-  FOR UPDATE USING (false);
+DROP POLICY IF EXISTS "No direct settings reads" ON settings;
+DROP POLICY IF EXISTS "No direct settings writes" ON settings;
+DROP POLICY IF EXISTS "No direct settings updates" ON settings;
+CREATE POLICY "No direct settings reads" ON settings FOR SELECT USING (false);
+CREATE POLICY "No direct settings writes" ON settings FOR INSERT WITH CHECK (false);
+CREATE POLICY "No direct settings updates" ON settings FOR UPDATE USING (false);
 
-CREATE POLICY "No direct package reads" ON packages
-  FOR SELECT USING (false);
-CREATE POLICY "No direct package writes" ON packages
-  FOR INSERT WITH CHECK (false);
-CREATE POLICY "No direct package updates" ON packages
-  FOR UPDATE USING (false);
+DROP POLICY IF EXISTS "No direct package reads" ON packages;
+DROP POLICY IF EXISTS "No direct package writes" ON packages;
+DROP POLICY IF EXISTS "No direct package updates" ON packages;
+CREATE POLICY "No direct package reads" ON packages FOR SELECT USING (false);
+CREATE POLICY "No direct package writes" ON packages FOR INSERT WITH CHECK (false);
+CREATE POLICY "No direct package updates" ON packages FOR UPDATE USING (false);
 
 
 -- ── D3. updated_at 触发器 ──

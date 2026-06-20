@@ -41,7 +41,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_admin ON users(username) WH
 CREATE TABLE IF NOT EXISTS teachers (
  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
  username VARCHAR(50) NOT NULL UNIQUE, -- 教师登录用户名
- phone VARCHAR(20) NOT NULL, -- 教师联系手机号（不再作登录主键，仅作联系字段）
+ phone VARCHAR(20), -- 教师联系手机号（可空，CRM历史数据部分缺失）
  name VARCHAR(50) NOT NULL,
  password_hash VARCHAR(255) NOT NULL, -- bcrypt 哈希，无 DEFAULT — 必须显式提供
  must_change_password BOOLEAN NOT NULL DEFAULT true, -- 首次登录强制改密

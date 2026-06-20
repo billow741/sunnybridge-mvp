@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS courses (
     date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-    teacher_id UUID NOT NULL REFERENCES teachers(id),
+    teacher_id UUID REFERENCES teachers(id), -- 可空：旧CRM课程可能无教师关联
     meeting_link TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'cancelled')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS feedbacks (
     content TEXT NOT NULL,
     homework TEXT,
     notes TEXT,
-    created_by UUID NOT NULL REFERENCES teachers(id),
+    created_by UUID REFERENCES teachers(id), -- 可空：旧CRM课程可能无教师关联
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
