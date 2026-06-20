@@ -7,16 +7,19 @@
  */
 
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, DatePicker, Select, Card } from 'antd';
+import { Modal, Form, Input, DatePicker, Select, Card, InputNumber } from 'antd';
+import dayjs from 'dayjs';
 import type { Student, Level } from '../../services/student';
 
 interface StudentFormValues {
   name: string;
   phone: string;
   english_name?: string;
-  birth_date?: string; // YYYY-MM-DD
+  birth_date?: dayjs.Dayjs | string; // Dayjs for DatePicker, string for API
   level?: Level;
   parent_phone: string;
+  totalhours?: number;
+  usedhours?: number;
 }
 
 interface StudentFormProps {
@@ -29,6 +32,8 @@ interface StudentFormProps {
     english_name?: string;
     birth_date?: string;
     level?: Level;
+    totalhours?: number;
+    usedhours?: number;
   }) => void;
   onCancel: () => void;
 }
@@ -59,9 +64,11 @@ const StudentForm: React.FC<StudentFormProps> = ({
           name: student.name,
           phone: student.phone || '',
           english_name: student.english_name || undefined,
-          birth_date: student.birth_date || undefined,
+          birth_date: student.birth_date ? dayjs(student.birth_date) : undefined,
           level: student.level || undefined,
           parent_phone: student.parent_phone || student.parent?.phone || '',
+          totalhours: student.totalhours || 0,
+          usedhours: student.usedhours || 0,
         });
       } else {
         form.resetFields();
@@ -76,8 +83,10 @@ const StudentForm: React.FC<StudentFormProps> = ({
         name: values.name,
         parent_phone: values.parent_phone,
         english_name: values.english_name,
-        birth_date: values.birth_date,
+        birth_date: (values.birth_date as dayjs.Dayjs)?.format?.('YYYY-MM-DD') ?? (values.birth_date as string | undefined),
         level: values.level,
+        totalhours: values.totalhours,
+        usedhours: values.usedhours,
       });
     } catch {
       // antd shows field errors
@@ -144,6 +153,29 @@ const StudentForm: React.FC<StudentFormProps> = ({
             rules={[{ required: true, message: '请输入家长电话' }]}
           >
             <Input placeholder="请输入家长电话" maxLength={11} prefix="+86" />
+          </Form.Item>
+        </Card>
+
+        <Card
+          size="small"
+          title="课时信息"
+          bordered={false}
+          style={{ marginBottom: 16, background: '#fafafa' }}
+        >
+          <Form.Item
+            name="totalhours"
+            label="总课时"
+            initialValue={isEdit ? undefined : 0}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} placeholder="请输入总课时" />
+          </Form.Item>
+
+          <Form.Item
+            name="usedhours"
+            label="已用课时"
+            initialValue={isEdit ? undefined : 0}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} placeholder="请输入已用课时" />
           </Form.Item>
         </Card>
       </Form>

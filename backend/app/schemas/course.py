@@ -45,6 +45,7 @@ class CourseCreate(BaseModel):
     teacher_id: UUID = Field(..., description="Teacher UUID")
     meeting_link: str | None = Field(None, description="Tencent meeting link")
     child_ids: list[UUID] = Field(default_factory=list, description="Student UUIDs to enroll")
+    hours: float | None = Field(None, ge=0, description="本次课程消耗课时 (默认1)")
 
     @model_validator(mode="after")
     def check_time_order(self) -> "CourseCreate":
@@ -62,6 +63,7 @@ class CourseUpdate(BaseModel):
     meeting_link: str | None = None
     status: str | None = Field(None, pattern=r"^(pending|completed|cancelled)$")
     child_ids: list[UUID] | None = Field(None, description="Replace enrolled students (full replacement)")
+    hours: float | None = Field(None, ge=0, description="本次课程消耗课时")
 
     @model_validator(mode="after")
     def check_time_order(self) -> "CourseUpdate":
@@ -81,6 +83,7 @@ class CourseOut(BaseModel):
     teacher: TeacherBrief | None = None
     meeting_link: str | None = None
     status: str = "pending"
+    hours: float = 1
     children: list[ChildBrief] = []
     created_at: datetime
     updated_at: datetime

@@ -111,6 +111,8 @@ async def create_course(body: CourseCreate) -> CourseDetail:
         "teacher_id": str(body.teacher_id),
         "meeting_link": body.meeting_link,
     }
+    if body.hours is not None:
+        course_data["hours"] = body.hours
     result = sb.table("courses").insert(course_data).execute()
     course_id = result.data[0]["id"]
 
@@ -168,6 +170,8 @@ async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
         update_data["meeting_link"] = body.meeting_link
     if body.status is not None:
         update_data["status"] = body.status
+    if body.hours is not None:
+        update_data["hours"] = body.hours
 
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()

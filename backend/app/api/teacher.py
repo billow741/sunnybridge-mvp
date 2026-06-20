@@ -71,7 +71,7 @@ async def teacher_create(
 ) -> TeacherCreateResponse:
     """Create a teacher with auto-generated initial password. Admin only."""
     try:
-        return create_teacher(username=body.username, phone=body.phone, name=body.name)
+        return create_teacher(username=body.username, phone=body.phone, name=body.name, hourly_rate=body.hourly_rate)
     except ValueError as e:
         error_msg = str(e)
         if "用户名" in error_msg:
@@ -148,6 +148,7 @@ async def teacher_update(
             phone=body.phone,
             name=body.name,
             avatar_url=body.avatar_url,
+            hourly_rate=body.hourly_rate,
         )
     except ValueError as e:
         error_msg = str(e)

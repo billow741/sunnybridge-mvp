@@ -95,12 +95,13 @@ const CoursesPage: React.FC = () => {
     child_ids: string[];
     meeting_link?: string;
     status?: CourseStatus;
+    hours?: number;
   }) => {
     setFormLoading(true);
     try {
       if (editingCourse) {
         // Edit mode — only send changed fields (diff) to avoid unnecessary child_ids replacement
-        const changed: { date?: string; start_time?: string; end_time?: string; teacher_id?: string; child_ids?: string[]; meeting_link?: string | null; status?: CourseStatus } = {};
+        const changed: { date?: string; start_time?: string; end_time?: string; teacher_id?: string; child_ids?: string[]; meeting_link?: string | null; status?: CourseStatus; hours?: number } = {};
 
         const origDate = editingCourse.date;
         const origStartTime = editingCourse.start_time.substring(0, 5);
@@ -257,6 +258,14 @@ const CoursesPage: React.FC = () => {
         const cfg = STATUS_CONFIG[status] || { color: 'default', label: status };
         return <Tag color={cfg.color}>{cfg.label}</Tag>;
       },
+    },
+    {
+      title: '课时',
+      dataIndex: 'hours',
+      key: 'hours',
+      width: 80,
+      align: 'center',
+      render: (v: number) => v != null ? `${v}h` : '1h',
     },
     {
       title: '操作',

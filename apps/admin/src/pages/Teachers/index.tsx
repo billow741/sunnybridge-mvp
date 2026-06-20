@@ -65,7 +65,7 @@ const TeachersPage: React.FC = () => {
   useEffect(() => { fetchList(); }, [fetchList]);
 
   // ── Create / Edit ────────────────────────────────
-  const handleFormSubmit = async (values: { username: string; name: string; phone: string; email?: string; bio?: string }) => {
+  const handleFormSubmit = async (values: { username: string; name: string; phone?: string; email?: string; bio?: string; hourly_rate?: number }) => {
     setFormLoading(true);
     try {
       if (editingTeacher) {
@@ -136,6 +136,13 @@ const TeachersPage: React.FC = () => {
       key: 'email',
       width: 180,
       render: (v: string) => v || '—',
+    },
+    {
+      title: '时薪',
+      dataIndex: 'hourly_rate',
+      key: 'hourly_rate',
+      width: 100,
+      render: (v: number | null) => v != null ? `¥${v}/h` : '—',
     },
     {
       title: '状态',
