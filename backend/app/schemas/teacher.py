@@ -44,7 +44,7 @@ class TeacherOut(BaseModel):
     """Teacher response — never includes password_hash."""
     id: UUID
     username: str
-    phone: str
+    phone: str | None = None
     name: str
     avatar_url: str | None = None
     hourly_rate: float | None = None

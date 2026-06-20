@@ -8,6 +8,7 @@
 
 import React, { useEffect } from 'react';
 import { Modal, Form, Input, DatePicker, Select, Card, InputNumber } from 'antd';
+import dayjs from 'dayjs';
 import type { Student, Level } from '../../services/student';
 
 interface StudentFormValues {
@@ -63,7 +64,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
           name: student.name,
           phone: student.phone || '',
           english_name: student.english_name || undefined,
-          birth_date: student.birth_date || undefined,
+          birth_date: student.birth_date ? dayjs(student.birth_date) : undefined,
           level: student.level || undefined,
           parent_phone: student.parent_phone || student.parent?.phone || '',
           totalhours: student.totalhours || 0,
