@@ -1,103 +1,46 @@
-import { useState, useEffect } from 'react';
-import { Card, Select, Row, Col, Tag, Typography, Space, Tabs } from 'antd';
-import { BookOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
-import PageContainer from '../../components/PageContainer';
-import ReadingProgressCard from '../../components/ReadingProgressCard';
-import LoadingState from '../../components/LoadingState';
-import ErrorState from '../../components/ErrorState';
-import EmptyState from '../../components/EmptyState';
-import apiClient from '../../api/client';
-import type { MaterialOut as MaterialOut, ProgressOut, PaginatedResponse } from '../../types';
-import { categoryLabels, levelLabels } from '../../utils/labels';
-
-const levelOptions = [{ value: '', label: '全部级别' }, ...Object.entries(levelLabels).map(([v, l]) => ({ value: v, label: l }))];
-const categoryOptions = [{ value: '', label: '全部类型' }, ...Object.entries(categoryLabels).map(([v, l]) => ({ value: v, label: l }))];
-
-const levelColors: Record<string, string> = {
-  L1: '#48BB78', L2: '#54C5F8', L3: '#9F7AEA', L4: '#ED8936', L5: '#E53E3E', L6: '#01579B',
-};
+import { useEffect, useState } from 'react';
+import { Card, List, Tag, Spin, Select } from 'antd';
+import client, { extractError } from '@/api/client';
 
 export default function ReadingList() {
-  const navigate = useNavigate();
-  const [materials, setMaterials] = useState<PaginatedResponse<MaterialOut>>({ items: [], total: 0, page: 1, page_size: 20 });
-  const [progress, setProgress] = useState<ProgressOut[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [level, setLevel] = useState('');
-  const [category, setCategory] = useState('');
-  const [tab, setTab] = useState('all');
+  const [levelFilter, setLevelFilter] = useState<string>();
 
-  const fetchData = () => {
-    setLoading(true);
-    setError(null);
-    const params: Record<string, string> = { page: '1', page_size: '20' };
-    if (level) params.level = level;
-    if (category) params.category = category;
-    Promise.all([
-      apiClient.get<PaginatedResponse<MaterialOut>>('/reading/materials', { params }),
-      apiClient.get<ProgressOut[]>('/reading/progress').catch(() => ({ data: [] })),
-    ]).then(([mRes, pRes]) => {
-      setMaterials(mRes.data);
-      setProgress(pRes.data || []);
-    }).catch((err) => setError(err.response?.data?.detail?.message || '加载失败'))
-    .finally(() => setLoading(false));
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await client.get('/reading-materials', { params: { page: 1, page_size: 200 } });
+        setMaterials(Array.isArray(data) ? data : (data.items || []));
+      } catch (err) { console.error(extractError(err)); }
+      finally { setLoading(false); }
+    })();
+  }, []);
 
-  useEffect(() => { fetchData(); }, [level, category]);
+  if (loading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
 
-  if (error) return <PageContainer><ErrorState message={error} onRetry={fetchData} /></PageContainer>;
+  const levels = [...new Set(materials.map((m: any) => m.level).filter(Boolean))];
+  const filtered = levelFilter ? materials.filter(m => m.level === levelFilter) : materials;
 
   return (
-    <PageContainer title="阅读" extra={
-      <Space>
-        <Select value={level} onChange={setLevel} options={levelOptions} style={{ width: 120 }} />
-        <Select value={category} onChange={setCategory} options={categoryOptions} style={{ width: 120 }} />
-      </Space>
-    }>
-      <Tabs activeKey={tab} onChange={setTab} items={[
-        { key: 'all', label: '全部材料' },
-        { key: 'progress', label: `阅读进度 (${progress.length})` },
-      ]} />
-
-      {tab === 'progress' ? (
-        progress.length === 0 ? <EmptyState title="还没有开始阅读哦 📖" /> : (
-          <Row gutter={[16, 16]}>
-            {progress.map((p) => (
-              <Col xs={24} sm={12} md={8} key={p.id}>
-                <ReadingProgressCard progress={p} />
-              </Col>
-            ))}
-          </Row>
-        )
-      ) : loading ? <LoadingState /> : materials.items.length === 0 ? <EmptyState title="暂无阅读材料" /> : (
-        <Row gutter={[16, 16]}>
-          {materials.items.map((m:MaterialOut) => (
-            <Col xs={24} sm={12} lg={8} key={m.id}>
-              <Card hoverable onClick={() => navigate(`/reading/${m.id}`)} style={{ height: '100%', borderRadius: 12 }}>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div style={{
-                    width: 52, height: 52, borderRadius: 10,
-                    background: `${levelColors[m.level] || '#54C5F8'}15`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 22, color: levelColors[m.level] || '#54C5F8', flexShrink: 0,
-                  }}>
-                    <BookOutlined />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <Typography.Text strong ellipsis style={{ fontSize: 15, display: 'block' }}>{m.title}</Typography.Text>
-                    <Space style={{ marginTop: 4 }}>
-                      <Tag color={levelColors[m.level] || 'blue'}>{levelLabels[m.level] || m.level}</Tag>
-                      <Tag>{categoryLabels[m.category] || m.category}</Tag>
-                    </Space>
-                  </div>
-                </div>
-                <Typography.Text type="secondary">{m.page_count} 页</Typography.Text>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
-    </PageContainer>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontWeight: 600, fontSize: 18 }}>阅读资源</div>
+        {levels.length > 0 && <Select placeholder="筛选级别" style={{ width: 120 }} allowClear onChange={setLevelFilter}
+          options={levels.map(l => ({ value: l, label: l }))} />}
+      </div>
+      <List grid={{ gutter: 12, xs: 1, sm: 2, md: 3 }} dataSource={filtered} renderItem={(m: any) => (
+        <List.Item>
+          <Card hoverable size="small" style={{ borderRadius: 10 }}
+            cover={m.cover_url ? <img src={m.cover_url} alt={m.title} style={{ height: 120, objectFit: 'cover', borderRadius: '10px 10px 0 0' }} /> : undefined}
+            actions={m.pdf_url ? [<a href={m.pdf_url} target="_blank" rel="noopener" style={{ fontSize: 13 }}>查看PDF</a>] : undefined}>
+            <Card.Meta
+              title={<span style={{ fontSize: 14 }}>{m.title}</span>}
+              description={<>{m.level && <Tag color="blue">{m.level}</Tag>}{m.category && <Tag>{m.category}</Tag>}{m.page_count && <span style={{ color: '#94a3b8', fontSize: 12 }}>{m.page_count}页</span>}</>}
+            />
+          </Card>
+        </List.Item>
+      )} />
+    </div>
   );
 }

@@ -1,54 +1,42 @@
-import React, { useState } from 'react';
-import { Form, Input, Button, Alert, Typography } from 'antd';
+import { useState } from 'react';
+import { Form, Input, Button, message } from 'antd';
 import { PhoneOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate, Navigate } from 'react-router-dom';
-import AppLogo from '../components/AppLogo';
-import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom';
+import client, { extractError } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
 
-export default function LoginPage() {
-  const navigate = useNavigate();
-  const { login, isAuthenticated, fetchChildren } = useAuthStore();
+export default function Login() {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  if (isAuthenticated) return <Navigate to="/home" replace />;
+  const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
 
   const onFinish = async (values: { phone: string; password: string }) => {
     setLoading(true);
-    setError('');
     try {
-      await login(values.phone, values.password);
-      await fetchChildren();
-      navigate('/home', { replace: true });
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || '登录失败，请检查手机号和密码');
-    } finally {
-      setLoading(false);
-    }
+      const { data } = await client.post('/auth/parent/login', values);
+      setAuth(data.access_token, { phone: values.phone, role: 'parent' });
+      navigate('/', { replace: true });
+    } catch (err) { message.error(extractError(err, '登录失败')); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'linear-gradient(180deg, #FFFBF0 0%, #FFF5E6 100%)' }}>
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <AppLogo size="lg" variant="login" />
-        <Typography.Text style={{ display: 'block', marginTop: 8, color: '#A0AEC0', fontSize: 14 }}>
-          家长端 · 阳光桥在线英语
-        </Typography.Text>
-      </div>
-
-      <div style={{ width: '100%', maxWidth: 360 }}>
-        {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16, borderRadius: 12 }} />}
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #F4A230 0%, #5CAADF 100%)' }}>
+      <div style={{ width: 360, padding: '40px 24px', background: '#fff', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(135deg, #F4A230, #5CAADF)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: '#fff', fontWeight: 700, marginBottom: 12 }}>S</div>
+          <h2 style={{ margin: 0, fontSize: 22, color: '#1e293b' }}>SunnyBridge</h2>
+          <p style={{ color: '#64748b', margin: '4px 0 0' }}>家长端登录</p>
+        </div>
         <Form onFinish={onFinish} size="large">
           <Form.Item name="phone" rules={[{ required: true, message: '请输入手机号' }]}>
-            <Input prefix={<PhoneOutlined style={{ color: '#D48A20' }} />} placeholder="手机号" />
+            <Input prefix={<PhoneOutlined style={{ color: '#94a3b8' }} />} placeholder="手机号" />
           </Form.Item>
           <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
-            <Input.Password prefix={<LockOutlined style={{ color: '#D48A20' }} />} placeholder="密码" />
+            <Input.Password prefix={<LockOutlined style={{ color: '#94a3b8' }} />} placeholder="密码" />
           </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block style={{ height: 48, fontSize: 16, fontWeight: 600 }}>
-              登 录
-            </Button>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600 }}>登 录</Button>
           </Form.Item>
         </Form>
       </div>
