@@ -6,6 +6,16 @@ import apiClient from '../../api/client';
 import type { CourseOut } from '../../types';
 import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
 
+/** Extract error message from API detail — handles {code, message} object or string */
+function extractErrMsg(detail: unknown, fallback: string): string {
+  if (typeof detail === 'string') return detail;
+  if (detail && typeof detail === 'object') {
+    const obj = detail as Record<string, unknown>;
+    if (typeof obj.message === 'string') return obj.message;
+  }
+  return fallback;
+}
+
 const STATUS_OPTIONS = [
   { value: '', label: '全部状态' },
   { value: 'pending', label: '待上课' },
@@ -30,11 +40,11 @@ export default function CourseHistoryPage() {
       const params: Record<string, string | number> = { page, page_size: 20 };
       if (status) params.status = status;
       if (month) params.month = month;
-      const res = await apiClient.get('/courses/history', { params });
+      const res = await apiClient.get('/courses/all', { params });
       setCourses(res.data?.items || []);
       setTotal(res.data?.total || 0);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to load course history');
+      setError(extractErrMsg(err?.response?.data?.detail, 'Failed to load course history'));
     } finally {
       setLoading(false);
     }

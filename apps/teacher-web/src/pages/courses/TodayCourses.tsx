@@ -25,7 +25,8 @@ export default function TodayCoursesPage() {
       const res = await apiClient.get('/courses/today');
       setCourses(res.data?.items || res.data || []);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to load today\'s classes');
+      const d = err?.response?.data?.detail;
+      setError((typeof d === 'string' ? d : (d?.message)) || 'Failed to load today\'s classes');
     } finally {
       setLoading(false);
     }
