@@ -19,7 +19,7 @@ import client from '../api/client';
 export interface Teacher {
   id: string;
   username: string;
-  phone: string;
+  phone: string | null;
   name: string;
   email: string | null;
   bio: string | null;
@@ -62,7 +62,7 @@ export interface TeacherResetPasswordResponse {
 
 export interface TeacherCreateParams {
   username: string;
-  phone: string;
+  phone?: string;
   name: string;
   hourly_rate?: number;
 }

@@ -15,7 +15,7 @@ interface StudentFormValues {
   name: string;
   phone: string;
   english_name?: string;
-  birth_date?: string; // YYYY-MM-DD
+  birth_date?: dayjs.Dayjs | string; // Dayjs for DatePicker, string for API
   level?: Level;
   parent_phone: string;
   totalhours?: number;
@@ -83,7 +83,7 @@ const StudentForm: React.FC<StudentFormProps> = ({
         name: values.name,
         parent_phone: values.parent_phone,
         english_name: values.english_name,
-        birth_date: values.birth_date,
+        birth_date: (values.birth_date as dayjs.Dayjs)?.format?.('YYYY-MM-DD') ?? (values.birth_date as string | undefined),
         level: values.level,
         totalhours: values.totalhours,
         usedhours: values.usedhours,

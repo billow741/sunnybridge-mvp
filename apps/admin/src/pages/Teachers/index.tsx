@@ -65,7 +65,7 @@ const TeachersPage: React.FC = () => {
   useEffect(() => { fetchList(); }, [fetchList]);
 
   // ── Create / Edit ────────────────────────────────
-  const handleFormSubmit = async (values: { username: string; name: string; phone: string; email?: string; bio?: string; hourly_rate?: number }) => {
+  const handleFormSubmit = async (values: { username: string; name: string; phone?: string; email?: string; bio?: string; hourly_rate?: number }) => {
     setFormLoading(true);
     try {
       if (editingTeacher) {

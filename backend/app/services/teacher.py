@@ -60,11 +60,12 @@ def list_teachers(page: int = 1, page_size: int = 20, include_inactive: bool = T
 # Create teacher
 # ---------------------------------------------------------------------------
 
-def create_teacher(username: str, phone: str, name: str, hourly_rate: float | None = None) -> TeacherCreateResponse:
+def create_teacher(username: str, name: str, phone: str | None = None, hourly_rate: float | None = None) -> TeacherCreateResponse:
     """Create a teacher with auto-generated initial password.
 
     Returns the teacher record + initial_password (plaintext).
-    Raises ValueError on duplicate username or phone (among active teachers).
+    Raises ValueError on duplicate username (among active teachers).
+    Phone is optional (Philippine teachers may not provide it).
 
     If a soft-deleted teacher with the same phone exists, reactivates it
     (updates username, name, resets password) instead of inserting a new row —
@@ -77,18 +78,20 @@ def create_teacher(username: str, phone: str, name: str, hourly_rate: float | No
     if username_existing.data:
         raise ValueError(f"用户名 {username} 已存在")
 
-    # Check for duplicate phone among active teachers
-    active_existing = sb.table("teachers").select("id").eq("phone", phone).eq("is_active", True).execute()
-    if active_existing.data:
-        raise ValueError(f"手机号 {phone} 已存在")
+    # Check for duplicate phone among active teachers (only if phone provided)
+    if phone:
+        active_existing = sb.table("teachers").select("id").eq("phone", phone).eq("is_active", True).execute()
+        if active_existing.data:
+            raise ValueError(f"手机号 {phone} 已存在")
 
     # Generate initial password
     initial_password = generate_initial_password()
     password_hash = hash_password(initial_password)
 
     # Check if a soft-deleted teacher with this phone exists (for reactivation)
-    deleted_existing = sb.table("teachers").select("id").eq("phone", phone).eq("is_active", False).execute()
-    if deleted_existing.data:
+    deleted_existing = sb.table("teachers").select("id").eq("is_active", False)
+    deleted_existing = deleted_existing.eq("phone", phone).execute() if phone else deleted_existing.execute()
+    if phone and deleted_existing.data:
         # Reactivate the soft-deleted teacher instead of inserting new
         now = datetime.now(timezone.utc).isoformat()
         row = (
@@ -109,12 +112,13 @@ def create_teacher(username: str, phone: str, name: str, hourly_rate: float | No
         # Insert new teacher
         insert_payload = {
             "username": username,
-            "phone": phone,
             "name": name,
             "password_hash": password_hash,
             "must_change_password": True,
             "is_active": True,
         }
+        if phone:
+            insert_payload["phone"] = phone
         if hourly_rate is not None:
             insert_payload["hourly_rate"] = hourly_rate
         row = (

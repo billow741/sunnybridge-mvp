@@ -7,7 +7,7 @@
  *
  * Validation rules per API-04 schema:
  * - name: required, 1-50 chars
- * - phone: required, Chinese mobile ^1[3-9]\d{9}$
+ * - phone: optional, 5-20 chars (Philippine format, e.g. +63 917 123 4567)
  * - email: optional, valid email
  * - bio: optional, max 500 chars
  */
@@ -19,7 +19,7 @@ import type { Teacher } from '../../services/teacher';
 interface TeacherFormValues {
   username: string;
   name: string;
-  phone: string;
+  phone?: string;
   email?: string;
   bio?: string;
   hourly_rate?: number;
@@ -29,7 +29,7 @@ interface TeacherFormProps {
   open: boolean;
   teacher: Teacher | null;
   loading: boolean;
-  onSubmit: (values: { username: string; name: string; phone: string; email?: string; bio?: string; hourly_rate?: number }) => void;
+  onSubmit: (values: { username: string; name: string; phone?: string; email?: string; bio?: string; hourly_rate?: number }) => void;
   onCancel: () => void;
   /** initial_password returned after create — displayed in parent */
   initialPassword?: string | null;
@@ -53,9 +53,9 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
         form.setFieldsValue({
           username: teacher.username,
           name: teacher.name,
-          phone: teacher.phone,
-          email: teacher.email || undefined,
-          bio: teacher.bio || undefined,
+          phone: (teacher.phone as string | undefined) ?? undefined,
+          email: (teacher.email as string | undefined) ?? undefined,
+          bio: (teacher.bio as string | undefined) ?? undefined,
           hourly_rate: teacher.hourly_rate ?? undefined,
         });
       } else {
@@ -151,17 +151,13 @@ const TeacherForm: React.FC<TeacherFormProps> = ({
             name="phone"
             label="手机号"
             rules={[
-              { required: true, message: '请输入手机号' },
-              {
-                pattern: /^1[3-9]\d{9}$/,
-                message: '请输入正确的11位手机号',
-              },
+              { min: 5, message: '手机号至少5位' },
+              { max: 20, message: '手机号最多20位' },
             ]}
           >
             <Input
-              placeholder="请输入手机号"
-              maxLength={11}
-              prefix="+86"
+              placeholder="例如: +63 917 123 4567"
+              maxLength={20}
             />
           </Form.Item>
 

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 class TeacherCreateRequest(BaseModel):
     """POST /api/v1/teachers"""
     username: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9_]+$", description="教师登录用户名")
-    phone: str = Field(..., pattern=r"^1[3-9]\d{9}$", description="手机号")
+    phone: str | None = Field(None, min_length=5, max_length=20, description="手机号（菲律宾格式，可选）")
     name: str = Field(..., min_length=1, max_length=50, description="教师姓名")
     hourly_rate: float | None = Field(None, ge=0, description="时薪 (元/小时)")
 
@@ -24,7 +24,7 @@ class TeacherCreateRequest(BaseModel):
 class TeacherUpdateRequest(BaseModel):
     """PUT /api/v1/teachers/{id} — all fields optional"""
     username: str | None = Field(None, min_length=1, max_length=50, pattern=r"^[a-zA-Z0-9_]+$", description="教师登录用户名")
-    phone: str | None = Field(None, pattern=r"^1[3-9]\d{9}$", description="手机号")
+    phone: str | None = Field(None, min_length=5, max_length=20, description="手机号（菲律宾格式，可选）")
     name: str | None = Field(None, min_length=1, max_length=50, description="教师姓名")
     avatar_url: str | None = Field(None, description="头像 URL")
     hourly_rate: float | None = Field(None, ge=0, description="时薪 (元/小时)")
