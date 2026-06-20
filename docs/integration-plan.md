@@ -18,8 +18,8 @@
 | parent_name | TEXT | → parent_id | UUID | 自动创建默认 parent user |
 | notes | TEXT | notes | TEXT | **新增列**，直接搬 |
 | hours | INTEGER | — | — | **废弃**，与 total_hours 重复 |
-| total_hours | INTEGER | total_hours | INTEGER | **新增列**，直接搬 |
-| used_hours | INTEGER | used_hours | INTEGER | **新增列**，直接搬 |
+| total_hours | INTEGER | total_hours | NUMERIC(10,2) | **新增列**，直接搬 |
+| used_hours | INTEGER | used_hours | NUMERIC(10,2) | **新增列**，直接搬 |
 | access_token | TEXT | — | — | **废弃**，JWT 替代 |
 | status | TEXT | status | VARCHAR(20) | **新增列**，值域对齐 |
 | created_at | TEXT | created_at | TIMESTAMPTZ | ISO8601 字符串 → TIMESTAMPTZ |
