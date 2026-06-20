@@ -59,3 +59,6 @@ node_modules/
 # --- Alembic ---
 alembic/alembic.log
 *.tsbuildinfo
+node_modules/
+dist/
+.vite/

@@ -1,86 +1,34 @@
 import { useEffect, useState } from 'react';
+import { Card, List, Tag, Spin } from 'antd';
+import { ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Button, Space } from 'antd';
-import { CalendarOutlined, FormOutlined } from '@ant-design/icons';
-const formatDate = () => {
-  const d = new Date();
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}`;
-};
-import apiClient from '../../api/client';
-import type { CourseOut } from '../../types';
-import { CourseCard, EmptyState, ErrorBanner, LoadingPage } from '../../components/shared';
+import client, { extractError } from '@/api/client';
 
-export default function TodayCoursesPage() {
-  const [courses, setCourses] = useState<CourseOut[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+export default function TodayCourses() {
   const navigate = useNavigate();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const fetchToday = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await apiClient.get('/courses/today');
-      setCourses(res.data?.items || res.data || []);
-    } catch (err: any) {
-      const d = err?.response?.data?.detail;
-      setError((typeof d === 'string' ? d : (d?.message)) || 'Failed to load today\'s classes');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    (async () => {
+      try { const { data } = await client.get('/courses/today'); setCourses(Array.isArray(data) ? data : (data.items || [])); }
+      catch (err) { console.error(extractError(err)); } finally { setLoading(false); }
+    })();
+  }, []);
 
-  useEffect(() => { fetchToday(); }, []);
-
-  if (loading) return <LoadingPage rows={4} />;
-  if (error) return <div style={{ padding: 24 }}><ErrorBanner message={error} onRetry={fetchToday} /></div>;
-
-  const today = formatDate();
+  if (loading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1A2B4A', margin: 0 }}>Today's Classes</h1>
-          <div style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{today}</div>
-        </div>
-      </div>
-
-      {courses.length === 0 ? (
-        <EmptyState
-          icon={<CalendarOutlined style={{ fontSize: 40, color: '#CBD5E1' }} />}
-          title="No classes today"
-          description="Enjoy your break! 🎉"
-        />
-      ) : (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          {courses.map(course => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              onClick={() => navigate(`/courses/${course.id}`)}
-              action={
-                course.status === 'completed' && !course.feedback ? (
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<FormOutlined />}
-                    style={{ color: '#5CAADF', padding: 0, height: 'auto' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/courses/${course.id}`, { state: { openFeedback: true } });
-                    }}
-                  >
-                    Feedback
-                  </Button>
-                ) : undefined
-              }
-            />
-          ))}
-        </Space>
-      )}
-    </div>
+    <List grid={{ gutter: 16, xs: 1, sm: 2, md: 3 }} dataSource={courses} renderItem={(c: any) => (
+      <List.Item>
+        <Card hoverable onClick={() => navigate(`/courses/${c.id}`)} style={{ borderLeft: `4px solid ${c.feedback ? '#52c41a' : '#722ed1'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span><ClockCircleOutlined /> {c.start_time?.slice(0,5)} - {c.end_time?.slice(0,5)}</span>
+            <Tag color={c.feedback ? 'green' : 'purple'}>{c.feedback ? '已完成' : '待上课'}</Tag>
+          </div>
+          <div style={{ fontWeight: 600 }}>{c.children?.map((ch: any) => ch.name).join(', ') || '-'}</div>
+        </Card>
+      </List.Item>
+    )} />
   );
 }
