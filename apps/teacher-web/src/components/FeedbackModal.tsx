@@ -25,7 +25,8 @@ export default function FeedbackModal({ courseId, open, onClose, onSuccess }: Fe
       onClose();
       onSuccess();
     } catch (err: any) {
-      const msg = err?.response?.data?.detail || 'Failed to submit feedback';
+      const d = err?.response?.data?.detail;
+      const msg = typeof d === 'string' ? d : (d?.message) || 'Failed to submit feedback';
       setError(msg);
     } finally {
       setLoading(false);

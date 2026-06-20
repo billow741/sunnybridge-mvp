@@ -30,7 +30,8 @@ export default function CourseDetailPage() {
       const res = await apiClient.get(`/courses/${id}`);
       setCourse(res.data);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || 'Failed to load course details');
+      const d = err?.response?.data?.detail;
+      setError((typeof d === 'string' ? d : (d?.message)) || 'Failed to load course details');
     } finally {
       setLoading(false);
     }
