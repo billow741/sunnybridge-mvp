@@ -1,2 +1,42 @@
-body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-.ant-layout-sider { box-shadow: 2px 0 8px rgba(0,0,0,0.06); }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1e293b;
+  background: #f0f2f5;
+}
+
+:root {
+  --brand-blue: #5CAADF;
+  --brand-orange: #F4A230;
+  --sidebar-dark: #1a1a2e;
+  --sidebar-hover: rgba(255,255,255,0.08);
+}
+
+.ant-menu-dark.ant-menu-inline {
+  background: var(--sidebar-dark) !important;
+}
+.ant-menu-dark .ant-menu-item-selected {
+  background: var(--brand-blue) !important;
+  border-radius: 8px;
+}
+.ant-menu-dark .ant-menu-item:hover {
+  background: var(--sidebar-hover) !important;
+}
+.ant-layout-sider {
+  box-shadow: none !important;
+}
+.ant-menu-submenu-title {
+  color: rgba(255,255,255,0.7) !important;
+}
+.ant-menu-submenu-selected .ant-menu-submenu-title {
+  color: var(--brand-blue) !important;
+}
+
+/* 通用 Card 样式 */
+.sb-card {
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: none;
+}
