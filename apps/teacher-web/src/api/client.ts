@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://api.sunnybridge.qzz.io/api/v1';
 const client = axios.create({ baseURL: API_BASE, timeout: 15000 });
 
 client.interceptors.request.use((config) => {
