@@ -20,9 +20,9 @@ export default function Schedule() {
   const load = async () => {
     try {
       const [cRes, tRes, chRes] = await Promise.all([
-        client.get('/courses/all', { params: { page: 1, page_size: 200 } }),
-        client.get('/teachers', { params: { page: 1, page_size: 200 } }),
-        client.get('/children', { params: { page: 1, page_size: 200 } }),
+        client.get('/courses/all', { params: { page: 1, page_size: 100 } }),
+        client.get('/teachers', { params: { page: 1, page_size: 100 } }),
+        client.get('/children', { params: { page: 1, page_size: 100 } }),
       ]);
       setCourses(cRes.data.items || []); setTeachers(tRes.data.items || []); setChildren(chRes.data.items || []);
     } catch (err) { message.error(extractError(err)); }

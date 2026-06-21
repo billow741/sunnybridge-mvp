@@ -11,7 +11,7 @@ export default function TeacherPayments() {
   const [form] = Form.useForm();
 
   useEffect(() => {
-    client.get('/teachers', { params: { page: 1, page_size: 200 } })
+    client.get('/teachers', { params: { page: 1, page_size: 100 } })
       .then(res => setTeachers(res.data.items || []))
       .catch(err => message.error(extractError(err)));
   }, []);
