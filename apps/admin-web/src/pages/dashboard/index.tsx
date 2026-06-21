@@ -50,7 +50,7 @@ export default function Dashboard() {
       try {
         // 并行加载
         const [childrenRes, teachersRes, coursesRes, alertsData, summaryData] = await Promise.allSettled([
-          client.get('/children', { params: { page: 1, page_size: 500 } }),
+          client.get('/children', { params: { page: 1, page_size: 100 } }),
           client.get('/teachers', { params: { page: 1, page_size: 100 } }),
           client.get('/courses/all', { params: { page: 1, page_size: 100 } }),
           getAlerts(),

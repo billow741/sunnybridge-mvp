@@ -15,7 +15,7 @@ export default function Payments() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await client.get('/children', { params: { page: 1, page_size: 200 } });
+      const { data } = await client.get('/children', { params: { page: 1, page_size: 100 } });
       setChildren(data.items || []);
     } catch (err) { message.error(extractError(err)); }
     finally { setLoading(false); }

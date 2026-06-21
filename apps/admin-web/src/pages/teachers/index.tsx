@@ -12,7 +12,7 @@ export default function Teachers() {
 
   const load = async () => {
     setLoading(true);
-    try { const { data } = await client.get('/teachers', { params: { page: 1, page_size: 200 } }); setTeachers(data.items || []); }
+    try { const { data } = await client.get('/teachers', { params: { page: 1, page_size: 100 } }); setTeachers(data.items || []); }
     catch (err) { message.error(extractError(err)); } finally { setLoading(false); }
   };
 
