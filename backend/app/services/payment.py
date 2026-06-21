@@ -1,7 +1,10 @@
-"""Payment service — CRUD + stats for admin payments."""
+"""Payment service — CRUD + stats for admin payments.
+
+适配现有 payments 表字段: hours_purchased, payment_method, notes, status 等。
+"""
 
 import structlog
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -23,16 +26,23 @@ DEFAULT_PAGE_SIZE = 20
 
 
 def _build_out(row: dict) -> PaymentOut:
+    child_info = row.get("children")
+    child_name = ""
+    if isinstance(child_info, dict):
+        child_name = child_info.get("name", "")
     return PaymentOut(
         id=row["id"],
         child_id=row["child_id"],
-        child_name=row.get("child_name", ""),
-        date=row["date"],
-        method=row["method"],
-        hours=row["hours"],
-        amount=row["amount"],
-        note=row.get("note"),
+        child_name=child_name,
+        payment_method=row.get("payment_method", "现金"),
+        hours_purchased=row.get("hours_purchased", 0),
+        amount=row.get("amount", 0),
+        status=row.get("status", "completed"),
+        notes=row.get("notes"),
+        package_id=row.get("package_id"),
+        transaction_ref=row.get("transaction_ref"),
         created_at=row["created_at"],
+        updated_at=row.get("updated_at"),
     )
 
 
@@ -45,24 +55,29 @@ async def list_payments(
     sb = get_supabase()
 
     # ── Stats ──
-    all_res = sb.table("payments").select("amount, date").execute()
+    all_res = sb.table("payments").select("amount, created_at").execute()
     total_amount = Decimal("0")
     month_amount = Decimal("0")
     count = len(all_res.data)
-    now = date.today()
-    this_month_start = date(now.year, now.month, 1)
+    now = datetime.now()
+    this_month_start = datetime(now.year, now.month, 1)
 
     for r in all_res.data:
         amt = Decimal(str(r["amount"]))
         total_amount += amt
-        d = r["date"] if isinstance(r["date"], date) else date.fromisoformat(str(r["date"]))
-        if d >= this_month_start:
-            month_amount += amt
+        created = r.get("created_at", "")
+        if created:
+            try:
+                dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
+                if dt.replace(tzinfo=None) >= this_month_start:
+                    month_amount += amt
+            except (ValueError, TypeError):
+                pass
 
     stats = PaymentStats(total_amount=total_amount, month_amount=month_amount, count=count)
 
     # ── Paginated list ──
-    query = sb.table("payments").select("*, children(name)", count="exact").order("date", desc=True)
+    query = sb.table("payments").select("*, children(name)", count="exact").order("created_at", desc=True)
 
     if month:
         try:
@@ -74,7 +89,7 @@ async def list_payments(
                 end = f"{y_int + 1}-01-01"
             else:
                 end = f"{y_int}-{m_int + 1:02d}-01"
-            query = query.gte("date", start).lt("date", end)
+            query = query.gte("created_at", start).lt("created_at", end)
         except (ValueError, AttributeError):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -85,7 +100,7 @@ async def list_payments(
     total = count_result.count if count_result.count is not None else 0
 
     offset = (page - 1) * page_size
-    page_query = sb.table("payments").select("*, children(name)").order("date", desc=True).range(offset, offset + page_size - 1)
+    page_query = sb.table("payments").select("*, children(name)").order("created_at", desc=True).range(offset, offset + page_size - 1)
 
     if month:
         try:
@@ -97,17 +112,12 @@ async def list_payments(
                 end = f"{y_int + 1}-01-01"
             else:
                 end = f"{y_int}-{m_int + 1:02d}-01"
-            page_query = page_query.gte("date", start).lt("date", end)
+            page_query = page_query.gte("created_at", start).lt("created_at", end)
         except (ValueError, AttributeError):
             pass
 
     result = page_query.execute()
-
-    items = []
-    for row in result.data:
-        child_name = row.get("children", {}).get("name", "") if isinstance(row.get("children"), dict) else ""
-        row["child_name"] = child_name
-        items.append(_build_out(row))
+    items = [_build_out(row) for row in result.data]
 
     return PaginatedPayments(items=items, total=total, page=page, page_size=page_size, stats=stats)
 
@@ -124,16 +134,16 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
     # Insert payment
     ins = sb.table("payments").insert({
         "child_id": str(body.child_id),
-        "date": body.date.isoformat(),
-        "method": body.method,
-        "hours": float(body.hours),
+        "payment_method": body.payment_method,
+        "hours_purchased": float(body.hours_purchased),
         "amount": float(body.amount),
-        "note": body.note,
+        "notes": body.notes,
+        "status": "completed",
     }).execute()
 
     # Update child totalhours
     old_hours = Decimal(str(child.data[0].get("totalhours", 0)))
-    sb.table("children").update({"totalhours": float(old_hours + body.hours)}).eq("id", str(body.child_id)).execute()
+    sb.table("children").update({"totalhours": float(old_hours + body.hours_purchased)}).eq("id", str(body.child_id)).execute()
 
     row = ins.data[0]
     row["child_name"] = child.data[0]["name"]
@@ -150,17 +160,18 @@ async def update_payment(payment_id: UUID, body: PaymentUpdate) -> PaymentOut:
 
     old = existing.data[0]
     updates: dict = {}
-    for field in ("date", "method", "hours", "amount", "note"):
+    field_map = {"payment_method": str, "hours_purchased": lambda v: float(v), "amount": lambda v: float(v), "notes": str, "status": str}
+    for field, caster in field_map.items():
         val = getattr(body, field, None)
         if val is not None:
-            updates[field] = val.isoformat() if isinstance(val, date) else float(val) if isinstance(val, Decimal) else val
+            updates[field] = caster(val)
 
     result = sb.table("payments").update(updates).eq("id", str(payment_id)).execute()
     row = result.data[0]
 
     # Adjust child totalhours if hours changed
-    if "hours" in updates:
-        diff = Decimal(str(updates["hours"])) - Decimal(str(old["hours"]))
+    if "hours_purchased" in updates:
+        diff = Decimal(str(updates["hours_purchased"])) - Decimal(str(old["hours_purchased"]))
         child = sb.table("children").select("totalhours").eq("id", old["child_id"]).limit(1).execute()
         if child.data:
             new_total = Decimal(str(child.data[0]["totalhours"])) + diff
@@ -186,7 +197,7 @@ async def delete_payment(payment_id: UUID) -> dict:
     # Deduct child totalhours
     child = sb.table("children").select("totalhours").eq("id", old["child_id"]).limit(1).execute()
     if child.data:
-        new_total = max(Decimal("0"), Decimal(str(child.data[0]["totalhours"])) - Decimal(str(old["hours"])))
+        new_total = max(Decimal("0"), Decimal(str(child.data[0]["totalhours"])) - Decimal(str(old["hours_purchased"])))
         sb.table("children").update({"totalhours": float(new_total)}).eq("id", old["child_id"]).execute()
 
     return {"ok": True}
