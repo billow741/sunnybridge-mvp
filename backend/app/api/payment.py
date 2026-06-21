@@ -20,7 +20,7 @@ from app.services.payment import (
     update_payment,
 )
 
-router = APIRouter(prefix="/payments", tags=["payments"])
+router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
 
 @router.get("", response_model=PaginatedPayments)
