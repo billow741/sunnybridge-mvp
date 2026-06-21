@@ -333,22 +333,44 @@ async def get_history_courses_parent(
 
     course_ids = [row["course_id"] for row in cs.data]
 
-    # Get courses (date desc), then paginate manually (Supabase REST doesn't support IN well)
-    # Fetch all and sort + slice in memory for MVP
-    all_courses = []
-    for cid in course_ids:
-        c = sb.table("courses").select("*").eq("id", cid).execute()
-        for row in c.data:
-            all_courses.append(row)
-
-    # Sort by date desc, then start_time desc
-    all_courses.sort(key=lambda x: (x["date"], x.get("start_time", "")), reverse=True)
+    # Get courses in one batch (IN query)
+    all_courses_res = sb.table("courses").select("*").in_("id", course_ids).order("date", desc=True).order("start_time", desc=True).execute()
+    all_courses = sorted(all_courses_res.data, key=lambda x: (x["date"], x.get("start_time", "")), reverse=True)
 
     total = len(all_courses)
     offset = (page - 1) * page_size
     page_data = all_courses[offset:offset + page_size]
 
-    items = [await _enrich_course(row) for row in page_data]
+    # Bulk preload teachers + children
+    teacher_ids = list({r["teacher_id"] for r in page_data if r.get("teacher_id")})
+    teacher_map: dict[str, TeacherBrief] = {}
+    if teacher_ids:
+        t_res = sb.table("teachers").select("id, name").in_("id", teacher_ids).execute()
+        for t in t_res.data:
+            teacher_map[t["id"]] = TeacherBrief(id=t["id"], name=t["name"])
+
+    p_course_ids = [r["id"] for r in page_data]
+    cs_map: dict[str, list[str]] = {cid: [] for cid in p_course_ids}
+    child_map: dict[str, ChildBrief] = {}
+    if p_course_ids:
+        cs_res = sb.table("course_students").select("course_id, child_id").in_("course_id", p_course_ids).execute()
+        child_ids_set: set[str] = set()
+        for cs in cs_res.data:
+            cs_map.setdefault(cs["course_id"], []).append(cs["child_id"])
+            child_ids_set.add(cs["child_id"])
+        if child_ids_set:
+            ch_res = sb.table("children").select("id, name").in_("id", list(child_ids_set)).execute()
+            for ch in ch_res.data:
+                child_map[ch["id"]] = ChildBrief(id=ch["id"], name=ch["name"])
+
+    items = []
+    for row in page_data:
+        t_id = row.get("teacher_id")
+        teacher = teacher_map.get(t_id) if t_id else None
+        children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
+        enriched = {**row, "teacher": teacher, "children": children}
+        items.append(CourseOut(**enriched))
+
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)
 
 
@@ -416,6 +438,39 @@ async def get_all_courses(
             pass # Already raised above
 
     result = page_query.execute()
+    courses_data = result.data
 
-    items = [await _enrich_course(row) for row in result.data]
+    # ── Bulk preload to avoid N+1 ──────────────────
+    # 1. Teachers: batch fetch by teacher_ids
+    teacher_ids = list({r["teacher_id"] for r in courses_data if r.get("teacher_id")})
+    teacher_map: dict[str, TeacherBrief] = {}
+    if teacher_ids:
+        t_res = sb.table("teachers").select("id, name").in_("id", teacher_ids).execute()
+        for t in t_res.data:
+            teacher_map[t["id"]] = TeacherBrief(id=t["id"], name=t["name"])
+
+    # 2. Course-Students + Children: batch fetch
+    course_ids = [r["id"] for r in courses_data]
+    cs_map: dict[str, list[str]] = {cid: [] for cid in course_ids}
+    child_map: dict[str, ChildBrief] = {}
+    if course_ids:
+        cs_res = sb.table("course_students").select("course_id, child_id").in_("course_id", course_ids).execute()
+        child_ids_set: set[str] = set()
+        for cs in cs_res.data:
+            cs_map.setdefault(cs["course_id"], []).append(cs["child_id"])
+            child_ids_set.add(cs["child_id"])
+        if child_ids_set:
+            ch_res = sb.table("children").select("id, name").in_("id", list(child_ids_set)).execute()
+            for ch in ch_res.data:
+                child_map[ch["id"]] = ChildBrief(id=ch["id"], name=ch["name"])
+
+    # 3. Assemble without per-row queries
+    items = []
+    for row in courses_data:
+        t_id = row.get("teacher_id")
+        teacher = teacher_map.get(t_id) if t_id else None
+        children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
+        enriched = {**row, "teacher": teacher, "children": children}
+        items.append(CourseOut(**enriched))
+
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)
