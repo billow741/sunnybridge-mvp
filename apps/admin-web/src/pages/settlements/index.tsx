@@ -5,8 +5,8 @@
  * - 灵活时间段选择器（非固定按月），如 3月12日~4月11日
  * - 结算列表：教师 / 结算周期 / 课时数 / 时薪 / 金额 / 状态
  * - Drawer 结算明细：每节课的课时×时薪
+ * - 新建结算时选择教师+时间段后自动统计课时数
  * - 无审批流（P2 候选）
- * - 当前使用 Mock 数据，后端 API 完成后替换
  */
 import { useEffect, useState } from 'react';
 import {
@@ -15,11 +15,11 @@ import {
 } from 'antd';
 import {
   PlusOutlined, CheckOutlined, EyeOutlined, DollarOutlined,
-  CalendarOutlined,
+  CalendarOutlined, LoadingOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { SettlementItem, SettlementSummary } from '@/services/settlement';
-import { getSettlementList, getSettlementSummary, createSettlement, paySettlement } from '@/services/settlement';
+import { getSettlementList, getSettlementSummary, createSettlement, paySettlement, calcSettlementHours } from '@/services/settlement';
 import client, { extractError } from '@/api/client';
 
 const { RangePicker } = DatePicker;
@@ -34,12 +34,14 @@ export default function Settlements() {
   const [selected, setSelected] = useState<SettlementItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null]>([
-    dayjs().subtract(15, 'day').startOf('day'),
-    dayjs().endOf('day'),
-  ]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [form] = Form.useForm();
+
+  // ── 自动计算课时相关状态 ──
+  const [calcHours, setCalcHours] = useState<number | null>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcCourseCount, setCalcCourseCount] = useState(0);
+  const [selectedTeacherRate, setSelectedTeacherRate] = useState<number | null>(null);
 
   // ── 加载 ─────────────────────────────
   const load = async () => {
@@ -67,14 +69,79 @@ export default function Settlements() {
 
   useEffect(() => { load(); loadTeachers(); }, []);
 
+  // ── 自动计算课时 ──────────────────────
+  const handleAutoCalc = async () => {
+    const teacherId = form.getFieldValue('teacher_id');
+    const period = form.getFieldValue('period');
+
+    if (!teacherId || !period || !period[0] || !period[1]) {
+      message.warning('请先选择教师和结算周期');
+      return;
+    }
+
+    setCalcLoading(true);
+    try {
+      const start = period[0].format('YYYY-MM-DD');
+      const end = period[1].format('YYYY-MM-DD');
+      const result = await calcSettlementHours(teacherId, start, end);
+
+      setCalcHours(result.total_hours);
+      setCalcCourseCount(result.course_count);
+      form.setFieldsValue({ hours: result.total_hours });
+
+      // 自动填充时薪（如果教师有时薪设置）
+      const teacher = teachers.find((t: any) => t.id === teacherId);
+      if (teacher?.hourly_rate && !form.getFieldValue('hourly_rate')) {
+        form.setFieldsValue({ hourly_rate: teacher.hourly_rate });
+        setSelectedTeacherRate(teacher.hourly_rate);
+      }
+    } catch (err) {
+      message.error(extractError(err));
+      setCalcHours(null);
+      setCalcCourseCount(0);
+    } finally {
+      setCalcLoading(false);
+    }
+  };
+
+  // 教师选择变化时更新时薪
+  const handleTeacherChange = (teacherId: string) => {
+    const teacher = teachers.find((t: any) => t.id === teacherId);
+    if (teacher?.hourly_rate) {
+      form.setFieldsValue({ hourly_rate: teacher.hourly_rate });
+      setSelectedTeacherRate(teacher.hourly_rate);
+    }
+    // 重置计算结果
+    setCalcHours(null);
+    setCalcCourseCount(0);
+    form.setFieldsValue({ hours: undefined });
+  };
+
+  // 时间段变化时重置计算结果
+  const handlePeriodChange = () => {
+    setCalcHours(null);
+    setCalcCourseCount(0);
+    form.setFieldsValue({ hours: undefined });
+  };
+
   // ── 创建结算 ─────────────────────────
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
+      const payload = {
+        teacher_id: values.teacher_id,
+        period_start: values.period[0].format('YYYY-MM-DD'),
+        period_end: values.period[1].format('YYYY-MM-DD'),
+        hours: values.hours,
+        hourly_rate: values.hourly_rate,
+        note: values.note,
+      };
+      await createSettlement(payload);
+      message.success('结算记录已创建');
       setModalOpen(false);
       form.resetFields();
-      await createSettlement(values);
-      message.success('结算记录已创建');
+      setCalcHours(null);
+      setCalcCourseCount(0);
       load();
     } catch (err) {
       if (err instanceof Error) message.error(extractError(err));
@@ -161,13 +228,6 @@ export default function Settlements() {
   // ── 渲染结算明细 Drawer ──────────────
   const renderDetail = () => {
     if (!selected) return null;
-    const hoursList = Array.from({ length: Math.ceil(selected.hours / 1) }, (_, i) => ({
-      key: `${selected.id}-${i}`,
-      date: dayjs(selected.period_start).add(i, 'day').format('YYYY/MM/DD'),
-      hours: 1,
-      rate: selected.hourly_rate,
-      amount: selected.hourly_rate,
-    }));
 
     return (
       <>
@@ -210,22 +270,6 @@ export default function Settlements() {
           {selected.note && <Descriptions.Item label="备注">{selected.note}</Descriptions.Item>}
           {selected.paid_at && <Descriptions.Item label="付款时间">{selected.paid_at}</Descriptions.Item>}
         </Descriptions>
-
-        {/* 课时明细表 */}
-        <Card title="课时明细" size="small">
-          <Table
-            dataSource={hoursList}
-            columns={[
-              { title: '日期', dataIndex: 'date', width: 120 },
-              { title: '课时', dataIndex: 'hours', width: 60, align: 'center' as const, render: (v: number) => `${v}h` },
-              { title: '时薪', dataIndex: 'rate', width: 80, align: 'right' as const, render: (v: number) => `₱${v}` },
-              { title: '小计', dataIndex: 'amount', width: 80, align: 'right' as const, render: (v: number) => <strong>₱{v}</strong> },
-            ]}
-            rowKey="key"
-            size="small"
-            pagination={false}
-          />
-        </Card>
 
         {selected.status === 'pending' && (
           <div style={{ marginTop: 16, textAlign: 'right' }}>
@@ -280,7 +324,12 @@ export default function Settlements() {
               结算周期可灵活选择，如 3月12日 — 4月11日
             </Text>
             <Button type="primary" icon={<PlusOutlined />} size="small"
-              onClick={() => { form.resetFields(); setModalOpen(true); }}>
+              onClick={() => {
+                form.resetFields();
+                setCalcHours(null);
+                setCalcCourseCount(0);
+                setModalOpen(true);
+              }}>
               新建结算
             </Button>
           </Space>
@@ -307,20 +356,24 @@ export default function Settlements() {
         {renderDetail()}
       </Drawer>
 
-      {/* 新建结算 Modal */}
+      {/* 新建结算 Modal ─ 含自动计算课时 */}
       <Modal
         title="新建结算记录"
         open={modalOpen}
         onOk={handleCreate}
-        onCancel={() => { setModalOpen(false); form.resetFields(); }}
+        onCancel={() => { setModalOpen(false); form.resetFields(); setCalcHours(null); setCalcCourseCount(0); }}
         destroyOnClose
-        width={480}
+        width={520}
       >
         <Form form={form} layout="vertical" preserve={false}>
           <Form.Item name="teacher_id" label="教师" rules={[{ required: true }]}>
-            <Select placeholder="选择教师" showSearch optionFilterProp="children">
+            <Select placeholder="选择教师" showSearch optionFilterProp="children"
+              onChange={handleTeacherChange}
+            >
               {teachers.map(t => (
-                <Select.Option key={t.id} value={t.id}>{t.name}</Select.Option>
+                <Select.Option key={t.id} value={t.id}>
+                  {t.name}{t.hourly_rate ? ` (₱${t.hourly_rate}/h)` : ''}
+                </Select.Option>
               ))}
             </Select>
           </Form.Item>
@@ -329,14 +382,62 @@ export default function Settlements() {
               style={{ width: '100%' }}
               format="YYYY/MM/DD"
               placeholder={['开始日期', '结束日期']}
+              onChange={handlePeriodChange}
             />
           </Form.Item>
-          <Form.Item name="hours" label="课时数" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} addonAfter="h" />
+
+          {/* 自动计算课时按钮 + 结果 */}
+          <div style={{ marginBottom: 16, padding: 12, background: '#f6ffed', borderRadius: 8, border: '1px solid #b7eb8f' }}>
+            <Space style={{ marginBottom: 8 }}>
+              <Button
+                type="dashed"
+                icon={calcLoading ? <LoadingOutlined /> : <CalendarOutlined />}
+                onClick={handleAutoCalc}
+                loading={calcLoading}
+                style={{ borderColor: '#52c41a', color: '#52c41a' }}
+              >
+                自动统计课时
+              </Button>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                选择教师+时间段后点击，自动统计该时段课时
+              </Text>
+            </Space>
+            {calcHours !== null && (
+              <div style={{ marginTop: 8 }}>
+                <Text strong style={{ color: '#52c41a', fontSize: 15 }}>
+                  📊 统计结果：{calcHours}h 课时 / {calcCourseCount} 节课
+                </Text>
+              </div>
+            )}
+          </div>
+
+          <Form.Item name="hours" label="课时数" rules={[{ required: true }]}
+            extra={calcHours !== null ? `已自动填入：${calcHours}h（可手动修改）` : '点击上方按钮自动统计，或手动输入'}
+          >
+            <InputNumber min={0} step={0.5} style={{ width: '100%' }} addonAfter="h" />
           </Form.Item>
           <Form.Item name="hourly_rate" label="时薪" rules={[{ required: true }]}>
-            <InputNumber min={0} style={{ width: '100%' }} prefix="₱" />
+            <InputNumber min={0} style={{ width: '100%' }} prefix="₱"
+              placeholder={selectedTeacherRate ? `教师默认时薪 ₱${selectedTeacherRate}` : '输入时薪'}
+            />
           </Form.Item>
+
+          {/* 金额预览 */}
+          {form.getFieldValue('hours') && form.getFieldValue('hourly_rate') && (
+            <div style={{
+              padding: '8px 12px', background: '#fff7e6', borderRadius: 8,
+              border: '1px solid #ffd591', marginBottom: 16,
+            }}>
+              <Text>结算金额：</Text>
+              <Text strong style={{ fontSize: 18, color: '#F4A230' }}>
+                ₱{(form.getFieldValue('hours') * form.getFieldValue('hourly_rate')).toLocaleString()}
+              </Text>
+              <Text type="secondary" style={{ marginLeft: 8 }}>
+                ({form.getFieldValue('hours')}h × ₱{form.getFieldValue('hourly_rate')})
+              </Text>
+            </div>
+          )}
+
           <Form.Item name="note" label="备注">
             <Input.TextArea rows={2} />
           </Form.Item>

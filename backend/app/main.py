@@ -18,6 +18,7 @@ from app.api.feedback import router as feedback_router
 from app.api.payment import router as payment_router
 from app.api.reading import router as reading_router
 from app.api.resource import router as resource_router
+from app.api.settlement import router as settlement_router
 from app.api.teacher import router as teacher_router
 from app.core.config import get_settings
 
@@ -77,6 +78,7 @@ async def value_error_handler(request: Request, exc: ValueError):
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(auth_router)
+app.include_router(settlement_router)
 app.include_router(teacher_router)
 app.include_router(child_router)
 app.include_router(course_router)
