@@ -368,10 +368,25 @@ export default function CoursesPage() {
         {selected.feedbacks && selected.feedbacks.length > 0 ? (
           <Card title="课堂反馈" size="small" style={{ marginBottom: 16 }}>
             {selected.feedbacks.map((fb, i) => (
-              <div key={i} style={{ marginBottom: 8 }}>
-                <Text strong>反馈内容：</Text><Text>{fb.content}</Text><br/>
-                {fb.homework && <><Text strong>作业：</Text><Text>{fb.homework}</Text><br/></>}
-                {fb.notes && <><Text type="secondary">备注：{fb.notes}</Text></>}
+              <div key={i} style={{ marginBottom: i > 0 ? 16 : 0, paddingBottom: i > 0 ? 16 : 0, borderBottom: i > 0 ? '1px dashed #f0f0f0' : 'none' }}>
+                {fb.content && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📝 反馈内容</div>
+                    <div style={{ background: '#fafafa', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.content}</div>
+                  </div>
+                )}
+                {fb.homework && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📚 作业</div>
+                    <div style={{ background: '#fffbe6', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.homework}</div>
+                  </div>
+                )}
+                {fb.notes && (
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>💬 备注</div>
+                    <div style={{ background: '#f6ffed', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#666' }}>{fb.notes}</div>
+                  </div>
+                )}
               </div>
             ))}
           </Card>
