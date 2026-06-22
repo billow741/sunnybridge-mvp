@@ -11,17 +11,18 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Table, Button, Tag, Modal, message, Card, Space, Descriptions,
   Statistic, Row, Col, Progress, Typography, Tooltip, Badge, Drawer,
-  Select, Form, Input, Empty, Popconfirm, Segmented,
+  Select, Form, Input, Empty, Popconfirm, Segmented, DatePicker, TimePicker, InputNumber,
 } from 'antd';
 import {
   CheckOutlined, EyeOutlined, CloseOutlined, ClockCircleOutlined,
   BookOutlined, ExclamationCircleOutlined, CommentOutlined,
   CalendarOutlined, UnorderedListOutlined, LeftOutlined, RightOutlined,
-  ReloadOutlined,
+  ReloadOutlined, PlusOutlined, EditOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import client, { extractError } from '@/api/client';
+import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
 
 dayjs.extend(isoWeek);
 
@@ -96,6 +97,11 @@ export default function CoursesPage() {
   const [feedbackForm] = Form.useForm();
   const [feedbackTarget, setFeedbackTarget] = useState<CourseRecord | null>(null);
 
+  // 排课 Drawer（CourseScheduleDrawer 组件）
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<CourseRecord | null>(null);
+  const [schedulePrefill, setSchedulePrefill] = useState<Record<string, string>>({});
+
   // ── 加载课程 ──
   const load = async () => {
     setLoading(true);
@@ -116,6 +122,20 @@ export default function CoursesPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // ── 打开排课 Drawer ──
+  /** 新建排课（可预填） */
+  const openSchedule = (prefill?: Record<string, string>) => {
+    setEditingCourse(null);
+    setSchedulePrefill(prefill || {});
+    setScheduleOpen(true);
+  };
+  /** 编辑课程排课 */
+  const openEditSchedule = (record: CourseRecord) => {
+    setEditingCourse(record);
+    setSchedulePrefill({});
+    setScheduleOpen(true);
+  };
 
   // ── 周范围 ──
   const { monday, sunday, days } = useMemo(() => getWeekRange(weekCenter), [weekCenter]);
@@ -187,6 +207,7 @@ export default function CoursesPage() {
       <div
         key={c.id}
         onClick={() => openDetail(c)}
+        onDoubleClick={() => openEditSchedule(c)}
         style={{
           background: '#fff',
           borderLeft: `3px solid ${borderColor}`,
@@ -246,7 +267,12 @@ export default function CoursesPage() {
                 </div>
               </div>
               {courses.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#ccc', fontSize: 11, padding: '12px 0' }}>无课程</div>
+                <div
+                  onClick={() => openSchedule({ date: dateStr })}
+                  style={{ textAlign: 'center', color: '#bbb', fontSize: 11, padding: '12px 0', cursor: 'pointer' }}
+                >
+                  + 排课
+                </div>
               ) : (
                 courses.map(c => renderCalCard(c))
               )}
@@ -311,6 +337,9 @@ export default function CoursesPage() {
       render: (_: any, r: CourseRecord) => (
         <Space size={4}>
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(r)}>详情</Button>
+          {r.status === 'pending' && (
+            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditSchedule(r)}>编辑</Button>
+          )}
           {r.status === 'pending' && (
             <Button type="primary" size="small" icon={<CheckOutlined />}
               onClick={() => openConfirm(r)}>确认完成</Button>
@@ -417,6 +446,7 @@ export default function CoursesPage() {
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginTop: 8 }}>
           <Space>
             {selected.status === 'pending' && <Button type="primary" icon={<CheckOutlined />} onClick={() => { setDrawerOpen(false); openConfirm(selected); }}>确认完成</Button>}
+            {selected.status === 'pending' && <Button icon={<EditOutlined />} onClick={() => { setDrawerOpen(false); openEditSchedule(selected); }}>编辑排课</Button>}
           </Space>
         </div>
       </>
@@ -439,6 +469,7 @@ export default function CoursesPage() {
         title={<span><BookOutlined style={{marginRight:6}}/>课程管理</span>}
         extra={
           <Space>
+            <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => openSchedule()}>排课</Button>
             <Segmented
               value={viewMode}
               onChange={v => setViewMode(v as 'list' | 'calendar')}
@@ -518,6 +549,15 @@ export default function CoursesPage() {
       <Drawer title="课程详情" open={drawerOpen} onClose={() => { setDrawerOpen(false); load(); }} width={480} destroyOnClose>
         {renderDetail()}
       </Drawer>
+
+      {/* 排课 Drawer（新建/编辑） */}
+      <CourseScheduleDrawer
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        editingCourse={editingCourse}
+        prefill={schedulePrefill}
+        onSuccess={load}
+      />
     </div>
   );
 }

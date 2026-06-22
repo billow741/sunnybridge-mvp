@@ -16,10 +16,11 @@ import {
 import {
   PlusOutlined, UserOutlined, PhoneOutlined,
   SearchOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
-  BookOutlined, HistoryOutlined, TeamOutlined,
+  BookOutlined, HistoryOutlined, TeamOutlined, CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import client, { extractError } from '@/api/client';
+import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
 
 const { Text } = Typography;
 
@@ -80,6 +81,10 @@ export default function Students() {
 
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustForm] = Form.useForm();
+
+  // 排课 Drawer
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedulePrefill, setSchedulePrefill] = useState<Record<string, string>>({});
 
   // ── 加载列表 ─────────────────────────
   const fetchList = useCallback(async () => {
@@ -307,6 +312,11 @@ export default function Students() {
             }
             extra={
               <Space>
+                <Button size="small" type="primary" icon={<CalendarOutlined />}
+                  onClick={() => {
+                    setSchedulePrefill({ child_id: selected.id });
+                    setScheduleOpen(true);
+                  }}>排课</Button>
                 <Button size="small" onClick={() => {
                   setEditingStudent(selected);
                   form.setFieldsValue(selected);
@@ -456,6 +466,15 @@ export default function Students() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* 排课 Drawer — 为该学员排课 */}
+      <CourseScheduleDrawer
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        editingCourse={null}
+        prefill={schedulePrefill}
+        onSuccess={() => { fetchList(); if (selected) selectStudent(selected); }}
+      />
     </div>
   );
 }

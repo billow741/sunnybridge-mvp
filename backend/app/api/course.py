@@ -22,6 +22,8 @@ from app.schemas.course import (
     CourseOut,
     CourseUpdate,
     PaginatedCourses,
+    ConflictCheckRequest,
+    ConflictCheckResponse,
 )
 from app.services.course import (
     create_course,
@@ -33,6 +35,7 @@ from app.services.course import (
     get_today_courses_parent,
     get_today_courses_teacher,
     update_course,
+    check_schedule_conflicts,
 )
 
 router = APIRouter(prefix="/api/v1/courses", tags=["courses"])
@@ -77,6 +80,15 @@ async def all_courses_endpoint(
     """All courses with optional month filter. Teacher sees own courses; Admin sees all."""
     teacher_id = str(user.teacher_id) if user.role == "teacher" and user.teacher_id else None
     return await get_all_courses(month=month, page=page, page_size=page_size, teacher_id=teacher_id)
+
+
+@router.post("/check-conflicts", response_model=ConflictCheckResponse)
+async def check_conflicts_endpoint(
+    body: ConflictCheckRequest,
+    user: CurrentUser = Depends(require_role("admin")),
+) -> ConflictCheckResponse:
+    """排课冲突检测: 教师/学员时间冲突 + 学员课时余额. Admin only."""
+    return await check_schedule_conflicts(body)
 
 
 # ---------------------------------------------------------------------------

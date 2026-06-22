@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, Avatar, Popconfirm, Empty, Spin } from 'antd';
-import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
+import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -10,6 +11,10 @@ export default function Teachers() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form] = Form.useForm();
+
+  // 排课 Drawer
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [schedulePrefill, setSchedulePrefill] = useState<Record<string, string>>({});
 
   const load = async () => {
     setLoading(true);
@@ -74,6 +79,8 @@ export default function Teachers() {
                   {t.must_change_password && <Tag color="orange" style={{ marginTop: 4 }}>需改密码</Tag>}
                 </div>
                 <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  <Button size="small" type="primary" icon={<CalendarOutlined />}
+                    onClick={() => { setSchedulePrefill({ teacher_id: t.id }); setScheduleOpen(true); }}>排课</Button>
                   <Button size="small" onClick={() => { setEditItem(t); form.setFieldsValue(t); setModalOpen(true); }}>编辑</Button>
                   <Popconfirm title="重置密码？" onConfirm={() => resetPassword(t.id)}><Button size="small" icon={<RedoOutlined />}>重置密码</Button></Popconfirm>
                   <Popconfirm title="确认删除？" onConfirm={() => onDelete(t.id)}><Button size="small" danger>删除</Button></Popconfirm>
@@ -95,6 +102,15 @@ export default function Teachers() {
           <Form.Item name="hourly_rate" label="时薪 (¥/h)"><InputNumber min={0} style={{ width: '100%' }} className="tabular" /></Form.Item>
         </Form>
       </Modal>
+
+      {/* 排课 Drawer — 为该教师排课 */}
+      <CourseScheduleDrawer
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        editingCourse={null}
+        prefill={schedulePrefill}
+        onSuccess={load}
+      />
     </div>
   );
 }

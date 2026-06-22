@@ -482,3 +482,99 @@ async def get_all_courses(
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)
+
+
+# ---------------------------------------------------------------------------
+# Schedule conflict detection
+# ---------------------------------------------------------------------------
+
+async def check_schedule_conflicts(body):  # ConflictCheckRequest
+    """检查排课时段冲突 + 学员课时余额."""
+    from app.schemas.course import ConflictCheckRequest, ConflictCheckResponse, ConflictItem
+
+    sb = get_supabase()
+    conflicts: list[ConflictItem] = []
+    date_str = body.date.isoformat()
+    start_str = body.start_time.isoformat() if hasattr(body.start_time, "isoformat") else str(body.start_time)
+    end_str = body.end_time.isoformat() if hasattr(body.end_time, "isoformat") else str(body.end_time)
+
+    # ── 1. 教师冲突 ──
+    if body.teacher_id:
+        q = sb.table("courses").select("id, date, start_time, end_time, teacher_id, status").eq("date", date_str).eq("teacher_id", str(body.teacher_id)).neq("status", "cancelled")
+        if body.exclude_course_id:
+            q = q.neq("id", str(body.exclude_course_id))
+        t_res = q.execute()
+        for row in (t_res.data or []):
+            if _time_overlaps(start_str, end_str, row["start_time"], row["end_time"]):
+                t_info = await _get_teacher_brief(str(body.teacher_id))
+                conflicts.append(ConflictItem(
+                    course_id=row["id"],
+                    date=row["date"],
+                    start_time=row["start_time"],
+                    end_time=row["end_time"],
+                    teacher_name=t_info.name if t_info else None,
+                    conflict_type="teacher_conflict",
+                ))
+
+    # ── 2. 学员冲突 ──
+    if body.child_ids:
+        child_ids_str = [str(cid) for cid in body.child_ids]
+        cs_res = sb.table("course_students").select("course_id, child_id").in_("child_id", child_ids_str).execute()
+        child_courses: dict[str, list[str]] = {}
+        for cs in (cs_res.data or []):
+            child_courses.setdefault(cs["child_id"], []).append(cs["course_id"])
+
+        all_course_ids = list({cs["course_id"] for cs in (cs_res.data or [])})
+        if all_course_ids:
+            c_res = sb.table("courses").select("id, date, start_time, end_time, status").eq("date", date_str).neq("status", "cancelled").in_("id", all_course_ids).execute()
+            if body.exclude_course_id:
+                c_res.data = [r for r in (c_res.data or []) if r["id"] != str(body.exclude_course_id)]
+            for row in (c_res.data or []):
+                if not _time_overlaps(start_str, end_str, row["start_time"], row["end_time"]):
+                    continue
+                for cid, cids in child_courses.items():
+                    if row["id"] in cids:
+                        ch = sb.table("children").select("id, name").eq("id", cid).limit(1).execute()
+                        ch_name = ch.data[0]["name"] if ch.data else None
+                        conflicts.append(ConflictItem(
+                            course_id=row["id"],
+                            date=row["date"],
+                            start_time=row["start_time"],
+                            end_time=row["end_time"],
+                            child_name=ch_name,
+                            conflict_type="student_conflict",
+                        ))
+
+    # ── 3. 学员课时余额 ──
+    student_hours: list[dict] = []
+    if body.child_ids:
+        duration_hours = _calc_duration_hours(start_str, end_str)
+        for cid in body.child_ids:
+            ch_res = sb.table("children").select("id, name, totalhours, usedhours").eq("id", str(cid)).limit(1).execute()
+            if ch_res.data:
+                ch = ch_res.data[0]
+                remaining = (ch.get("totalhours") or 0) - (ch.get("usedhours") or 0)
+                student_hours.append({
+                    "id": ch["id"],
+                    "name": ch["name"],
+                    "remaining": remaining,
+                    "hours_after": remaining - duration_hours,
+                })
+
+    return ConflictCheckResponse(conflicts=conflicts, student_hours=student_hours)
+
+
+def _time_overlaps(a_start: str, a_end: str, b_start: str, b_end: str) -> bool:
+    """判断两个时间段是否有重叠."""
+    def _norm(t: str) -> str:
+        return t[:5] if t else "00:00"
+    return _norm(a_start) < _norm(b_end) and _norm(b_start) < _norm(a_end)
+
+
+def _calc_duration_hours(start: str, end: str) -> float:
+    """计算两时间之间的小时数."""
+    def _to_min(t: str) -> int:
+        t = t[:5]
+        parts = t.split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+    return (_to_min(end) - _to_min(start)) / 60

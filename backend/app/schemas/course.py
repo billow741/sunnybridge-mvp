@@ -101,3 +101,38 @@ class PaginatedCourses(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# ── 排课冲突检测 ──────────────────────────────────────
+
+class ConflictCheckRequest(BaseModel):
+    """排课冲突检测请求."""
+    date: date_type = Field(..., description="课程日期")
+    start_time: time_type = Field(..., description="开始时间")
+    end_time: time_type = Field(..., description="结束时间")
+    teacher_id: UUID | None = Field(None, description="教师ID (可选)")
+    child_ids: list[UUID] = Field(default_factory=list, description="学员ID列表")
+    exclude_course_id: UUID | None = Field(None, description="编辑时排除自身ID")
+
+    @model_validator(mode="after")
+    def check_time_order(self) -> "ConflictCheckRequest":
+        if self.start_time >= self.end_time:
+            raise ValueError("start_time must be before end_time")
+        return self
+
+
+class ConflictItem(BaseModel):
+    """单个冲突记录."""
+    course_id: UUID
+    date: date_type
+    start_time: time_type
+    end_time: time_type
+    teacher_name: str | None = None
+    child_name: str | None = None
+    conflict_type: str = Field(..., description="teacher_conflict | student_conflict")
+
+
+class ConflictCheckResponse(BaseModel):
+    """排课冲突检测响应."""
+    conflicts: list[ConflictItem] = []
+    student_hours: list[dict] = Field(default_factory=list, description="学员课时信息 [{id, name, remaining, hours_after}]")
