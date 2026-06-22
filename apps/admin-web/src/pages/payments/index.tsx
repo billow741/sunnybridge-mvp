@@ -371,7 +371,7 @@ export default function PaymentsPage() {
             <Select>{PAYMENT_METHODS.map(m => <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>)}</Select>
           </Form.Item>
           <Form.Item name="hours_purchased" label="购买课时数">
-            <InputNumber min={0.5} step={0.5} addonAfter="h" style={{ width: '100%' }} />
+            <InputNumber min={0} step={1} addonAfter="h" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入' }]}>
             <InputNumber min={0} step={100} prefix="¥" style={{ width: '100%' }} />
@@ -399,7 +399,7 @@ export default function PaymentsPage() {
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="hours_purchased" label="购买课时数">
-            <InputNumber min={0.5} step={0.5} addonAfter="h" style={{ width: '100%' }} />
+            <InputNumber min={0} step={1} addonAfter="h" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="payment_method" label="支付方式">
             <Select>{PAYMENT_METHODS.map(m => <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>)}</Select>

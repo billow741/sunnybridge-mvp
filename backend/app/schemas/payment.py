@@ -1,7 +1,7 @@
 """Payment schemas for admin payments CRUD.
 
 适配 payments 表结构 (2026-06 新增 payment_date, receipt_number, description):
-- hours_purchased (而非 hours)
+- hours_purchased: integer (DB列类型为integer，不能用Decimal避免"2.0"小数语法被PG拒绝)
 - payment_method (而非 method)
 - notes (而非 note)
 - payment_date (可选，真实收款日期; 无则 fallback 到 created_at)
@@ -22,7 +22,7 @@ class PaymentCreate(BaseModel):
     """Admin creates a payment record."""
     child_id: UUID
     payment_method: str = "cash"
-    hours_purchased: Decimal = Field(default=Decimal("0"), ge=0)
+    hours_purchased: int = Field(default=0, ge=0)
     amount: Decimal = Field(..., ge=0)
     payment_date: Optional[date] = None
     receipt_number: Optional[str] = None
@@ -33,7 +33,7 @@ class PaymentCreate(BaseModel):
 class PaymentUpdate(BaseModel):
     """Admin updates a payment record."""
     payment_method: Optional[str] = None
-    hours_purchased: Optional[Decimal] = None
+    hours_purchased: Optional[int] = None
     amount: Optional[Decimal] = None
     payment_date: Optional[date] = None
     receipt_number: Optional[str] = None
@@ -47,7 +47,7 @@ class PaymentOut(BaseModel):
     child_id: UUID
     child_name: str = ""
     payment_method: str
-    hours_purchased: Decimal
+    hours_purchased: int
     amount: Decimal
     payment_date: Optional[date] = None
     receipt_number: Optional[str] = None
