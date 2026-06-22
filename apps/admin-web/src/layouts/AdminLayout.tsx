@@ -88,7 +88,7 @@ export default function AdminLayout() {
           v1.0.0
         </div>
       </Sider>
-      <Layout style={{ marginLeft: collapsed ? 80 : 232, transition: 'margin-left 0.2s' }}>
+      <Layout>
         <Header
           style={{
             position: 'sticky', top: 0, zIndex: 10,
