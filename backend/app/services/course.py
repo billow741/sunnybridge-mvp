@@ -464,13 +464,21 @@ async def get_all_courses(
             for ch in ch_res.data:
                 child_map[ch["id"]] = ChildBrief(id=ch["id"], name=ch["name"])
 
-    # 3. Assemble without per-row queries
+    # 3. Feedback: batch fetch for visible courses
+    feedback_map: dict[str, list] = {}
+    if course_ids:
+        fb_res = sb.table("feedbacks").select("*").in_("course_id", course_ids).execute()
+        for fb in fb_res.data or []:
+            feedback_map.setdefault(fb["course_id"], []).append(fb)
+
+    # 4. Assemble without per-row queries
     items = []
     for row in courses_data:
         t_id = row.get("teacher_id")
         teacher = teacher_map.get(t_id) if t_id else None
         children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
-        enriched = {**row, "teacher": teacher, "children": children}
+        feedbacks = feedback_map.get(row["id"], [])
+        enriched = {**row, "teacher": teacher, "children": children, "feedbacks": feedbacks}
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)

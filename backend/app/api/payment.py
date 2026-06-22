@@ -28,10 +28,12 @@ async def list_payments_endpoint(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     month: str | None = Query(None),
+    child_id: str | None = Query(None),
+    payment_method: str | None = Query(None),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> PaginatedPayments:
     """List all payments with stats. Admin only."""
-    return await list_payments(page=page, page_size=page_size, month=month)
+    return await list_payments(page=page, page_size=page_size, month=month, child_id=child_id, payment_method=payment_method)
 
 
 @router.post("", response_model=PaymentOut)

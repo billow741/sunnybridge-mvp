@@ -13,11 +13,13 @@ from fastapi.responses import JSONResponse
 from app.api.auth import router as auth_router
 from app.api.child import router as child_router
 from app.api.course import router as course_router
+from app.api.dashboard import router as dashboard_router
 from app.api.event import router as event_router
 from app.api.feedback import router as feedback_router
 from app.api.payment import router as payment_router
 from app.api.reading import router as reading_router
 from app.api.resource import router as resource_router
+from app.api.search import router as search_router
 from app.api.settlement import router as settlement_router
 from app.api.teacher import router as teacher_router
 from app.core.config import get_settings
@@ -98,6 +100,8 @@ app.include_router(feedback_router)
 app.include_router(reading_router)
 app.include_router(resource_router)
 app.include_router(event_router)
+app.include_router(dashboard_router)
+app.include_router(search_router)
 
 # ---------------------------------------------------------------------------
 # Startup event: validate JWT keys exist

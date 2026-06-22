@@ -50,22 +50,28 @@ async def list_payments(
     page: int = DEFAULT_PAGE,
     page_size: int = DEFAULT_PAGE_SIZE,
     month: str | None = None,
+    child_id: str | None = None,
+    payment_method: str | None = None,
 ) -> PaginatedPayments:
     """List all payments with stats (admin)."""
     sb = get_supabase()
 
     # ── Stats ──
-    all_res = sb.table("payments").select("amount, created_at").execute()
+    all_res = sb.table("payments").select("amount, created_at, payment_method").execute()
     total_amount = Decimal("0")
     month_amount = Decimal("0")
     count = len(all_res.data)
     now = datetime.now()
     this_month_start = datetime(now.year, now.month, 1)
+    method_stats: dict[str, Decimal] = {}
 
     for r in all_res.data:
         amt = Decimal(str(r["amount"]))
         total_amount += amt
         created = r.get("created_at", "")
+        # 按支付方式汇总
+        m = r.get("payment_method") or "other"
+        method_stats[m] = method_stats.get(m, Decimal("0")) + amt
         if created:
             try:
                 dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
@@ -96,6 +102,11 @@ async def list_payments(
                 detail={"code": "INVALID_MONTH", "message": "月份格式应为 YYYY-MM"},
             )
 
+    if child_id:
+        query = query.eq("child_id", child_id)
+    if payment_method:
+        query = query.eq("payment_method", payment_method)
+
     count_result = query.execute()
     total = count_result.count if count_result.count is not None else 0
 
@@ -116,8 +127,17 @@ async def list_payments(
         except (ValueError, AttributeError):
             pass
 
+    if child_id:
+        page_query = page_query.eq("child_id", child_id)
+    if payment_method:
+        page_query = page_query.eq("payment_method", payment_method)
+
     result = page_query.execute()
     items = [_build_out(row) for row in result.data]
+
+    # 把 method_stats 附到 stats 的额外字段（通过 dict hack）
+    stats_dict = stats.model_dump()
+    stats_dict["method_stats"] = {k: float(v) for k, v in method_stats.items()}
 
     return PaginatedPayments(items=items, total=total, page=page, page_size=page_size, stats=stats)
 

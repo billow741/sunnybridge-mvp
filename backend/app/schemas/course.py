@@ -85,6 +85,7 @@ class CourseOut(BaseModel):
     status: str = "pending"
     hours: float = 1
     children: list[ChildBrief] = []
+    feedbacks: list[FeedbackBrief] = []
     created_at: datetime
     updated_at: datetime
 
