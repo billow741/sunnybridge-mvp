@@ -148,14 +148,26 @@ export default function Settlements() {
     }
   };
 
-  // ── 标记已付 ─────────────────────────
-  const handlePay = async (id: string) => {
+  // ── 付款确认弹窗 ──────────────────────
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [payingSettlement, setPayingSettlement] = useState<SettlementItem | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>('bank_transfer');
+
+  const openPayModal = (record: SettlementItem) => {
+    setPayingSettlement(record);
+    setPaymentMethod('bank_transfer');
+    setPayModalOpen(true);
+  };
+
+  const handlePay = async () => {
+    if (!payingSettlement) return;
     try {
-      await paySettlement(id);
+      await paySettlement(payingSettlement.id, paymentMethod);
       message.success('已标记为已付款');
+      setPayModalOpen(false);
       load();
-      if (selected?.id === id) {
-        setSelected({ ...selected, status: 'paid' });
+      if (selected?.id === payingSettlement.id) {
+        setSelected({ ...selected, status: 'paid', payment_method: paymentMethod });
       }
     } catch (err) {
       message.error(extractError(err));
@@ -216,9 +228,7 @@ export default function Settlements() {
         <Space size={4}>
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(r)}>明细</Button>
           {r.status === 'pending' && (
-            <Popconfirm title="确认标记为已付款？" onConfirm={() => handlePay(r.id)}>
-              <Button type="primary" size="small" icon={<CheckOutlined />}>确认付款</Button>
-            </Popconfirm>
+            <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => openPayModal(r)}>确认付款</Button>
           )}
         </Space>
       ),
@@ -267,17 +277,17 @@ export default function Settlements() {
 
         <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
           <Descriptions.Item label="教师">{selected.teacher_name}</Descriptions.Item>
+          {selected.payment_method && <Descriptions.Item label="付款方式">{selected.payment_method}</Descriptions.Item>}
           {selected.note && <Descriptions.Item label="备注">{selected.note}</Descriptions.Item>}
           {selected.paid_at && <Descriptions.Item label="付款时间">{selected.paid_at}</Descriptions.Item>}
         </Descriptions>
 
         {selected.status === 'pending' && (
           <div style={{ marginTop: 16, textAlign: 'right' }}>
-            <Popconfirm title="确认标记为已付款？" onConfirm={() => handlePay(selected.id)}>
-              <Button type="primary" icon={<CheckOutlined />} size="large">
-                确认付款 ₱{selected.amount.toLocaleString()}
-              </Button>
-            </Popconfirm>
+            <Button type="primary" icon={<CheckOutlined />} size="large"
+              onClick={() => openPayModal(selected)}>
+              确认付款 ₱{selected.amount.toLocaleString()}
+            </Button>
           </div>
         )}
       </>
@@ -442,6 +452,38 @@ export default function Settlements() {
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 付款确认 Modal */}
+      <Modal
+        title="确认付款"
+        open={payModalOpen}
+        onOk={handlePay}
+        onCancel={() => setPayModalOpen(false)}
+        okText="确认付款"
+        okButtonProps={{ icon: <CheckOutlined /> }}
+        width={420}
+      >
+        {payingSettlement && (
+          <div>
+            <Descriptions column={1} size="small" style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="教师">{payingSettlement.teacher_name}</Descriptions.Item>
+              <Descriptions.Item label="金额">
+                <Text strong style={{ fontSize: 18, color: '#F4A230' }}>₱{payingSettlement.amount.toLocaleString()}</Text>
+              </Descriptions.Item>
+            </Descriptions>
+            <Form layout="vertical">
+              <Form.Item label="付款方式" style={{ marginBottom: 0 }}>
+                <Select value={paymentMethod} onChange={setPaymentMethod} style={{ width: '100%' }}>
+                  <Select.Option value="bank_transfer">银行转账</Select.Option>
+                  <Select.Option value="gcash">GCash</Select.Option>
+                  <Select.Option value="cash">现金</Select.Option>
+                  <Select.Option value="other">其他</Select.Option>
+                </Select>
+              </Form.Item>
+            </Form>
+          </div>
+        )}
       </Modal>
     </div>
   );

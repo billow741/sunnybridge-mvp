@@ -19,6 +19,7 @@ from app.schemas.settlement import (
     SettlementCreateRequest,
     SettlementListResponse,
     SettlementOut,
+    SettlementPayRequest,
     SettlementSummaryOut,
 )
 from app.services.settlement import (
@@ -88,11 +89,12 @@ async def settlement_create(
 @router.put("/{settlement_id}/pay", response_model=SettlementOut)
 async def settlement_pay(
     settlement_id: UUID,
+    body: SettlementPayRequest = SettlementPayRequest(),
     _admin: CurrentUser = Depends(require_role("admin")),
 ) -> SettlementOut:
     """标记结算为已付款。Admin only。"""
     try:
-        return await pay_settlement(settlement_id)
+        return await pay_settlement(settlement_id, body.payment_method)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

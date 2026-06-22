@@ -139,14 +139,14 @@ async def list_settlements() -> SettlementListResponse:
     )
 
 
-async def pay_settlement(settlement_id: UUID) -> SettlementOut:
+async def pay_settlement(settlement_id: UUID, payment_method: str = "bank_transfer") -> SettlementOut:
     """标记结算为已付款。"""
     sb = get_supabase()
 
     now = datetime.now(timezone.utc).isoformat()
     result = (
         sb.table("settlements")
-        .update({"status": "paid", "paid_at": now})
+        .update({"status": "paid", "payment_method": payment_method, "paid_at": now})
         .eq("id", str(settlement_id))
         .execute()
     )
@@ -165,6 +165,7 @@ async def pay_settlement(settlement_id: UUID) -> SettlementOut:
         hourly_rate=row["hourly_rate"],
         amount=row["amount"],
         status=row.get("status", "paid"),
+        payment_method=row.get("payment_method"),
         paid_at=row.get("paid_at"),
         note=row.get("note"),
         created_at=row.get("created_at"),

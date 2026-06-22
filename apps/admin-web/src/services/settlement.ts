@@ -20,7 +20,8 @@ export interface SettlementItem {
   hours: number;
   hourly_rate: number;
   amount: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'cancelled';
+  payment_method?: string;
   paid_at?: string;
   note?: string;
   created_at?: string;
@@ -84,7 +85,7 @@ export async function createSettlement(values: {
 }
 
 /** 标记已付款 */
-export async function paySettlement(id: string): Promise<SettlementItem> {
-  const { data } = await client.put(`/settlements/${id}/pay`);
+export async function paySettlement(id: string, paymentMethod: string = 'bank_transfer'): Promise<SettlementItem> {
+  const { data } = await client.put(`/settlements/${id}/pay`, { payment_method: paymentMethod });
   return data;
 }

@@ -52,7 +52,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger = structlog.get_logger()
     logger.error("unhandled_exception", error=str(exc), path=request.url.path)
 
-    return JSONResponse(
+    resp = JSONResponse(
         status_code=500,
         content={
             "detail": {
@@ -63,15 +63,26 @@ async def global_exception_handler(request: Request, exc: Exception):
             }
         },
     )
+    # CORS headers for cross-origin error responses
+    origin = request.headers.get("origin")
+    if origin and origin in settings.cors_origin_list:
+        resp.headers["access-control-allow-origin"] = origin
+        resp.headers["access-control-allow-credentials"] = "true"
+    return resp
 
 
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     """Handle validation / business logic errors."""
-    return JSONResponse(
+    resp = JSONResponse(
         status_code=422,
         content={"detail": {"code": "VALIDATION_ERROR", "message": str(exc)}},
     )
+    origin = request.headers.get("origin")
+    if origin and origin in settings.cors_origin_list:
+        resp.headers["access-control-allow-origin"] = origin
+        resp.headers["access-control-allow-credentials"] = "true"
+    return resp
 
 
 # ---------------------------------------------------------------------------

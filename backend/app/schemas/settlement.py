@@ -32,6 +32,11 @@ class HoursCalcRequest(BaseModel):
 # 响应
 # ---------------------------------------------------------------------------
 
+class SettlementPayRequest(BaseModel):
+    """PUT /api/v1/settlements/{id}/pay"""
+    payment_method: str = Field("bank_transfer", description="付款方式: bank_transfer/gcash/cash/other")
+
+
 class SettlementOut(BaseModel):
     id: UUID
     teacher_id: UUID
@@ -42,6 +47,7 @@ class SettlementOut(BaseModel):
     hourly_rate: float
     amount: float
     status: str = "pending"   # pending | paid
+    payment_method: str | None = None
     paid_at: str | None = None
     note: str | None = None
     created_at: datetime | None = None
