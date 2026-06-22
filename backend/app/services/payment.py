@@ -162,7 +162,7 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
     ins = sb.table("payments").insert({
         "child_id": str(body.child_id),
         "payment_method": body.payment_method,
-        "hours_purchased": float(body.hours_purchased),
+        "hours_purchased": int(body.hours_purchased),
         "amount": float(body.amount),
         "payment_date": str(body.payment_date) if body.payment_date else None,
         "receipt_number": body.receipt_number,
@@ -173,7 +173,7 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
 
     # Update child totalhours
     old_hours = Decimal(str(child.data[0].get("totalhours", 0)))
-    sb.table("children").update({"totalhours": float(old_hours + body.hours_purchased)}).eq("id", str(body.child_id)).execute()
+    sb.table("children").update({"totalhours": int(old_hours + body.hours_purchased)}).eq("id", str(body.child_id)).execute()
 
     row = ins.data[0]
     row["child_name"] = child.data[0]["name"]
@@ -192,7 +192,7 @@ async def update_payment(payment_id: UUID, body: PaymentUpdate) -> PaymentOut:
     updates: dict = {}
     field_map = {
         "payment_method": str,
-        "hours_purchased": lambda v: float(v),
+        "hours_purchased": lambda v: int(v),
         "amount": lambda v: float(v),
         "payment_date": lambda v: str(v) if v else None,
         "receipt_number": str,
