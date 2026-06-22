@@ -214,7 +214,7 @@ async def update_payment(payment_id: UUID, body: PaymentUpdate) -> PaymentOut:
         child = sb.table("children").select("totalhours").eq("id", old["child_id"]).limit(1).execute()
         if child.data:
             new_total = Decimal(str(child.data[0]["totalhours"])) + diff
-            sb.table("children").update({"totalhours": float(new_total)}).eq("id", old["child_id"]).execute()
+            sb.table("children").update({"totalhours": int(new_total)}).eq("id", old["child_id"]).execute()
 
     # Get child_name
     child = sb.table("children").select("name").eq("id", row["child_id"]).limit(1).execute()
@@ -237,6 +237,6 @@ async def delete_payment(payment_id: UUID) -> dict:
     child = sb.table("children").select("totalhours").eq("id", old["child_id"]).limit(1).execute()
     if child.data:
         new_total = max(Decimal("0"), Decimal(str(child.data[0]["totalhours"])) - Decimal(str(old["hours_purchased"])))
-        sb.table("children").update({"totalhours": float(new_total)}).eq("id", old["child_id"]).execute()
+        sb.table("children").update({"totalhours": int(new_total)}).eq("id", old["child_id"]).execute()
 
     return {"ok": True}
