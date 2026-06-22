@@ -21,8 +21,8 @@ from pydantic import BaseModel, Field
 class PaymentCreate(BaseModel):
     """Admin creates a payment record."""
     child_id: UUID
-    payment_method: str = "现金"
-    hours_purchased: Decimal = Field(..., gt=0)
+    payment_method: str = "cash"
+    hours_purchased: Decimal = Field(default=Decimal("0"), ge=0)
     amount: Decimal = Field(..., ge=0)
     payment_date: Optional[date] = None
     receipt_number: Optional[str] = None

@@ -1,5 +1,10 @@
 /**
- * 收款记录 — 增强版 v2
+ * 收款记录 — 增强版 v3
+ *
+ * v3 修复:
+ * - onCreate/onSaveEdit 区分 AntD validateFields 错误对象 vs API 错误
+ * - child_id 改用学员 Select 下拉选择，不再手填 UUID
+ * - extractError 安全处理对象类型的 detail
  *
  * - 统计区：本月收款 + 按 payment_method 分组 + 收款笔数
  * - 筛选：时间范围 / 学员 / 支付方式
@@ -50,7 +55,25 @@ interface Stats {
   method_stats?: Record<string, number>;
 }
 
-const extractError = (err: any) => err?.response?.data?.detail?.message || err?.response?.data?.detail || err?.message || '操作失败';
+/* ── 安全提取错误信息（防止对象被当 React child 渲染） ── */
+const extractError = (err: any): string => {
+  // AntD validateFields 抛出的是 { errorFields, ... }，不是标准 Error
+  if (err?.errorFields) {
+    return err.errorFields.map((f: any) => f.errors?.join(', ') || f.message || '校验失败').join('; ');
+  }
+  const detail = err?.response?.data?.detail;
+  if (detail) {
+    // detail 可能是对象数组（422 FastAPI 验证错误）或字符串
+    if (Array.isArray(detail)) {
+      return detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ');
+    }
+    if (typeof detail === 'object' && detail.message) return detail.message;
+    if (typeof detail === 'object') return JSON.stringify(detail);
+    return String(detail);
+  }
+  if (err?.message) return err.message;
+  return '操作失败';
+};
 
 export default function PaymentsPage() {
   const [items, setItems] = useState<Payment[]>([]);
@@ -77,7 +100,19 @@ export default function PaymentsPage() {
   const [editForm] = Form.useForm();
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  /* ── 加载 ── */
+  // 学员下拉列表
+  const [studentOptions, setStudentOptions] = useState<{id: string; name: string; english_name?: string}[]>([]);
+
+  /* ── 加载学员列表（用于新建 Modal 选择学员） ── */
+  const loadStudents = async () => {
+    try {
+      const { data } = await client.get('/children', { params: { page: 1, page_size: 200 } });
+      const list = (data.items || data || []) as any[];
+      setStudentOptions(list.map(s => ({ id: s.id, name: s.name, english_name: s.english_name })));
+    } catch { /* 静默，学员列表不影响主流程 */ }
+  };
+
+  /* ── 加载收款列表 ── */
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -88,13 +123,12 @@ export default function PaymentsPage() {
       setItems(res.items || []);
       setTotal(res.total || 0);
       setStats(res.stats || { total_amount: 0, month_amount: 0, count: 0 });
-      // 附带 method_stats
       if (res.stats?.method_stats) setStats(s => ({ ...s, method_stats: res.stats.method_stats }));
     } catch (err) { message.error(extractError(err)); }
     setLoading(false);
   }, [page, filterMonth, filterMethod]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadStudents(); }, [load]);
 
   const filtered = items.filter(it =>
     !searchText || it.child_name?.toLowerCase().includes(searchText.toLowerCase())
@@ -110,16 +144,20 @@ export default function PaymentsPage() {
       await client.post('/payments', {
         child_id: values.child_id,
         payment_method: values.payment_method || 'cash',
-        hours_purchased: values.hours_purchased,
+        hours_purchased: values.hours_purchased || 0,
         amount: values.amount,
-        payment_date: values.payment_date?.format('YYYY-MM-DD') || null,
+        payment_date: values.payment_date?.format?.('YYYY-MM-DD') || null,
         receipt_number: values.receipt_number || null,
         description: values.description || null,
         notes: values.notes || null,
       });
       message.success('收款添加成功');
       setModalOpen(false); form.resetFields(); load();
-    } catch (err) { message.error(extractError(err)); }
+    } catch (err: any) {
+      // AntD validateFields 失败：errorFields 存在时是表单校验错，不弹 message.error
+      if (err?.errorFields) return;
+      message.error(extractError(err));
+    }
   };
 
   /* ── 编辑 ── */
@@ -140,7 +178,7 @@ export default function PaymentsPage() {
     try {
       const values = await editForm.validateFields();
       await client.put(`/payments/${editingId}`, {
-        payment_date: values.payment_date?.format('YYYY-MM-DD') || null,
+        payment_date: values.payment_date?.format?.('YYYY-MM-DD') || null,
         hours_purchased: values.hours_purchased,
         receipt_number: values.receipt_number || null,
         description: values.description || null,
@@ -149,7 +187,10 @@ export default function PaymentsPage() {
       });
       message.success('已更新');
       setEditOpen(false); load();
-    } catch (err) { message.error(extractError(err)); }
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(extractError(err));
+    }
   };
 
   const onDelete = async (id: string) => {
@@ -315,13 +356,21 @@ export default function PaymentsPage() {
       <Modal title="添加收款" open={modalOpen} onOk={onCreate} onCancel={() => { setModalOpen(false); form.resetFields(); }}
         okText="确认添加" cancelText="取消">
         <Form form={form} layout="vertical">
-          <Form.Item name="child_id" label="学员 ID" rules={[{ required: true, message: '请输入学员ID' }]}>
-            <Input placeholder="粘贴学员 UUID" />
+          <Form.Item name="child_id" label="学员" rules={[{ required: true, message: '请选择学员' }]}>
+            <Select placeholder="选择学员" showSearch optionFilterProp="label"
+              filterOption={(input, option) =>
+                (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={studentOptions.map(s => ({
+                value: s.id,
+                label: `${s.name}${s.english_name ? ` (${s.english_name})` : ''}`,
+              }))}
+            />
           </Form.Item>
           <Form.Item name="payment_method" label="支付方式" initialValue="cash">
             <Select>{PAYMENT_METHODS.map(m => <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>)}</Select>
           </Form.Item>
-          <Form.Item name="hours_purchased" label="购买课时数" rules={[{ required: true, message: '请输入' }]}>
+          <Form.Item name="hours_purchased" label="购买课时数">
             <InputNumber min={0.5} step={0.5} addonAfter="h" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item name="amount" label="金额" rules={[{ required: true, message: '请输入' }]}>
