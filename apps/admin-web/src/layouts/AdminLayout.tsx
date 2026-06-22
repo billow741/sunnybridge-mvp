@@ -111,7 +111,7 @@ export default function AdminLayout() {
             >退出</button>
           </div>
         </Header>
-        <Content style={{ margin: 16, padding: 16, background: '#fff', minHeight: 'calc(100vh - 56px - 32px)', borderRadius: 8 }}>
+        <Content style={{ background: '#f0f2f5', minHeight: 'calc(100vh - 56px)' }}>
           <Outlet />
         </Content>
       </Layout>
