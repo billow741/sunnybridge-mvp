@@ -367,7 +367,7 @@ export default function Students() {
               <Descriptions.Item label="英文名">{selected.english_name || '—'}</Descriptions.Item>
               <Descriptions.Item label="出生日期">{selected.birth_date || '—'}</Descriptions.Item>
               <Descriptions.Item label="家长手机">{selected.parent?.phone || '—'}</Descriptions.Item>
-              <Descriptions.Item label="家长昵称">{selected.parent?.nickname || '—'}</Descriptions.Item>
+              <Descriptions.Item label={`学员[${selected.name || ''}]`}>{selected.english_name || '—'}</Descriptions.Item>
             </Descriptions>
 
             {/* Tab */}
