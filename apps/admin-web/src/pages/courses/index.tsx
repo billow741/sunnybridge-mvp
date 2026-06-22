@@ -101,7 +101,7 @@ export default function CoursesPage() {
     setLoading(true);
     try {
       const { data: res } = await client.get('/courses/all', {
-        params: { page: 1, page_size: 200 },
+        params: { page: 1, page_size: 100 },
       });
       const items = (res.items || []).map((c: any) => {
         const { children, ...rest } = c;

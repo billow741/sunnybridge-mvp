@@ -60,7 +60,7 @@ async def today_courses_endpoint(
 @router.get("/history", response_model=PaginatedCourses)
 async def history_courses_endpoint(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     user: CurrentUser = Depends(require_role("parent")),
 ) -> PaginatedCourses:
     """Parent's history courses, paginated, date descending."""
@@ -71,7 +71,7 @@ async def history_courses_endpoint(
 async def all_courses_endpoint(
     month: str | None = Query(None, description="Month filter YYYY-MM"),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=500),
     user: CurrentUser = Depends(require_role("teacher", "admin")),
 ) -> PaginatedCourses:
     """All courses with optional month filter. Teacher sees own courses; Admin sees all."""
