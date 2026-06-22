@@ -37,6 +37,9 @@ def _build_out(row: dict) -> PaymentOut:
         payment_method=row.get("payment_method", "现金"),
         hours_purchased=row.get("hours_purchased", 0),
         amount=row.get("amount", 0),
+        payment_date=row.get("payment_date"),
+        receipt_number=row.get("receipt_number"),
+        description=row.get("description"),
         status=row.get("status", "completed"),
         notes=row.get("notes"),
         package_id=row.get("package_id"),
@@ -157,6 +160,9 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
         "payment_method": body.payment_method,
         "hours_purchased": float(body.hours_purchased),
         "amount": float(body.amount),
+        "payment_date": str(body.payment_date) if body.payment_date else None,
+        "receipt_number": body.receipt_number,
+        "description": body.description,
         "notes": body.notes,
         "status": "completed",
     }).execute()
@@ -180,7 +186,16 @@ async def update_payment(payment_id: UUID, body: PaymentUpdate) -> PaymentOut:
 
     old = existing.data[0]
     updates: dict = {}
-    field_map = {"payment_method": str, "hours_purchased": lambda v: float(v), "amount": lambda v: float(v), "notes": str, "status": str}
+    field_map = {
+        "payment_method": str,
+        "hours_purchased": lambda v: float(v),
+        "amount": lambda v: float(v),
+        "payment_date": lambda v: str(v) if v else None,
+        "receipt_number": str,
+        "description": str,
+        "notes": str,
+        "status": str,
+    }
     for field, caster in field_map.items():
         val = getattr(body, field, None)
         if val is not None:

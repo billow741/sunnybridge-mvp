@@ -1,14 +1,16 @@
 """Payment schemas for admin payments CRUD.
 
-适配现有 payments 表结构:
+适配 payments 表结构 (2026-06 新增 payment_date, receipt_number, description):
 - hours_purchased (而非 hours)
 - payment_method (而非 method)
 - notes (而非 note)
+- payment_date (可选，真实收款日期; 无则 fallback 到 created_at)
+- receipt_number (可选)
+- description (可选)
 - status, package_id, transaction_ref, updated_at
-- 无独立 date 字段，用 created_at
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
@@ -22,6 +24,9 @@ class PaymentCreate(BaseModel):
     payment_method: str = "现金"
     hours_purchased: Decimal = Field(..., gt=0)
     amount: Decimal = Field(..., ge=0)
+    payment_date: Optional[date] = None
+    receipt_number: Optional[str] = None
+    description: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -30,6 +35,9 @@ class PaymentUpdate(BaseModel):
     payment_method: Optional[str] = None
     hours_purchased: Optional[Decimal] = None
     amount: Optional[Decimal] = None
+    payment_date: Optional[date] = None
+    receipt_number: Optional[str] = None
+    description: Optional[str] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
@@ -41,8 +49,11 @@ class PaymentOut(BaseModel):
     payment_method: str
     hours_purchased: Decimal
     amount: Decimal
+    payment_date: Optional[date] = None
+    receipt_number: Optional[str] = None
+    description: Optional[str] = None
     status: str = "completed"
-    notes: Optional[str]
+    notes: Optional[str] = None
     package_id: Optional[UUID] = None
     transaction_ref: Optional[str] = None
     created_at: datetime
