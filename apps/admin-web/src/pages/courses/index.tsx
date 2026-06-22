@@ -43,7 +43,7 @@ interface CourseRecord {
   end_time: string;
   teacher_id: string;
   teacher?: { id: string; name: string; hourly_rate?: number };
-  children?: { id: string; name: string; totalhours?: number; usedhours?: number; remaining_hours?: number }[];
+  students?: { id: string; name: string; totalhours?: number; usedhours?: number; remaining_hours?: number }[];
   status: 'pending' | 'completed' | 'cancelled';
   hours?: number;
   feedbacks?: { content: string; homework: string; notes: string }[];
@@ -73,7 +73,13 @@ export default function CoursesPage() {
       const { data: res } = await client.get('/courses/all', {
         params: { page: 1, page_size: 100 },
       });
-      setData(res.items || []);
+      // 后端返回 children 字段，但 Ant Design 会把它当作树形子行
+      // 重命名为 students 避免 Ant Design 自动渲染展开行
+      const items = (res.items || []).map((c: any) => {
+        const { children, ...rest } = c;
+        return { ...rest, students: children };
+      });
+      setData(items);
     } catch (err) {
       message.error(extractError(err));
     } finally {
@@ -172,7 +178,7 @@ export default function CoursesPage() {
     },
     {
       title: '学员', width: 120,
-      render: (_: any, r: CourseRecord) => r.children?.map(c => c.name).join(', ') || '—',
+      render: (_: any, r: CourseRecord) => r.students?.map(c => c.name).join(', ') || '—',
     },
     {
       title: '教师', dataIndex: ['teacher', 'name'], width: 90,
@@ -228,7 +234,7 @@ export default function CoursesPage() {
   // ── 渲染确认弹窗内容（扣课时预览）──
   const renderConfirmContent = () => {
     if (!confirmTarget) return null;
-    const student = confirmTarget.children?.[0];
+    const student = confirmTarget.students?.[0];
     const hours = confirmTarget.hours || 1;
     if (!student) return <Text>无关联学员</Text>;
 
@@ -298,7 +304,7 @@ export default function CoursesPage() {
   const renderDetail = () => {
     if (!selected) return null;
     const hint = getHint(selected);
-    const student = selected.children?.[0];
+    const student = selected.students?.[0];
 
     return (
       <>
