@@ -246,8 +246,8 @@ export default function PaymentsPage() {
         </Col>
       </Row>
 
-      {/* ── 工具栏 ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* ── 工具栏 (sticky) ── */}
+      <div className="sb-filter-bar">
         <Input placeholder="搜索学员/备注/收据号" prefix={<SearchOutlined />} style={{ width: 200 }}
           value={searchText} onChange={e => setSearchText(e.target.value)} allowClear />
         <DatePicker picker="month" placeholder="月份" style={{ width: 130 }}
@@ -277,7 +277,7 @@ export default function PaymentsPage() {
       </div>}
 
       {/* ── 详情 Drawer ── */}
-      <Drawer title="收款详情" open={drawerOpen} onClose={() => setDrawerOpen(false)} width={480}>
+      <Drawer title="收款详情" open={drawerOpen} onClose={() => { setDrawerOpen(false); load(); }} width={480}>
         {selected && <>
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="学员">{selected.child_name || '—'}</Descriptions.Item>

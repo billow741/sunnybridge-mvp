@@ -189,11 +189,11 @@ export default function Students() {
     },
     {
       title: '总课时', dataIndex: 'totalhours', width: 70, align: 'center' as const,
-      render: (v: number) => v ?? 0,
+      render: (v: number) => <span className="tabular">{v ?? 0}</span>,
     },
     {
       title: '已用', dataIndex: 'usedhours', width: 60, align: 'center' as const,
-      render: (v: number) => <Text type="secondary">{v ?? 0}</Text>,
+      render: (v: number) => <Text type="secondary" className="tabular">{v ?? 0}</Text>,
     },
     {
       title: '剩余课时', dataIndex: 'remaining_hours', width: 110, align: 'center' as const,
@@ -201,7 +201,7 @@ export default function Students() {
         const hrs = h ?? 0;
         return (
           <Tooltip title={hrs <= 2 ? '告急' : hrs <= 5 ? '偏少' : '充足'}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: hoursColor(hrs) }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: hoursColor(hrs) }} className="tabular">
               {hrs}h
             </span>
             {hrs <= 2 && <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginLeft: 4 }} />}
@@ -228,7 +228,7 @@ export default function Students() {
     { title: '教师', dataIndex: ['teacher', 'name'], width: 80 },
     {
       title: '课时', dataIndex: 'hours', width: 60, align: 'center' as const,
-      render: (v: number) => v ? <strong>{v}</strong> : <Text type="secondary">—</Text>,
+      render: (v: number) => v ? <strong className="tabular">{v}</strong> : <Text type="secondary">—</Text>,
     },
     {
       title: '状态', dataIndex: 'status', width: 80,
@@ -293,9 +293,8 @@ export default function Students() {
 
       {/* 右侧详情面板 */}
       {selected && (
-        <div style={{
+        <div className="sb-slide-in" style={{
           flex: '0 0 45%', padding: 16, paddingLeft: 8, overflow: 'auto',
-          animation: 'fadeIn 0.2s ease',
         }}>
           <Card className="sb-card" style={{ height: '100%' }}
             title={
@@ -328,10 +327,12 @@ export default function Students() {
               </div>
               <Row gutter={16}>
                 <Col span={8}>
-                  <Statistic title="总课时" value={selected.totalhours ?? 0} suffix="h" valueStyle={{ fontSize: 20 }} />
+                  <Statistic title="总课时" value={selected.totalhours ?? 0} suffix="h"
+                    valueStyle={{ fontSize: 20 }} className="tabular" />
                 </Col>
                 <Col span={8}>
-                  <Statistic title="已用" value={selected.usedhours ?? 0} suffix="h" valueStyle={{ fontSize: 20, color: '#666' }} />
+                  <Statistic title="已用" value={selected.usedhours ?? 0} suffix="h"
+                    valueStyle={{ fontSize: 20, color: '#666' }} className="tabular" />
                 </Col>
                 <Col span={8}>
                   <Statistic title="剩余" value={selected.remaining_hours ?? 0} suffix="h"
@@ -343,6 +344,7 @@ export default function Students() {
                       const h = selected.remaining_hours ?? 0;
                       return h <= 2 ? <ExclamationCircleOutlined /> : undefined;
                     })()}
+                    className="tabular"
                   />
                 </Col>
               </Row>
@@ -433,9 +435,9 @@ export default function Students() {
       >
         {selected && (
           <div style={{ marginBottom: 16, padding: 12, background: '#fafafa', borderRadius: 8 }}>
-            <Text>当前总课时：<strong>{selected.totalhours ?? 0}h</strong></Text><br/>
-            <Text>已用课时：<strong>{selected.usedhours ?? 0}h</strong></Text><br/>
-            <Text>剩余：<strong style={{ color: hoursColor(selected.remaining_hours ?? 0) }}>
+            <Text>当前总课时：<strong className="tabular">{selected.totalhours ?? 0}h</strong></Text><br/>
+            <Text>已用课时：<strong className="tabular">{selected.usedhours ?? 0}h</strong></Text><br/>
+            <Text>剩余：<strong style={{ color: hoursColor(selected.remaining_hours ?? 0) }} className="tabular">
               {selected.remaining_hours ?? 0}h
             </strong></Text>
           </div>
@@ -454,8 +456,6 @@ export default function Students() {
           </Form.Item>
         </Form>
       </Modal>
-
-      <style>{`@keyframes fadeIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }`}</style>
     </div>
   );
 }

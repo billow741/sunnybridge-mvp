@@ -12,7 +12,7 @@ import {
   Spin, Space, Tooltip, Divider,
 } from 'antd';
 import {
-  TeamOutlined, BookOutlined, TrophyOutlined, DollarOutlined,
+  TeamOutlined, BookOutlined, TrophyOutlined, DollarOutlined, FileTextOutlined,
   AlertOutlined, BellOutlined, ExclamationCircleOutlined,
   ArrowRightOutlined, ClockCircleOutlined, CommentOutlined,
   CheckCircleOutlined, ReloadOutlined, PlusOutlined,
@@ -262,6 +262,8 @@ export default function Dashboard() {
               <Button icon={<PlusOutlined />} onClick={() => navigate('/finance/payments')}>添加收款</Button>
               <Button icon={<DollarCircleOutlined />} onClick={() => navigate('/finance/settlements')}>教师结算</Button>
               <Button icon={<TeamOutlined />} onClick={() => navigate('/students')}>学员管理</Button>
+              <Button icon={<BookOutlined />} onClick={() => navigate('/courses')}>课程排期</Button>
+              <Button icon={<FileTextOutlined />} onClick={() => navigate('/content')}>内容管理</Button>
             </Space>
           </Card>
         </Col>

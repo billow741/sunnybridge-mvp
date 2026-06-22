@@ -1,25 +1,29 @@
 /**
- * 课程确认流程页面
+ * 课程管理 — 列表 + 日历双视图
  *
- * 设计要点：
- * - 课程状态贴近数据模型：pending / completed / cancelled
- * - UI 增强提示：待补反馈、待确认课时
- * - 确认完成时弹窗预览扣课时（学员原剩余 Yh → 扣 Xh → 现剩余 Zh）
- * - courses.hours 显著展示
- * - 状态 inline 切换，仅财务影响时弹窗确认
+ * 新增：周视图日历 (WeekCalendar)
+ * - 卡片展示：时间 / 学员 / 教师 / hours / 状态
+ * - 点击开详情 Drawer
+ * - 快速看排课密度/冲突
+ * - 不新增数据库没有的状态
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   Table, Button, Tag, Modal, message, Card, Space, Descriptions,
   Statistic, Row, Col, Progress, Typography, Tooltip, Badge, Drawer,
-  Select, Form, Input, Empty, Popconfirm,
+  Select, Form, Input, Empty, Popconfirm, Segmented,
 } from 'antd';
 import {
   CheckOutlined, EyeOutlined, CloseOutlined, ClockCircleOutlined,
   BookOutlined, ExclamationCircleOutlined, CommentOutlined,
+  CalendarOutlined, UnorderedListOutlined, LeftOutlined, RightOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
 import client, { extractError } from '@/api/client';
+
+dayjs.extend(isoWeek);
 
 const { Text, Title } = Typography;
 
@@ -50,11 +54,37 @@ interface CourseRecord {
   meeting_link?: string;
 }
 
+// ── 时间工具 ──
+const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const HOURS_SLOTS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 ~ 20:00
+
+function getWeekRange(center: dayjs.Dayjs) {
+  const monday = center.isoWeekday(1);
+  const sunday = monday.add(6, 'day');
+  return { monday, sunday, days: Array.from({ length: 7 }, (_, i) => monday.add(i, 'day')) };
+}
+
+function timeToHour(time: string): number {
+  if (!time) return 0;
+  const [h, m] = time.split(':').map(Number);
+  return h + (m || 0) / 60;
+}
+
+const STATUS_BORDER: Record<string, string> = {
+  pending: '#F4A230',
+  completed: '#52c41a',
+  cancelled: '#d9d9d9',
+};
+
 export default function CoursesPage() {
   const [data, setData] = useState<CourseRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<CourseRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+
+  // 日历周导航
+  const [weekCenter, setWeekCenter] = useState(dayjs());
 
   // 确认完成弹窗
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -66,15 +96,13 @@ export default function CoursesPage() {
   const [feedbackForm] = Form.useForm();
   const [feedbackTarget, setFeedbackTarget] = useState<CourseRecord | null>(null);
 
-  // ── 加载课程列表 ──────────────────────
+  // ── 加载课程 ──
   const load = async () => {
     setLoading(true);
     try {
       const { data: res } = await client.get('/courses/all', {
-        params: { page: 1, page_size: 100 },
+        params: { page: 1, page_size: 200 },
       });
-      // 后端返回 children 字段，但 Ant Design 会把它当作树形子行
-      // 重命名为 students 避免 Ant Design 自动渲染展开行
       const items = (res.items || []).map((c: any) => {
         const { children, ...rest } = c;
         return { ...rest, students: children };
@@ -89,7 +117,23 @@ export default function CoursesPage() {
 
   useEffect(() => { load(); }, []);
 
-  // ── 判断 UI 增强状态 ──────────────────
+  // ── 周范围 ──
+  const { monday, sunday, days } = useMemo(() => getWeekRange(weekCenter), [weekCenter]);
+
+  // ── 按日期分组（日历用）──
+  const coursesByDate = useMemo(() => {
+    const map: Record<string, CourseRecord[]> = {};
+    data.forEach(c => {
+      const key = c.date;
+      if (!map[key]) map[key] = [];
+      map[key].push(c);
+    });
+    // 按start_time排序
+    Object.values(map).forEach(arr => arr.sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '')));
+    return map;
+  }, [data]);
+
+  // ── 判断 UI 增强状态 ──
   const getHint = (r: CourseRecord): string | null => {
     if (r.status === 'completed' && (!r.feedbacks || r.feedbacks.length === 0)) {
       return 'needs_feedback';
@@ -100,71 +144,125 @@ export default function CoursesPage() {
     return null;
   };
 
-  // ── 确认完成 ─────────────────────────
-  const openConfirm = (record: CourseRecord) => {
-    setConfirmTarget(record);
-    setConfirmOpen(true);
-  };
-
+  // ── 操作函数（同 P0 逻辑）──
+  const openConfirm = (record: CourseRecord) => { setConfirmTarget(record); setConfirmOpen(true); };
   const doConfirm = async () => {
     if (!confirmTarget) return;
     setConfirming(true);
     try {
       await client.put(`/courses/${confirmTarget.id}`, { status: 'completed' });
       message.success('课程已确认完成');
-      setConfirmOpen(false);
-      load();
-    } catch (err) {
-      message.error(extractError(err));
-    } finally {
-      setConfirming(false);
-    }
+      setConfirmOpen(false); load();
+    } catch (err) { message.error(extractError(err)); }
+    finally { setConfirming(false); }
   };
-
-  // ── 取消课程 ─────────────────────────
   const doCancel = async (id: string) => {
     try {
       await client.put(`/courses/${id}`, { status: 'cancelled' });
       message.success('课程已取消');
       load();
-      if (selected?.id === id) {
-        setSelected({ ...selected, status: 'cancelled' });
-      }
-    } catch (err) {
-      message.error(extractError(err));
-    }
+      if (selected?.id === id) setSelected({ ...selected, status: 'cancelled' });
+    } catch (err) { message.error(extractError(err)); }
   };
-
-  // ── 提交反馈 ─────────────────────────
   const openFeedback = (record: CourseRecord) => {
-    setFeedbackTarget(record);
-    feedbackForm.resetFields();
-    setFeedbackOpen(true);
+    setFeedbackTarget(record); feedbackForm.resetFields(); setFeedbackOpen(true);
   };
-
   const submitFeedback = async () => {
     if (!feedbackTarget) return;
     try {
       const values = await feedbackForm.validateFields();
-      await client.post('/feedbacks', {
-        course_id: feedbackTarget.id,
-        ...values,
-      });
+      await client.post('/feedbacks', { course_id: feedbackTarget.id, ...values });
       message.success('反馈已提交');
-      setFeedbackOpen(false);
-      load();
-    } catch (err) {
-      if (err instanceof Error) message.error(extractError(err));
-    }
+      setFeedbackOpen(false); load();
+    } catch (err) { if (err instanceof Error) message.error(extractError(err)); }
+  };
+  const openDetail = (record: CourseRecord) => { setSelected(record); setDrawerOpen(true); };
+
+  // ── 日历卡片 ──
+  const renderCalCard = (c: CourseRecord) => {
+    const borderColor = STATUS_BORDER[c.status] || '#d9d9d9';
+    const hint = getHint(c);
+    const studentName = c.students?.map(s => s.name).join(', ') || '—';
+    return (
+      <div
+        key={c.id}
+        onClick={() => openDetail(c)}
+        style={{
+          background: '#fff',
+          borderLeft: `3px solid ${borderColor}`,
+          borderRadius: 6,
+          padding: '4px 8px',
+          marginBottom: 4,
+          cursor: 'pointer',
+          fontSize: 12,
+          transition: 'box-shadow 0.2s',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.1)')}
+        onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+      >
+        <div style={{ fontWeight: 600, color: '#333', fontVariantNumeric: 'tabular-nums' }}>
+          {c.start_time?.slice(0, 5)}-{c.end_time?.slice(0, 5)}
+          <span style={{ marginLeft: 6, color: '#5CAADF', fontWeight: 700 }}>{c.hours || 1}h</span>
+        </div>
+        <div style={{ color: '#666', marginTop: 2 }}>{studentName} · {c.teacher?.name || '—'}</div>
+        <div style={{ marginTop: 3 }}>
+          <Tag color={STATUS_MAP[c.status]?.color} style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', margin: 0 }}>
+            {STATUS_MAP[c.status]?.label}
+          </Tag>
+          {hint && UI_HINTS[hint] && (
+            <Text style={{ fontSize: 10, color: UI_HINTS[hint].color, marginLeft: 4 }}>
+              {UI_HINTS[hint].label}
+            </Text>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  // ── 查看详情 Drawer ──────────────────
-  const openDetail = (record: CourseRecord) => {
-    setSelected(record);
-    setDrawerOpen(true);
+  // ── 周视图网格 ──
+  const renderWeekCalendar = () => {
+    const today = dayjs().format('YYYY-MM-DD');
+    return (
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto' }}>
+        {days.map((day, di) => {
+          const dateStr = day.format('YYYY-MM-DD');
+          const isToday = dateStr === today;
+          const courses = coursesByDate[dateStr] || [];
+          return (
+            <div key={dateStr} style={{
+              flex: '1 0 130px', minWidth: 130, maxWidth: 200,
+              background: isToday ? '#f0f9ff' : '#fafafa',
+              borderRadius: 8, padding: '8px 6px',
+              border: isToday ? '2px solid #5CAADF' : '1px solid #f0f0f0',
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: '#999' }}>{DAY_LABELS[di]}</div>
+                <div style={{
+                  fontSize: 18, fontWeight: 700,
+                  color: isToday ? '#5CAADF' : '#333',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {day.format('MM/DD')}
+                </div>
+              </div>
+              {courses.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#ccc', fontSize: 11, padding: '12px 0' }}>无课程</div>
+              ) : (
+                courses.map(c => renderCalCard(c))
+              )}
+              {courses.length > 0 && (
+                <div style={{ textAlign: 'center', marginTop: 4, fontSize: 10, color: '#999' }}>
+                  共 {courses.reduce((s, c) => s + (c.hours || 1), 0)}h
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
-  // ── 表格列 ───────────────────────────
+  // ── 表格列（同 P0）──
   const columns = [
     {
       title: '日期', dataIndex: 'date', width: 100,
@@ -174,7 +272,7 @@ export default function CoursesPage() {
     },
     {
       title: '时间', width: 100,
-      render: (_: any, r: CourseRecord) => `${r.start_time?.slice(0,5)}-${r.end_time?.slice(0,5)}`,
+      render: (_: any, r: CourseRecord) => <span style={{ fontVariantNumeric: 'tabular-nums' }}>{r.start_time?.slice(0,5)}-{r.end_time?.slice(0,5)}</span>,
     },
     {
       title: '学员', width: 120,
@@ -186,7 +284,7 @@ export default function CoursesPage() {
     {
       title: '课时', dataIndex: 'hours', width: 70, align: 'center' as const,
       render: (v: number) => v ? (
-        <span style={{ fontSize: 16, fontWeight: 700, color: '#5CAADF' }}>{v}h</span>
+        <span style={{ fontSize: 16, fontWeight: 700, color: '#5CAADF', fontVariantNumeric: 'tabular-nums' }}>{v}h</span>
       ) : <Text type="secondary">—</Text>,
     },
     {
@@ -231,68 +329,42 @@ export default function CoursesPage() {
     },
   ];
 
-  // ── 渲染确认弹窗内容（扣课时预览）──
+  // ── 确认完成弹窗内容 ──
   const renderConfirmContent = () => {
     if (!confirmTarget) return null;
     const student = confirmTarget.students?.[0];
     const hours = confirmTarget.hours || 1;
     if (!student) return <Text>无关联学员</Text>;
-
     const remaining = student.remaining_hours ?? ((student.totalhours ?? 0) - (student.usedhours ?? 0));
     const afterDeduct = remaining - hours;
-
     return (
       <div>
-        <div style={{
-          background: '#f0f9ff', borderRadius: 10, padding: 16,
-          border: '1px solid #e6f4ff', marginBottom: 16,
-        }}>
+        <div style={{ background: '#f0f9ff', borderRadius: 10, padding: 16, border: '1px solid #e6f4ff', marginBottom: 16 }}>
           <Text strong style={{ fontSize: 15 }}>
-            <ClockCircleOutlined style={{ color: '#5CAADF', marginRight: 6 }} />
-            课时扣减预览
+            <ClockCircleOutlined style={{ color: '#5CAADF', marginRight: 6 }} />课时扣减预览
           </Text>
           <Row gutter={16} style={{ marginTop: 12 }}>
-            <Col span={8}>
-              <Statistic title="学员当前剩余" value={remaining} suffix="h"
-                valueStyle={{ fontSize: 20, color: '#1e293b' }}
-              />
-            </Col>
+            <Col span={8}><Statistic title="学员当前剩余" value={remaining} suffix="h" valueStyle={{ fontSize: 20, color: '#1e293b', fontVariantNumeric: 'tabular-nums' }} /></Col>
             <Col span={8} style={{ textAlign: 'center' }}>
-              <div style={{ paddingTop: 20 }}>
-                <Text type="secondary">本次消耗</Text>
-                <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f' }}>
-                  −{hours}h
-                </div>
+              <div style={{ paddingTop: 20 }}><Text type="secondary">本次消耗</Text>
+                <div style={{ fontSize: 20, fontWeight: 700, color: '#ff4d4f', fontVariantNumeric: 'tabular-nums' }}>−{hours}h</div>
               </div>
             </Col>
-            <Col span={8}>
-              <Statistic title="确认后剩余" value={afterDeduct} suffix="h"
-                valueStyle={{
-                  fontSize: 24, fontWeight: 700,
-                  color: afterDeduct <= 2 ? '#ff4d4f' : afterDeduct <= 5 ? '#F4A230' : '#52c41a',
-                }}
-              />
-            </Col>
+            <Col span={8}><Statistic title="确认后剩余" value={afterDeduct} suffix="h"
+              valueStyle={{ fontSize: 24, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                color: afterDeduct <= 2 ? '#ff4d4f' : afterDeduct <= 5 ? '#F4A230' : '#52c41a' }}
+            /></Col>
           </Row>
         </div>
-
         {afterDeduct <= 2 && (
-          <div style={{
-            background: '#fff2f0', border: '1px solid #ffccc7',
-            borderRadius: 8, padding: '10px 14px', marginBottom: 12,
-          }}>
+          <div style={{ background: '#fff2f0', border: '1px solid #ffccc7', borderRadius: 8, padding: '10px 14px', marginBottom: 12 }}>
             <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginRight: 6 }} />
-            <Text type="danger">
-              ⚠️ 确认后该学员剩余课时将{afterDeduct < 0 ? '变为负数' : '不足 2h'}，请留意续费提醒
-            </Text>
+            <Text type="danger">⚠️ 确认后该学员剩余课时将{afterDeduct < 0 ? '变为负数' : '不足 2h'}，请留意续费提醒</Text>
           </div>
         )}
-
         <Descriptions column={2} size="small">
           <Descriptions.Item label="课程日期">{dayjs(confirmTarget.date).format('YYYY/MM/DD')}</Descriptions.Item>
-          <Descriptions.Item label="课时数">
-            <Text strong style={{ color: '#5CAADF' }}>{hours}h</Text>
-          </Descriptions.Item>
+          <Descriptions.Item label="课时数"><Text strong style={{ color: '#5CAADF' }}>{hours}h</Text></Descriptions.Item>
           <Descriptions.Item label="学员">{student.name}</Descriptions.Item>
           <Descriptions.Item label="教师">{confirmTarget.teacher?.name}</Descriptions.Item>
         </Descriptions>
@@ -300,115 +372,66 @@ export default function CoursesPage() {
     );
   };
 
-  // ── 渲染详情 Drawer ──────────────────
+  // ── 渲染详情 Drawer ──
   const renderDetail = () => {
     if (!selected) return null;
     const hint = getHint(selected);
     const student = selected.students?.[0];
-
     return (
       <>
         <div style={{ marginBottom: 16 }}>
           <Space>
-            <Title level={4} style={{ margin: 0 }}>
-              {dayjs(selected.date).format('YYYY/MM/DD')} 课程
-            </Title>
-            <Tag color={STATUS_MAP[selected.status]?.color}>
-              {STATUS_MAP[selected.status]?.label}
-            </Tag>
-            {hint && UI_HINTS[hint] && (
-              <Text style={{ color: UI_HINTS[hint].color }}>
-                {UI_HINTS[hint].icon} {UI_HINTS[hint].label}
-              </Text>
-            )}
+            <Title level={4} style={{ margin: 0 }}>{dayjs(selected.date).format('YYYY/MM/DD')} 课程</Title>
+            <Tag color={STATUS_MAP[selected.status]?.color}>{STATUS_MAP[selected.status]?.label}</Tag>
+            {hint && UI_HINTS[hint] && <Text style={{ color: UI_HINTS[hint].color }}>{UI_HINTS[hint].icon} {UI_HINTS[hint].label}</Text>}
           </Space>
         </div>
-
-        {/* 课时高亮区域 */}
-        <div style={{
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #fffbe6 100%)',
-          borderRadius: 10, padding: 16, marginBottom: 16,
-          border: '1px solid #e6f4ff',
-        }}>
+        <div style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #fffbe6 100%)', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid #e6f4ff' }}>
           <Row gutter={16}>
             <Col span={8}>
-              <Statistic title="课程课时" value={selected.hours || 1} suffix="h"
-                valueStyle={{ fontSize: 24, fontWeight: 700, color: '#5CAADF' }}
-                prefix={<BookOutlined />}
-              />
+              <Statistic title="课程课时" value={selected.hours || 1} suffix="h" valueStyle={{ fontSize: 24, fontWeight: 700, color: '#5CAADF', fontVariantNumeric: 'tabular-nums' }} prefix={<BookOutlined />} />
             </Col>
-            <Col span={8}>
-              {student && <Statistic title="学员剩余" value={student.remaining_hours ?? 0} suffix="h"
-                valueStyle={{ fontSize: 20, color: '#1e293b' }}
-              />}
-            </Col>
-            <Col span={8}>
-              {selected.teacher?.hourly_rate !== undefined && (
-                <Statistic title="教师时薪" value={selected.teacher.hourly_rate} prefix="₱"
-                  valueStyle={{ fontSize: 20, color: '#F4A230' }}
-                />
-              )}
-            </Col>
+            <Col span={8}>{student && <Statistic title="学员剩余" value={student.remaining_hours ?? 0} suffix="h" valueStyle={{ fontSize: 20, color: '#1e293b', fontVariantNumeric: 'tabular-nums' }} />}</Col>
+            <Col span={8}>{selected.teacher?.hourly_rate !== undefined && <Statistic title="教师时薪" value={selected.teacher.hourly_rate} prefix="₱" valueStyle={{ fontSize: 20, color: '#F4A230', fontVariantNumeric: 'tabular-nums' }} />}</Col>
           </Row>
         </div>
-
         <Descriptions column={2} size="small" style={{ marginBottom: 16 }}>
-          <Descriptions.Item label="时间">{selected.start_time?.slice(0,5)} — {selected.end_time?.slice(0,5)}</Descriptions.Item>
+          <Descriptions.Item label="时间"><span style={{ fontVariantNumeric: 'tabular-nums' }}>{selected.start_time?.slice(0,5)} — {selected.end_time?.slice(0,5)}</span></Descriptions.Item>
           <Descriptions.Item label="教师">{selected.teacher?.name || '—'}</Descriptions.Item>
           <Descriptions.Item label="学员">{student?.name || '—'}</Descriptions.Item>
-          <Descriptions.Item label="会议链接">
-            {selected.meeting_link
-              ? <a href={selected.meeting_link} target="_blank">进入会议</a>
-              : '—'
-            }
-          </Descriptions.Item>
+          <Descriptions.Item label="会议链接">{selected.meeting_link ? <a href={selected.meeting_link} target="_blank">进入会议</a> : '—'}</Descriptions.Item>
         </Descriptions>
-
-        {/* 反馈区 */}
         {selected.feedbacks && selected.feedbacks.length > 0 ? (
           <Card title="课堂反馈" size="small" style={{ marginBottom: 16 }}>
             {selected.feedbacks.map((fb, i) => (
               <div key={i} style={{ marginBottom: i > 0 ? 16 : 0, paddingBottom: i > 0 ? 16 : 0, borderBottom: i > 0 ? '1px dashed #f0f0f0' : 'none' }}>
-                {fb.content && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📝 反馈内容</div>
-                    <div style={{ background: '#fafafa', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.content}</div>
-                  </div>
-                )}
-                {fb.homework && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📚 作业</div>
-                    <div style={{ background: '#fffbe6', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.homework}</div>
-                  </div>
-                )}
-                {fb.notes && (
-                  <div>
-                    <div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>💬 备注</div>
-                    <div style={{ background: '#f6ffed', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#666' }}>{fb.notes}</div>
-                  </div>
-                )}
+                {fb.content && <div style={{ marginBottom: 10 }}><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📝 反馈内容</div><div style={{ background: '#fafafa', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.content}</div></div>}
+                {fb.homework && <div style={{ marginBottom: 10 }}><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📚 作业</div><div style={{ background: '#fffbe6', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.homework}</div></div>}
+                {fb.notes && <div><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>💬 备注</div><div style={{ background: '#f6ffed', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#666' }}>{fb.notes}</div></div>}
               </div>
             ))}
           </Card>
         ) : selected.status === 'completed' && (
-          <Button type="dashed" icon={<CommentOutlined />} onClick={() => openFeedback(selected)} block>
-            添加课堂反馈
-          </Button>
+          <Button type="dashed" icon={<CommentOutlined />} onClick={() => openFeedback(selected)} block>添加课堂反馈</Button>
         )}
-
-        {/* 操作区 */}
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12, marginTop: 8 }}>
           <Space>
-            {selected.status === 'pending' && (
-              <Button type="primary" icon={<CheckOutlined />} onClick={() => { setDrawerOpen(false); openConfirm(selected); }}>
-                确认完成
-              </Button>
-            )}
+            {selected.status === 'pending' && <Button type="primary" icon={<CheckOutlined />} onClick={() => { setDrawerOpen(false); openConfirm(selected); }}>确认完成</Button>}
           </Space>
         </div>
       </>
     );
   };
+
+  // 周统计
+  const weekHours = useMemo(() => {
+    let total = 0;
+    days.forEach(d => {
+      const cs = coursesByDate[d.format('YYYY-MM-DD')] || [];
+      total += cs.reduce((s, c) => s + (c.hours || 1), 0);
+    });
+    return total;
+  }, [days, coursesByDate]);
 
   return (
     <div style={{ padding: 16 }}>
@@ -416,45 +439,68 @@ export default function CoursesPage() {
         title={<span><BookOutlined style={{marginRight:6}}/>课程管理</span>}
         extra={
           <Space>
-            <Text type="secondary">数据状态：pending / completed / cancelled</Text>
-            <Text type="secondary" style={{ color: '#F4A230' }}>｜ UI 提示：待补反馈 / 待确认课时</Text>
+            <Segmented
+              value={viewMode}
+              onChange={v => setViewMode(v as 'list' | 'calendar')}
+              options={[
+                { value: 'list', icon: <UnorderedListOutlined />, label: '列表' },
+                { value: 'calendar', icon: <CalendarOutlined />, label: '日历' },
+              ]}
+            />
+            <Button icon={<ReloadOutlined />} size="small" onClick={load}>刷新</Button>
           </Space>
         }
       >
-        <Table
-          dataSource={data}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          size="small"
-          pagination={false}
-          scroll={{ x: 800, y: 'calc(100vh - 180px)' }}
-        />
+        {/* ── 日历视图 ── */}
+        {viewMode === 'calendar' && (
+          <div>
+            {/* 周导航 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <Button icon={<LeftOutlined />} size="small" onClick={() => setWeekCenter(w => w.subtract(7, 'day'))} />
+              <Text strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {monday.format('MM/DD')} — {sunday.format('MM/DD')}
+              </Text>
+              <Button icon={<RightOutlined />} size="small" onClick={() => setWeekCenter(w => w.add(7, 'day'))} />
+              <Button size="small" onClick={() => setWeekCenter(dayjs())}>本周</Button>
+              <div style={{ flex: 1 }} />
+              <Tag color="blue" style={{ fontVariantNumeric: 'tabular-nums' }}>本周 {weekHours}h</Tag>
+              <Text type="secondary" style={{ fontSize: 11 }}>数据状态：pending / completed / cancelled</Text>
+            </div>
+            {renderWeekCalendar()}
+          </div>
+        )}
+
+        {/* ── 列表视图 ── */}
+        {viewMode === 'list' && (
+          <>
+            <div style={{ marginBottom: 8, textAlign: 'right' }}>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                数据状态：pending / completed / cancelled ｜ UI 提示：待补反馈 / 待确认课时
+              </Text>
+            </div>
+            <Table
+              dataSource={data}
+              columns={columns}
+              rowKey="id"
+              loading={loading}
+              size="small"
+              pagination={false}
+              scroll={{ x: 800, y: 'calc(100vh - 220px)' }}
+            />
+          </>
+        )}
       </Card>
 
-      {/* 确认完成弹窗 — 扣课时预览 */}
-      <Modal
-        title={<span><CheckOutlined style={{color:'#52c41a',marginRight:6}}/>确认课程完成</span>}
-        open={confirmOpen}
-        onOk={doConfirm}
-        onCancel={() => setConfirmOpen(false)}
-        confirmLoading={confirming}
-        okText="确认完成（扣减课时）"
-        width={520}
-        destroyOnClose
-      >
+      {/* 确认完成弹窗 */}
+      <Modal title={<span><CheckOutlined style={{color:'#52c41a',marginRight:6}}/>确认课程完成</span>}
+        open={confirmOpen} onOk={doConfirm} onCancel={() => setConfirmOpen(false)}
+        confirmLoading={confirming} okText="确认完成（扣减课时）" width={520} destroyOnClose>
         {renderConfirmContent()}
       </Modal>
 
       {/* 反馈弹窗 */}
-      <Modal
-        title="添加课堂反馈"
-        open={feedbackOpen}
-        onOk={submitFeedback}
-        onCancel={() => setFeedbackOpen(false)}
-        destroyOnClose
-        width={480}
-      >
+      <Modal title="添加课堂反馈" open={feedbackOpen} onOk={submitFeedback}
+        onCancel={() => setFeedbackOpen(false)} destroyOnClose width={480}>
         <Form form={feedbackForm} layout="vertical" preserve={false}>
           <Form.Item name="content" label="反馈内容" rules={[{ required: true, message: '请输入反馈' }]}>
             <Input.TextArea rows={3} />
@@ -469,13 +515,7 @@ export default function CoursesPage() {
       </Modal>
 
       {/* 详情 Drawer */}
-      <Drawer
-        title="课程详情"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        width={480}
-        destroyOnClose
-      >
+      <Drawer title="课程详情" open={drawerOpen} onClose={() => { setDrawerOpen(false); load(); }} width={480} destroyOnClose>
         {renderDetail()}
       </Drawer>
     </div>

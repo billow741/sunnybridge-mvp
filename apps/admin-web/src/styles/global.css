@@ -40,3 +40,75 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   border: none;
 }
+
+/* ══════════════════════════════════════════
+   P1-B: 全局交互优化
+   ══════════════════════════════════════════ */
+
+/* 1. 金额 & 课时 统一 tabular numbers */
+.ant-statistic-content-value,
+.ant-statistic-content-suffix,
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 2. Sticky filter bar 通用 */
+.sb-filter-bar {
+  position: sticky;
+  top: 56px;       /* header高度 */
+  z-index: 9;
+  background: #fff;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* 3. Drawer 打开时主动画区域不滚动抖动 */
+.ant-drawer-open .ant-layout-content {
+  overflow: hidden;
+}
+
+/* 4. 通用平滑动画 */
+.sb-fade-in {
+  animation: sbFadeIn 0.2s ease;
+}
+@keyframes sbFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sb-slide-in {
+  animation: sbSlideIn 0.22s ease;
+}
+@keyframes sbSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 5. AntD Table 行 hover 更柔和 */
+.ant-table-tbody > tr.ant-table-row:hover > td {
+  background: #f8fafc !important;
+}
+
+/* 6. Tag 可点击时加 pointer */
+.ant-tag[style*="cursor: pointer"]:hover {
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+/* 7. Spin 居中占位 */
+.sb-spin-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+/* 8. 按钮链接更紧凑 */
+.ant-btn-link {
+  padding-left: 2px !important;
+  padding-right: 2px !important;
+}
