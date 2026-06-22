@@ -106,7 +106,7 @@ export default function PaymentsPage() {
   /* ── 加载学员列表（用于新建 Modal 选择学员） ── */
   const loadStudents = async () => {
     try {
-      const { data } = await client.get('/children', { params: { page: 1, page_size: 200 } });
+      const { data } = await client.get('/children', { params: { page: 1, page_size: 100 } });
       const list = (data.items || data || []) as any[];
       setStudentOptions(list.map(s => ({ id: s.id, name: s.name, english_name: s.english_name })));
     } catch { /* 静默，学员列表不影响主流程 */ }

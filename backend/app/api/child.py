@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/v1/children", tags=["children"])
 @router.get("", response_model=PaginatedChildren)
 async def list_children_endpoint(
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    page_size: int = Query(20, ge=1, le=500, description="Items per page"),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> PaginatedChildren:
     """List all children with pagination. Admin only."""
