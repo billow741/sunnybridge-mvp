@@ -60,7 +60,7 @@ async def list_payments(
     sb = get_supabase()
 
     # ── Stats ──
-    all_res = sb.table("payments").select("amount, created_at, payment_method").execute()
+    all_res = sb.table("payments").select("amount, created_at, payment_date, payment_method").execute()
     total_amount = Decimal("0")
     month_amount = Decimal("0")
     count = len(all_res.data)
@@ -71,15 +71,19 @@ async def list_payments(
     for r in all_res.data:
         amt = Decimal(str(r["amount"]))
         total_amount += amt
-        created = r.get("created_at", "")
         # 按支付方式汇总
         m = r.get("payment_method") or "other"
         method_stats[m] = method_stats.get(m, Decimal("0")) + amt
-        if created:
+        # 月份判断：优先 payment_date，fallback created_at
+        date_str = r.get("payment_date") or r.get("created_at") or ""
+        if date_str:
             try:
-                dt = datetime.fromisoformat(str(created).replace("Z", "+00:00"))
-                if dt.replace(tzinfo=None) >= this_month_start:
-                    month_amount += amt
+                # payment_date 是 DATE 类型 (YYYY-MM-DD)，created_at 是 TIMESTAMP
+                dt_str = str(date_str)
+                if len(dt_str) >= 10:
+                    dt = datetime.fromisoformat(dt_str[:10])
+                    if dt >= this_month_start:
+                        month_amount += amt
             except (ValueError, TypeError):
                 pass
 
