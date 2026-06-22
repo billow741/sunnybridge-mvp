@@ -21,7 +21,7 @@ MAX_PER_TYPE = 5
 class SearchItem(BaseModel):
     id: str
     name: str
-    sub: str = ""        # 副标题（如剩余课时、教师学科等）
+    sub: str = ""        # 副标题
     type: str            # student | teacher | course | resource
     path: str            # 前端路由路径
 
@@ -46,75 +46,91 @@ async def global_search(
     result = SearchResult()
     ilike = f"%{keyword}%"
 
-    # ── 学员 ──
+    # ── 学员 ──  真实列: name, english_name, totalhours, usedhours
     try:
-        children = sb.table("children").select("id, name, remaining_hours")\
-            .ilike("name", ilike).limit(MAX_PER_TYPE).execute()
+        children = sb.table("children").select("id, name, english_name, totalhours, usedhours")\
+            .or_(f"name.ilike.*{keyword}*,english_name.ilike.*{keyword}*")\
+            .limit(MAX_PER_TYPE).execute()
         result.students = [
             SearchItem(
                 id=r["id"], name=r["name"],
-                sub=f"剩余 {r.get('remaining_hours', 0):.1f}h",
+                sub=f"剩余 {((r.get('totalhours') or 0) - (r.get('usedhours') or 0)):.1f}h",
                 type="student", path=f"/students/{r['id']}",
             ) for r in children.data
         ]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("search-children-fail", error=str(e))
 
-    # ── 教师 ──
+    # ── 教师 ──  真实列: name, phone  (无subject列)
     try:
-        teachers = sb.table("teachers").select("id, name, subject")\
+        teachers = sb.table("teachers").select("id, name, is_active")\
             .ilike("name", ilike).limit(MAX_PER_TYPE).execute()
         result.teachers = [
             SearchItem(
                 id=r["id"], name=r["name"],
-                sub=r.get("subject") or "",
-                type="teacher", path=f"/teachers",
+                sub="在职" if r.get("is_active") else "离职",
+                type="teacher", path="/teachers",
             ) for r in teachers.data
         ]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("search-teachers-fail", error=str(e))
 
-    # ── 课程 ──
+    # ── 课程 ──  date是date类型不能ilike，用 teacher_id 关联搜
     try:
-        # 搜索教师名或学员名匹配的课程（通过 join）
-        courses = sb.table("courses").select("id, date, status, teachers(name), children(name)")\
-            .or_(f"teachers.name.ilike.*{keyword}*,children.name.ilike.*{keyword}*")\
-            .limit(MAX_PER_TYPE).execute()
-        result.courses = [
-            SearchItem(
-                id=r["id"],
-                name=f"{r.get('date', '')} {r.get('teachers', {}).get('name', '') if isinstance(r.get('teachers'), dict) else ''}",
-                sub=f"状态：{r.get('status', '')}",
-                type="course", path="/courses",
-            ) for r in courses.data
-        ]
-    except Exception:
-        # fallback: 只按日期搜
+        # 先搜教师名获取teacher_id
+        matched_teachers = sb.table("teachers").select("id").ilike("name", ilike).limit(3).execute()
+        teacher_ids = [t["id"] for t in matched_teachers.data] if matched_teachers.data else []
+
+        course_list = []
+        if teacher_ids:
+            for tid in teacher_ids:
+                crs = sb.table("courses").select("id, date, status, start_time")\
+                    .eq("teacher_id", tid).limit(MAX_PER_TYPE).execute()
+                course_list.extend(crs.data)
+
+        # 也搜学员名对应课程（通过 course_students join）
         try:
-            courses2 = sb.table("courses").select("id, date, status")\
-                .ilike("date", ilike).limit(MAX_PER_TYPE).execute()
-            result.courses = [
-                SearchItem(
-                    id=r["id"], name=r["date"],
-                    sub=f"状态：{r.get('status', '')}",
-                    type="course", path="/courses",
-                ) for r in courses2.data
-            ]
+            matched_children = sb.table("children").select("id").or_(f"name.ilike.*{keyword}*,english_name.ilike.*{keyword}*").limit(3).execute()
+            child_ids = [c["id"] for c in matched_children.data] if matched_children.data else []
+            for cid in child_ids:
+                cs = sb.table("course_students").select("course_id").eq("child_id", cid).limit(10).execute()
+                cids = list(set(r["course_id"] for r in cs.data)) if cs.data else []
+                for ci in cids[:MAX_PER_TYPE]:
+                    co = sb.table("courses").select("id, date, status, start_time").eq("id", ci).execute()
+                    course_list.extend(co.data)
         except Exception:
             pass
 
-    # ── 内容资源 ──
+        # 去重
+        seen = set()
+        deduped = []
+        for c in course_list:
+            if c["id"] not in seen:
+                seen.add(c["id"])
+                deduped.append(c)
+
+        result.courses = [
+            SearchItem(
+                id=r["id"], name=f"{r.get('date', '')} {r.get('start_time', '')[:5] or ''}",
+                sub=f"状态：{r.get('status', '')}",
+                type="course", path="/courses",
+            ) for r in deduped[:MAX_PER_TYPE]
+        ]
+    except Exception as e:
+        logger.warning("search-courses-fail", error=str(e))
+
+    # ── 内容资源 ──  真实列: title, category (无type列)
     try:
-        resources = sb.table("resources").select("id, title, type")\
+        resources = sb.table("resources").select("id, title, category")\
             .ilike("title", ilike).limit(MAX_PER_TYPE).execute()
         result.resources = [
             SearchItem(
                 id=r["id"], name=r.get("title") or r.get("id", ""),
-                sub=r.get("type") or "",
+                sub=r.get("category") or "",
                 type="resource", path="/content",
             ) for r in resources.data
         ]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("search-resources-fail", error=str(e))
 
     return result
