@@ -13,6 +13,7 @@ import {
   Table, Button, Tag, Card, Space, Typography, Drawer, Modal,
   Form, Input, InputNumber, Select, Switch, Upload, message,
   Tabs, Tooltip, Popconfirm, Badge, Empty, Image, Divider,
+  Spin,
 } from 'antd';
 import {
   BookOutlined, FilePdfOutlined, PlusOutlined, EditOutlined,
@@ -25,6 +26,92 @@ import dayjs from 'dayjs';
 import client, { extractError } from '@/api/client';
 
 const { Text, Title, Paragraph } = Typography;
+
+// ── 1-C: 关联课程组件 ──
+
+/** 显示内容关联的课程列表 */
+function LinkedCourseList({ materialId }: { materialId: string }) {
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await client.get(`/reading/materials/${materialId}/courses`);
+      setCourses(data || []);
+    } catch { /* 静默 */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, [materialId]);
+
+  const unlink = async (courseId: string) => {
+    try {
+      await client.delete(`/reading/materials/${materialId}/courses/${courseId}`);
+      message.success('已取消关联');
+      load();
+    } catch (err) { message.error(extractError(err)); }
+  };
+
+  if (loading) return <Spin size="small" />;
+  if (!courses.length) return <Text type="secondary">暂无关联课程</Text>;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {courses.map((c: any) => (
+        <div key={c.course_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 8px', background: '#fafafa', borderRadius: 4 }}>
+          <Space>
+            <Tag color={c.course_status === 'completed' ? 'green' : 'blue'}>{c.course_status || '—'}</Tag>
+            <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{c.course_date}</Text>
+            {c.start_time && <Text type="secondary">{c.start_time?.slice(0,5)}</Text>}
+          </Space>
+          <Button type="text" size="small" danger onClick={() => unlink(c.course_id)}>移除</Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 关联课程按钮（Select 选课 → POST 关联） */
+function LinkCourseButton({ materialId, onLinked }: { materialId: string; onLinked: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [courseId, setCourseId] = useState<string | undefined>();
+  const [courses, setCourses] = useState<any[]>([]);
+  const [linking, setLinking] = useState(false);
+
+  const loadCourses = async () => {
+    try {
+      const { data } = await client.get('/courses', { params: { page: 1, page_size: 50 } });
+      setCourses(data.items || []);
+    } catch { /* 静默 */ }
+  };
+
+  const link = async () => {
+    if (!courseId) return;
+    setLinking(true);
+    try {
+      await client.post(`/reading/materials/${materialId}/courses`, { course_id: courseId });
+      message.success('已关联');
+      setOpen(false);
+      setCourseId(undefined);
+      onLinked();
+    } catch (err) { message.error(extractError(err)); }
+    finally { setLinking(false); }
+  };
+
+  return (
+    <>
+      <Button size="small" type="link" icon={<PlusOutlined />} onClick={() => { setOpen(true); loadCourses(); }}>
+        关联
+      </Button>
+      <Modal title="关联课程" open={open} onCancel={() => setOpen(false)} onOk={link} confirmLoading={linking} width={400} destroyOnClose>
+        <Select style={{ width: '100%' }} placeholder="选择课程" value={courseId} onChange={setCourseId}
+          showSearch optionFilterProp="label"
+          options={courses.map((c: any) => ({ value: c.id, label: `${c.date || ''} ${c.start_time?.slice(0,5) || ''} — ${c.status || ''}` }))}
+        />
+      </Modal>
+    </>
+  );
+}
 
 // ── 类型定义 ──
 interface ReadingMaterial {
@@ -514,6 +601,14 @@ export default function ContentPage() {
             <pre style={{ fontSize: 12, margin: 0 }}>{JSON.stringify(r.metadata, null, 2)}</pre>
           </Card>
         )}
+
+        {/* 1-C: 关联课程 */}
+        <Card title={<span><BookOutlined style={{ marginRight: 4, color: '#F4A230' }} />关联课程</span>}
+          size="small" style={{ marginBottom: 12 }}
+          extra={<LinkCourseButton materialId={r.id} onLinked={loadMaterials} />}
+        >
+          <LinkedCourseList materialId={r.id} />
+        </Card>
 
         <Divider style={{ margin: '8px 0' }} />
 

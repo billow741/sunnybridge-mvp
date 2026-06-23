@@ -81,10 +81,14 @@ export default function CoursesPage() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<CourseRecord | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'week' | 'month' | 'day'>('list');
 
   // 日历周导航
   const [weekCenter, setWeekCenter] = useState(dayjs());
+  // 月导航
+  const [monthCenter, setMonthCenter] = useState(dayjs());
+  // 日导航
+  const [dayCenter, setDayCenter] = useState(dayjs());
 
   // 确认完成弹窗
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -293,7 +297,127 @@ export default function CoursesPage() {
     );
   };
 
-  // ── 表格列（同 P0）──
+  // ── 月视图网格 ──
+  const renderMonthCalendar = () => {
+    const start = monthCenter.startOf('month');
+    const startDay = start.isoWeekday(); // 1=Mon ... 7=Sun
+    const daysInMonth = monthCenter.daysInMonth();
+    const today = dayjs().format('YYYY-MM-DD');
+    // 生成 6 行 × 7 列网格
+    const cells: (dayjs.Dayjs | null)[] = [];
+    // 前导空格（周一至起始日）
+    for (let i = 1; i < startDay; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(monthCenter.date(d));
+    // 尾随空格
+    while (cells.length % 7 !== 0) cells.push(null);
+    const rows: (dayjs.Dayjs | null)[][] = [];
+    for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <Button icon={<LeftOutlined />} size="small" onClick={() => setMonthCenter(m => m.subtract(1, 'month'))} />
+          <Text strong style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>{monthCenter.format('YYYY年 MM月')}</Text>
+          <Button icon={<RightOutlined />} size="small" onClick={() => setMonthCenter(m => m.add(1, 'month'))} />
+          <Button size="small" onClick={() => setMonthCenter(dayjs())}>本月</Button>
+          <div style={{ flex: 1 }} />
+          <Tag color="blue">{data.filter(c => c.date?.startsWith(monthCenter.format('YYYY-MM'))).reduce((s, c) => s + (c.hours || 1), 0)}h</Tag>
+        </div>
+        {/* 星期头 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+          {DAY_LABELS.slice(0, 7).map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: 11, color: '#999', fontWeight: 600 }}>{d}</div>
+          ))}
+        </div>
+        {/* 日期格 */}
+        {rows.map((row, ri) => (
+          <div key={ri} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
+            {row.map((day, ci) => {
+              if (!day) return <div key={ci} style={{ background: '#fafafa', borderRadius: 4, minHeight: 64 }} />;
+              const dateStr = day.format('YYYY-MM-DD');
+              const isToday = dateStr === today;
+              const isCurrentMonth = day.month() === monthCenter.month();
+              const dayCourses = coursesByDate[dateStr] || [];
+              const totalH = dayCourses.reduce((s, c) => s + (c.hours || 1), 0);
+              return (
+                <div key={ci} onClick={() => { setDayCenter(day); setViewMode('day'); }}
+                  style={{
+                    background: isToday ? '#e6f7ff' : isCurrentMonth ? '#fff' : '#fafafa',
+                    border: isToday ? '2px solid #5CAADF' : '1px solid #f0f0f0',
+                    borderRadius: 6, padding: '4px 6px', minHeight: 64,
+                    cursor: 'pointer', opacity: isCurrentMonth ? 1 : 0.5,
+                  }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: isToday ? 700 : 400, color: isToday ? '#5CAADF' : '#333', fontSize: 13 }}>
+                      {day.format('D')}
+                    </span>
+                    {totalH > 0 && <Tag color="blue" style={{ fontSize: 10, lineHeight: '16px', padding: '0 3px', margin: 0 }}>{totalH}h</Tag>}
+                  </div>
+                  {dayCourses.slice(0, 2).map(c => (
+                    <div key={c.id} style={{ fontSize: 10, color: '#666', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {c.start_time?.slice(0,5)} {c.students?.[0]?.name || '—'}
+                    </div>
+                  ))}
+                  {dayCourses.length > 2 && <div style={{ fontSize: 10, color: '#999' }}>+{dayCourses.length - 2} 更多</div>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── 日视图（时间轴） ──
+  const renderDayCalendar = () => {
+    const dateStr = dayCenter.format('YYYY-MM-DD');
+    const dayCourses = (coursesByDate[dateStr] || [])
+      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+    const today = dayjs().format('YYYY-MM-DD');
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <Button icon={<LeftOutlined />} size="small" onClick={() => setDayCenter(d => d.subtract(1, 'day'))} />
+          <Text strong style={{ fontSize: 16, fontVariantNumeric: 'tabular-nums' }}>
+            {dayCenter.format('YYYY/MM/DD')} {DAY_LABELS[dayCenter.isoWeekday() - 1]}
+          </Text>
+          <Tag color={dateStr === today ? 'blue' : 'default'}>{dateStr === today ? '今天' : ''}</Tag>
+          <Button icon={<RightOutlined />} size="small" onClick={() => setDayCenter(d => d.add(1, 'day'))} />
+          <Button size="small" onClick={() => setDayCenter(dayjs())}>今天</Button>
+          <div style={{ flex: 1 }} />
+          <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => openSchedule({ date: dateStr })}>排课</Button>
+        </div>
+        {/* 时间轴 07:00-20:00 */}
+        <div style={{ position: 'relative' }}>
+          {HOURS_SLOTS.map(h => {
+            const timeLabel = `${String(h).padStart(2, '0')}:00`;
+            const coursesInSlot = dayCourses.filter(c => {
+              const ch = timeToHour(c.start_time);
+              return ch >= h && ch < h + 1;
+            });
+            return (
+              <div key={h} style={{ display: 'flex', minHeight: 48, borderBottom: '1px solid #f5f5f5' }}>
+                <div style={{ width: 52, flexShrink: 0, textAlign: 'right', paddingRight: 10, paddingTop: 4, fontSize: 12, color: '#999', fontVariantNumeric: 'tabular-nums' }}>
+                  {timeLabel}
+                </div>
+                <div style={{ flex: 1, padding: '2px 0' }}>
+                  {coursesInSlot.map(c => renderCalCard(c))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {dayCourses.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#bbb' }}>
+            <CalendarOutlined style={{ fontSize: 40, display: 'block', marginBottom: 8 }} />
+            当日无课程
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const columns = [
     {
       title: '日期', dataIndex: 'date', width: 100,
@@ -477,18 +601,20 @@ export default function CoursesPage() {
             <Button type="primary" icon={<PlusOutlined />} size="small" onClick={() => openSchedule()}>排课</Button>
             <Segmented
               value={viewMode}
-              onChange={v => setViewMode(v as 'list' | 'calendar')}
+              onChange={v => setViewMode(v as 'list' | 'week' | 'month' | 'day')}
               options={[
                 { value: 'list', icon: <UnorderedListOutlined />, label: '列表' },
-                { value: 'calendar', icon: <CalendarOutlined />, label: '日历' },
+                { value: 'week', icon: <CalendarOutlined />, label: '周' },
+                { value: 'month', icon: <CalendarOutlined />, label: '月' },
+                { value: 'day', icon: <CalendarOutlined />, label: '日' },
               ]}
             />
             <Button icon={<ReloadOutlined />} size="small" onClick={load}>刷新</Button>
           </Space>
         }
       >
-        {/* ── 日历视图 ── */}
-        {viewMode === 'calendar' && (
+        {/* ── 周视图 ── */}
+        {viewMode === 'week' && (
           <div>
             {/* 周导航 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -505,6 +631,12 @@ export default function CoursesPage() {
             {renderWeekCalendar()}
           </div>
         )}
+
+        {/* ── 月视图 ── */}
+        {viewMode === 'month' && renderMonthCalendar()}
+
+        {/* ── 日视图 ── */}
+        {viewMode === 'day' && renderDayCalendar()}
 
         {/* ── 列表视图 ── */}
         {viewMode === 'list' && (

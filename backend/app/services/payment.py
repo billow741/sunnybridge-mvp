@@ -173,7 +173,23 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
 
     # Update child totalhours
     old_hours = Decimal(str(child.data[0].get("totalhours", 0)))
-    sb.table("children").update({"totalhours": int(old_hours + body.hours_purchased)}).eq("id", str(body.child_id)).execute()
+    new_hours = int(old_hours + body.hours_purchased)
+    sb.table("children").update({"totalhours": new_hours}).eq("id", str(body.child_id)).execute()
+
+    # ── 1-A: 课时变动日志 ──
+    try:
+        from app.api.hours_log import record_hours_change
+        ch2 = sb.table("children").select("totalhours, usedhours").eq("id", str(body.child_id)).limit(1).execute()
+        tu = (ch2.data or [{}])[0].get("totalhours") or 0
+        uu = (ch2.data or [{}])[0].get("usedhours") or 0
+        record_hours_change(
+            child_id=str(body.child_id), change_type="purchase", delta=float(body.hours_purchased),
+            balance_after=float(Decimal(str(tu)) - Decimal(str(uu))),
+            ref_id=str(ins.data[0]["id"]),
+            note=f"购课充值 {int(body.hours_purchased)}h", created_by=None,
+        )
+    except Exception:
+        pass
 
     row = ins.data[0]
     row["child_name"] = child.data[0]["name"]

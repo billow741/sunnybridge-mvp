@@ -275,6 +275,19 @@ async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
                     old_usedhours=old_used,
                     new_usedhours=new_used,
                 )
+                # ── 1-A: 课时变动日志 ──
+                try:
+                    from app.api.hours_log import record_hours_change
+                    ch_full = sb.table("children").select("totalhours, usedhours").eq("id", cid).limit(1).execute()
+                    tu = (ch_full.data or [{}])[0].get("totalhours") or 0
+                    uu = (ch_full.data or [{}])[0].get("usedhours") or 0
+                    record_hours_change(
+                        child_id=cid, change_type="deduction", delta=-course_hours,
+                        balance_after=tu - uu, ref_id=str(course_id),
+                        note=f"课程完成扣减 {course_hours}h", created_by=None,
+                    )
+                except Exception:
+                    pass  # 日志不阻塞主流程
 
         # ── P0-B: 确认完成 → 自动生成 settlement 行 ──
         teacher_id = str(update_data.get("teacher_id") or existing.data[0].get("teacher_id") or "")
