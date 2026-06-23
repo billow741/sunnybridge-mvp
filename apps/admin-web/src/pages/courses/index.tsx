@@ -56,13 +56,12 @@ interface CourseRecord {
 }
 
 // ── 时间工具 ──
-const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日', '周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const HOURS_SLOTS = Array.from({ length: 14 }, (_, i) => i + 7); // 07:00 ~ 20:00
 
 function getWeekRange(center: dayjs.Dayjs) {
   const monday = center.isoWeekday(1);
-  const sunday = monday.add(6, 'day');
-  return { monday, sunday, days: Array.from({ length: 7 }, (_, i) => monday.add(i, 'day')) };
+  return { monday, sunday: monday.add(13, 'day'), days: Array.from({ length: 14 }, (_, i) => monday.add(i, 'day')) };
 }
 
 function timeToHour(time: string): number {
