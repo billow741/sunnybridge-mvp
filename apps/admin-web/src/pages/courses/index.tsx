@@ -280,6 +280,12 @@ export default function CoursesPage() {
                   共 {courses.reduce((s, c) => s + (c.hours || 1), 0)}h
                 </div>
               )}
+              <div
+                onClick={() => openSchedule({ date: dateStr })}
+                style={{ textAlign: 'center', color: '#5CAADF', fontSize: 11, padding: '6px 0', cursor: 'pointer', borderTop: courses.length > 0 ? '1px dashed #e8e8e8' : 'none', marginTop: 4 }}
+              >
+                + 排课
+              </div>
             </div>
           );
         })}
