@@ -3,8 +3,8 @@
  * 统一交互模式：详情 Drawer + 行内操作
  */
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, Avatar, Popconfirm, Empty, Spin, Drawer, Space, Typography, Divider, Descriptions } from 'antd';
-import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, StopOutlined, PhoneOutlined, DollarOutlined, KeyOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, Avatar, Popconfirm, Empty, Spin, Drawer, Space, Typography, Divider, Descriptions, Statistic } from 'antd';
+import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, StopOutlined, PhoneOutlined, DollarOutlined, KeyOutlined, WalletOutlined } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
 import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
 
@@ -21,10 +21,23 @@ export default function Teachers() {
   // 详情 Drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTarget, setDrawerTarget] = useState<any>(null);
+  // P0-D: 当期结算卡片
+  const [teacherSettlements, setTeacherSettlements] = useState<any[]>([]);
 
   // 排课 Drawer
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [schedulePrefill, setSchedulePrefill] = useState<Record<string, string>>({});
+
+  // P0-D: 打开教师详情时加载结算数据
+  const openTeacherDrawer = async (t: any) => {
+    setDrawerTarget(t);
+    setDrawerOpen(true);
+    setTeacherSettlements([]);
+    try {
+      const { data: res } = await client.get('/settlements', { params: { teacher_id: t.id } });
+      setTeacherSettlements(res?.items || res || []);
+    } catch { /* 对账数据加载失败不影响 Drawer 打开 */ }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -90,6 +103,36 @@ export default function Teachers() {
 
         <Divider style={{ margin: '8px 0' }} />
 
+        {/* P0-D: 当期结算卡片 */}
+        <Card size="small" style={{ marginBottom: 12, borderLeft: '3px solid #F4A230' }}
+          title={<span><WalletOutlined style={{ marginRight: 6, color: '#F4A230' }} />当期结算</span>}
+        >
+          {teacherSettlements.length === 0 ? (
+            <Text type="secondary">暂无结算记录</Text>
+          ) : (
+            <>
+              <Row gutter={8} style={{ marginBottom: 8 }}>
+                <Col span={12}>
+                  <Statistic title="待付金额" prefix="₱" value={
+                    teacherSettlements.filter(s => s.status === 'pending').reduce((a, s) => a + (s.amount || 0), 0)
+                  } valueStyle={{ fontSize: 16, color: '#F4A230' }} />
+                </Col>
+                <Col span={12}>
+                  <Statistic title="已付金额" prefix="₱" value={
+                    teacherSettlements.filter(s => s.status === 'paid').reduce((a, s) => a + (s.amount || 0), 0)
+                  } valueStyle={{ fontSize: 16, color: '#52c41a' }} />
+                </Col>
+              </Row>
+              {teacherSettlements.filter(s => s.status === 'pending').slice(0, 3).map(s => (
+                <div key={s.id} style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>
+                  <Tag color="orange" style={{ marginRight: 4 }}>待付</Tag>
+                  {s.period_start}~{s.period_end} · {s.hours}h · ₱{s.amount?.toLocaleString()}
+                </div>
+              ))}
+            </>
+          )}
+        </Card>
+
         <Space wrap>
           <Button type="primary" icon={<CalendarOutlined />}
             onClick={() => { setDrawerOpen(false); setSchedulePrefill({ teacher_id: t.id }); setScheduleOpen(true); }}>
@@ -138,7 +181,7 @@ export default function Teachers() {
           {filtered.map(t => (
             <Col xs={24} sm={12} md={8} lg={6} key={t.id}>
               <Card hoverable size="small" className="sb-fade-in"
-                onClick={() => { setDrawerTarget(t); setDrawerOpen(true); }}
+                onClick={() => openTeacherDrawer(t)}
               >
                 <div style={{ textAlign: 'center', marginBottom: 12 }}>
                   <Avatar size={64} icon={<UserOutlined />} style={{ background: '#5CAADF' }} />

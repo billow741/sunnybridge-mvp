@@ -4,7 +4,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined, TeamOutlined, BookOutlined, TrophyOutlined,
   DollarOutlined, FileTextOutlined, SettingOutlined, MenuFoldOutlined,
-  MenuUnfoldOutlined, SwapRightOutlined,
+  MenuUnfoldOutlined, SwapRightOutlined, AuditOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import AppLogo from '@/components/AppLogo';
@@ -23,6 +23,7 @@ const menuItems: MenuItem[] = [
   { key: '/courses', icon: <BookOutlined />, label: '课程' },
   { key: '/teachers', icon: <TrophyOutlined />, label: '教师' },
   { key: '/finance', icon: <DollarOutlined />, label: '财务', children: [
+    { key: '/finance/reconciliation', label: '财务对账' },
     { key: '/finance/settlements', label: '教师结算' },
     { key: '/finance/payments', label: '收款记录' },
   ]},

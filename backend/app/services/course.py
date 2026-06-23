@@ -34,6 +34,73 @@ DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 
 
+# ---------------------------------------------------------------------------
+# P0-B: 自动生成 settlement 辅助函数
+# ---------------------------------------------------------------------------
+
+
+async def _auto_create_settlement(
+    sb,
+    teacher_id: str,
+    course_id: UUID,
+    course_hours: float,
+    course_row: dict,
+) -> None:
+    """课程确认完成时，自动为教师创建待结算行.
+
+    规则:
+    - 同一课程的 settlement 只生成一次 (course_id 唯一约束)
+    - 取教师 hourly_rate 计算 amount = hours × hourly_rate
+    - period_start/end = 课程日期
+    - status = pending (待确认付款)
+    """
+    # 查教师时薪
+    t = sb.table("teachers").select("id, name, hourly_rate").eq("id", str(teacher_id)).limit(1).execute()
+    if not t.data:
+        logger.warning("auto_settlement_skip", reason="teacher_not_found", teacher_id=str(teacher_id))
+        return
+    teacher = t.data[0]
+    hourly_rate = float(teacher.get("hourly_rate") or 0)
+    teacher_name = teacher.get("name", "未知")
+    amount = course_hours * hourly_rate
+
+    # 幂等: 检查是否已有该课程的 settlement (用 note 字段存 source_course_id)
+    existing = sb.table("settlements").select("id").eq("note", f"auto:course:{course_id}").limit(1).execute()
+    if existing.data:
+        logger.info("auto_settlement_skip", reason="already_exists", course_id=str(course_id))
+        return
+
+    if amount <= 0:
+        logger.info("auto_settlement_skip", reason="zero_amount", teacher_id=str(teacher_id), hours=course_hours, rate=hourly_rate)
+        return
+
+    course_date = course_row.get("date", "")
+    row = {
+        "teacher_id": str(teacher_id),
+        "teacher_name": teacher_name,
+        "period_start": course_date,
+        "period_end": course_date,
+        "hours": course_hours,
+        "hourly_rate": hourly_rate,
+        "amount": amount,
+        "status": "pending",
+        "note": f"auto:course:{course_id}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = sb.table("settlements").insert(row).execute()
+    if result.data:
+        logger.info(
+            "auto_settlement_created",
+            settlement_id=result.data[0]["id"],
+            teacher_id=str(teacher_id),
+            course_id=str(course_id),
+            hours=course_hours,
+            amount=amount,
+        )
+    else:
+        logger.error("auto_settlement_failed", course_id=str(course_id))
+
+
 async def _get_teacher_brief(teacher_id: str) -> TeacherBrief | None:
     """Fetch teacher brief info."""
     sb = get_supabase()
@@ -138,7 +205,12 @@ async def create_course(body: CourseCreate) -> CourseDetail:
 
 
 async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
-    """Update a course + optionally replace enrolled students. Admin only."""
+    """Update a course + optionally replace enrolled students. Admin only.
+
+    When status transitions to 'completed':
+      - P0-A: Auto-deduct usedhours for each enrolled student
+      - P0-B: Auto-generate a settlement row for the teacher
+    """
     sb = get_supabase()
 
     # Verify exists
@@ -148,6 +220,7 @@ async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "COURSE_NOT_FOUND", "message": "课程不存在"},
         )
+    old_status = existing.data[0].get("status", "pending")
 
     # Build update data
     update_data = {}
@@ -176,6 +249,43 @@ async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
     if update_data:
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         sb.table("courses").update(update_data).eq("id", str(course_id)).execute()
+
+    # ── P0-A: 确认完成 → 自动扣减学员 usedhours ──
+    new_status = update_data.get("status", old_status)
+    if new_status == "completed" and old_status != "completed":
+        course_hours = update_data.get("hours") or existing.data[0].get("hours") or 1
+        # 获取本课程关联的学员列表
+        cs = sb.table("course_students").select("child_id").eq("course_id", str(course_id)).execute()
+        child_ids = [row["child_id"] for row in (cs.data or [])]
+
+        for cid in child_ids:
+            ch = sb.table("children").select("id, name, usedhours").eq("id", cid).limit(1).execute()
+            if ch.data:
+                old_used = ch.data[0].get("usedhours") or 0
+                new_used = old_used + course_hours
+                sb.table("children").update({
+                    "usedhours": new_used,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", cid).execute()
+                logger.info(
+                    "hours_deducted",
+                    child_id=cid,
+                    course_id=str(course_id),
+                    hours=course_hours,
+                    old_usedhours=old_used,
+                    new_usedhours=new_used,
+                )
+
+        # ── P0-B: 确认完成 → 自动生成 settlement 行 ──
+        teacher_id = str(update_data.get("teacher_id") or existing.data[0].get("teacher_id") or "")
+        if teacher_id:
+            await _auto_create_settlement(
+                sb,
+                teacher_id,
+                course_id,
+                float(course_hours),
+                dict(existing.data[0]),
+            )
 
     # Replace enrolled students if child_ids provided
     if body.child_ids is not None:

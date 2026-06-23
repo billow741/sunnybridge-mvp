@@ -15,6 +15,7 @@ import ContentPage from './pages/content'
 import SettingsPage from './pages/settings'
 import SettlementsPage from './pages/settlements'
 import PaymentsPage from './pages/payments'
+import ReconciliationPage from './pages/finance/Reconciliation'
 
 // ─────────── 品牌主题配置 ───────────
 const theme = {
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="teachers" element={<Teachers />} />
             <Route path="finance/settlements" element={<SettlementsPage />} />
             <Route path="finance/payments" element={<PaymentsPage />} />
+            <Route path="finance/reconciliation" element={<ReconciliationPage />} />
             <Route path="content" element={<ContentPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
