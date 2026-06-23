@@ -1,8 +1,11 @@
+/**
+ * 全局搜索 — P2 升级: 点击结果打开 EntityDrawer
+ */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Input, Empty, Spin, Typography, Space, Tag } from 'antd';
 import { SearchOutlined, TeamOutlined, TrophyOutlined, BookOutlined, FileTextOutlined } from '@ant-design/icons';
 import client from '@/api/client';
+import { useEntityDrawerStore } from '@/store/entityDrawerStore';
 
 const { Text } = Typography;
 
@@ -21,11 +24,11 @@ interface SearchResult {
   resources: SearchItem[];
 }
 
-const TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-  student:  { icon: <TeamOutlined />, label: '学员', color: '#5CAADF' },
-  teacher:  { icon: <TrophyOutlined />, label: '教师', color: '#52c41a' },
-  course:   { icon: <BookOutlined />, label: '课程', color: '#F4A230' },
-  resource: { icon: <FileTextOutlined />, label: '内容', color: '#722ed1' },
+const TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string; entityType: string }> = {
+  student:  { icon: <TeamOutlined />,    label: '学员', color: '#5CAADF', entityType: 'student' },
+  teacher:  { icon: <TrophyOutlined />,  label: '教师', color: '#52c41a', entityType: 'teacher' },
+  course:   { icon: <BookOutlined />,    label: '课程', color: '#F4A230', entityType: 'course' },
+  resource: { icon: <FileTextOutlined />, label: '内容', color: '#722ed1', entityType: 'reading_material' },
 };
 
 export default function GlobalSearch() {
@@ -33,7 +36,7 @@ export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
-  const navigate = useNavigate();
+  const openEntity = useEntityDrawerStore(s => s.openEntity);
   const inputRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -58,8 +61,12 @@ export default function GlobalSearch() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [query, doSearch]);
 
-  const handleClick = (path: string) => {
-    navigate(path);
+  // P2: 点击搜索结果 → 打开 EntityDrawer
+  const handleClick = (item: SearchItem) => {
+    const cfg = TYPE_CONFIG[item.type];
+    if (cfg) {
+      openEntity(cfg.entityType, item.id);
+    }
     setOpen(false);
     setQuery('');
     setResult(null);
@@ -91,7 +98,7 @@ export default function GlobalSearch() {
             {cfg.label}
           </div>
           {items.map(item => (
-            <div key={item.id} onClick={() => handleClick(item.path)}
+            <div key={item.id} onClick={() => handleClick(item)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 8px', borderRadius: 6, cursor: 'pointer',

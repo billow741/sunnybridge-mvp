@@ -1,8 +1,14 @@
+/**
+ * 教师管理 — P2 升级：Card 点击展开详情 Drawer
+ * 统一交互模式：详情 Drawer + 行内操作
+ */
 import { useEffect, useState } from 'react';
-import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, Avatar, Popconfirm, Empty, Spin } from 'antd';
-import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, Avatar, Popconfirm, Empty, Spin, Drawer, Space, Typography, Divider, Descriptions } from 'antd';
+import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, StopOutlined, PhoneOutlined, DollarOutlined, KeyOutlined } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
 import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
+
+const { Text, Title } = Typography;
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -11,6 +17,10 @@ export default function Teachers() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form] = Form.useForm();
+
+  // 详情 Drawer
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTarget, setDrawerTarget] = useState<any>(null);
 
   // 排课 Drawer
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -32,16 +42,77 @@ export default function Teachers() {
   };
 
   const onDelete = async (id: string) => {
-    try { await client.delete(`/teachers/${id}`); message.success('已删除'); load(); } catch (err) { message.error(extractError(err)); }
+    try { await client.delete(`/teachers/${id}`); message.success('已删除'); load(); if (drawerTarget?.id === id) setDrawerOpen(false); } catch (err) { message.error(extractError(err)); }
   };
 
   const resetPassword = async (id: string) => {
     try { await client.post(`/auth/teacher/reset-password/${id}`); message.success('密码已重置'); } catch (err) { message.error(extractError(err)); }
   };
 
+  const toggleActive = async (t: any) => {
+    try {
+      await client.put(`/teachers/${t.id}`, { is_active: !t.is_active });
+      message.success(t.is_active ? '已停用' : '已启用');
+      load();
+    } catch (err) { message.error(extractError(err)); }
+  };
+
   const filtered = teachers.filter(t =>
     !search || t.name?.toLowerCase().includes(search.toLowerCase()) || t.phone?.includes(search)
   );
+
+  // 详情 Drawer 内容
+  const renderDrawer = () => {
+    if (!drawerTarget) return null;
+    const t = drawerTarget;
+    return (
+      <>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <Avatar size={80} icon={<UserOutlined />} style={{ background: '#5CAADF', fontSize: 32 }} />
+          <Title level={4} style={{ marginTop: 12, marginBottom: 4 }}>{t.name}</Title>
+          <Space>
+            <Tag color={t.is_active ? 'green' : 'default'}>{t.is_active ? '在职' : '离职'}</Tag>
+            {t.must_change_password && <Tag color="orange">需改密码</Tag>}
+          </Space>
+        </div>
+
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Descriptions column={1} size="small" labelStyle={{ color: '#999', width: 80 }}>
+            <Descriptions.Item label="用户名"><Text code>{t.username}</Text></Descriptions.Item>
+            {t.phone && <Descriptions.Item label={<><PhoneOutlined /> 电话</>}>{t.phone}</Descriptions.Item>}
+            {t.hourly_rate != null && (
+              <Descriptions.Item label={<><DollarOutlined /> 时薪</>}>
+                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>¥{t.hourly_rate}/h</span>
+              </Descriptions.Item>
+            )}
+          </Descriptions>
+        </Card>
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        <Space wrap>
+          <Button type="primary" icon={<CalendarOutlined />}
+            onClick={() => { setDrawerOpen(false); setSchedulePrefill({ teacher_id: t.id }); setScheduleOpen(true); }}>
+            排课
+          </Button>
+          <Button icon={<EditOutlined />}
+            onClick={() => { setDrawerOpen(false); setEditItem(t); form.setFieldsValue(t); setModalOpen(true); }}>
+            编辑
+          </Button>
+          <Button icon={t.is_active ? <StopOutlined /> : <CheckCircleOutlined />}
+            onClick={() => toggleActive(t)}>
+            {t.is_active ? '停用' : '启用'}
+          </Button>
+          <Popconfirm title="重置密码？" onConfirm={() => resetPassword(t.id)}>
+            <Button icon={<KeyOutlined />}>重置密码</Button>
+          </Popconfirm>
+          <Popconfirm title="确认删除？" onConfirm={() => onDelete(t.id)}>
+            <Button danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
+      </>
+    );
+  };
 
   return (
     <div>
@@ -66,7 +137,9 @@ export default function Teachers() {
         <Row gutter={[16, 16]}>
           {filtered.map(t => (
             <Col xs={24} sm={12} md={8} lg={6} key={t.id}>
-              <Card hoverable size="small" className="sb-fade-in">
+              <Card hoverable size="small" className="sb-fade-in"
+                onClick={() => { setDrawerTarget(t); setDrawerOpen(true); }}
+              >
                 <div style={{ textAlign: 'center', marginBottom: 12 }}>
                   <Avatar size={64} icon={<UserOutlined />} style={{ background: '#5CAADF' }} />
                   <div style={{ fontWeight: 600, fontSize: 16, marginTop: 8 }}>{t.name}</div>
@@ -78,7 +151,9 @@ export default function Teachers() {
                   <div>👤 {t.username}</div>
                   {t.must_change_password && <Tag color="orange" style={{ marginTop: 4 }}>需改密码</Tag>}
                 </div>
-                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
+                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}
+                  onClick={e => e.stopPropagation()}
+                >
                   <Button size="small" type="primary" icon={<CalendarOutlined />}
                     onClick={() => { setSchedulePrefill({ teacher_id: t.id }); setScheduleOpen(true); }}>排课</Button>
                   <Button size="small" onClick={() => { setEditItem(t); form.setFieldsValue(t); setModalOpen(true); }}>编辑</Button>
@@ -90,6 +165,16 @@ export default function Teachers() {
           ))}
         </Row>
       )}
+
+      {/* 教师详情 Drawer */}
+      <Drawer
+        title="教师详情"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        width={400} destroyOnClose
+      >
+        {renderDrawer()}
+      </Drawer>
 
       <Modal title={editItem ? '编辑教师' : '添加教师'} open={modalOpen}
         onCancel={() => { setModalOpen(false); setEditItem(null); }}

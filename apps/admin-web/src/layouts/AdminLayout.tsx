@@ -9,6 +9,7 @@ import {
 import type { MenuProps } from 'antd';
 import AppLogo from '@/components/AppLogo';
 import GlobalSearch from '@/components/GlobalSearch';
+import EntityDrawer from '@/components/EntityDrawer';
 import { useAuthStore } from '@/store/authStore';
 
 const { Sider, Content, Header } = Layout;
@@ -115,6 +116,8 @@ export default function AdminLayout() {
           <Outlet />
         </Content>
       </Layout>
+      {/* 全局实体详情 Drawer — 从搜索/通知等入口触发 */}
+      <EntityDrawer />
     </Layout>
   );
 }

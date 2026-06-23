@@ -1,26 +1,30 @@
 /**
  * 内容管理 — Reading Materials + Resources 双分区
  *
- * Reading Materials: level/category/pdf/cover/sort_order/status/page_count
- * Resources: category/pdf/sort_order/status/metadata
- *
- * 设计原则：内容是支持模块，视觉优先级低，简洁实用为主
+ * P2 升级:
+ * - PDF 上传（POST /reading/materials/{id}/upload）
+ * - 封面上传（POST /reading/materials/{id}/cover）
+ * - 详情 Drawer: 封面预览 + PDF 下载/链接 + 分类标签 + 元数据面板
+ * - 分类筛选用 categories API
+ * - 分类下拉从 API 加载
  */
 import { useEffect, useState, useCallback } from 'react';
 import {
   Table, Button, Tag, Card, Space, Typography, Drawer, Modal,
   Form, Input, InputNumber, Select, Switch, Upload, message,
-  Tabs, Tooltip, Popconfirm, Badge, Empty,
+  Tabs, Tooltip, Popconfirm, Badge, Empty, Image, Divider,
 } from 'antd';
 import {
   BookOutlined, FilePdfOutlined, PlusOutlined, EditOutlined,
   UploadOutlined, DeleteOutlined, EyeOutlined, PictureOutlined,
   CheckCircleOutlined, StopOutlined, SearchOutlined,
+  CloudUploadOutlined, DownloadOutlined, InfoCircleOutlined,
 } from '@ant-design/icons';
+import type { UploadProps } from 'antd';
 import dayjs from 'dayjs';
 import client, { extractError } from '@/api/client';
 
-const { Text, Title } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 // ── 类型定义 ──
 interface ReadingMaterial {
@@ -50,6 +54,8 @@ interface Resource {
   metadata: Record<string, any>;
 }
 
+interface CategoryOption { value: string; label: string; }
+
 // ── 常量 ──
 const LEVEL_OPTIONS = [
   { value: 'L1', label: 'L1 — 入门' },
@@ -60,20 +66,11 @@ const LEVEL_OPTIONS = [
   { value: 'L6', label: 'L6 — 精通' },
 ];
 
-const READING_CATEGORIES = [
-  { value: 'picture_book', label: '绘本' },
-  { value: 'story', label: '故事' },
-  { value: 'short_text', label: '短文' },
-  { value: 'poem', label: '诗歌' },
-  { value: '__draft__', label: '草稿' },
-];
-
-const RESOURCE_CATEGORIES = [
+const RESOURCE_CATEGORIES: CategoryOption[] = [
   { value: 'phonics', label: '自然拼读' },
   { value: 'word_card', label: '词卡' },
   { value: 'recommended', label: '推荐' },
   { value: 'grammar', label: '语法' },
-  { value: '__draft__', label: '草稿' },
 ];
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -87,12 +84,15 @@ export default function ContentPage() {
   const [materials, setMaterials] = useState<ReadingMaterial[]>([]);
   const [mLoading, setMLoading] = useState(false);
   const [mFilterLevel, setMFilterLevel] = useState<string | undefined>();
+  const [mFilterCategory, setMFilterCategory] = useState<string | undefined>();
   const [mFilterActive, setMFilterActive] = useState<boolean | undefined>();
   const [mEditOpen, setMEditOpen] = useState(false);
   const [mEditTarget, setMEditTarget] = useState<ReadingMaterial | null>(null);
   const [mcreateForm] = Form.useForm();
   const [mDrawerOpen, setMDrawerOpen] = useState(false);
   const [mDrawerTarget, setMDrawerTarget] = useState<ReadingMaterial | null>(null);
+  // 分类从后端 API 加载
+  const [readingCategories, setReadingCategories] = useState<CategoryOption[]>([]);
 
   // ── Resources ──
   const [resources, setResources] = useState<Resource[]>([]);
@@ -105,12 +105,31 @@ export default function ContentPage() {
   const [rDrawerOpen, setRDrawerOpen] = useState(false);
   const [rDrawerTarget, setRDrawerTarget] = useState<Resource | null>(null);
 
+  // ── 上传状态 ──
+  const [mUploading, setMUploading] = useState<string | null>(null);
+
+  // ── 加载分类 API ──
+  const loadCategories = async () => {
+    try {
+      const { data } = await client.get('/reading/categories');
+      setReadingCategories(data || []);
+    } catch {
+      setReadingCategories([
+        { value: 'picture_book', label: '绘本' },
+        { value: 'story', label: '故事' },
+        { value: 'short_text', label: '短文' },
+        { value: 'read_aloud', label: '跟读' },
+      ]);
+    }
+  };
+
   // ── 加载 Materials ──
   const loadMaterials = async () => {
     setMLoading(true);
     try {
       const params: any = { page: 1, page_size: 100 };
       if (mFilterLevel) params.level = mFilterLevel;
+      if (mFilterCategory) params.category = mFilterCategory;
       if (mFilterActive !== undefined) params.is_active = mFilterActive;
       const { data } = await client.get('/reading/materials', { params });
       setMaterials(data.items || []);
@@ -131,10 +150,15 @@ export default function ContentPage() {
     finally { setRLoading(false); }
   };
 
-  useEffect(() => { loadMaterials(); loadResources(); }, []);
-
-  useEffect(() => { loadMaterials(); }, [mFilterLevel, mFilterActive]);
+  useEffect(() => { loadCategories(); loadMaterials(); loadResources(); }, []);
+  useEffect(() => { loadMaterials(); }, [mFilterLevel, mFilterCategory, mFilterActive]);
   useEffect(() => { loadResources(); }, [rFilterCat, rFilterActive]);
+
+  // ── 分类名称查找 ──
+  const catLabel = (val: string) => {
+    const c = readingCategories.find(c => c.value === val);
+    return c?.label || val;
+  };
 
   // ── Material CRUD ──
   const openMCreate = () => {
@@ -182,6 +206,43 @@ export default function ContentPage() {
       loadMaterials();
       if (mDrawerTarget?.id === id) setMDrawerOpen(false);
     } catch (err) { message.error(extractError(err)); }
+  };
+
+  // ── PDF / 封面上传 ──
+  const uploadPdf = async (materialId: string, file: File) => {
+    setMUploading(materialId);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      await client.post(`/reading/materials/${materialId}/upload`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      message.success('PDF 已上传');
+      loadMaterials();
+      if (mDrawerTarget?.id === materialId) {
+        const { data } = await client.get(`/reading/materials/${materialId}`);
+        setMDrawerTarget(data);
+      }
+    } catch (err) { message.error(extractError(err)); }
+    finally { setMUploading(null); }
+  };
+
+  const uploadCover = async (materialId: string, file: File) => {
+    setMUploading(materialId);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      await client.post(`/reading/materials/${materialId}/cover`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      message.success('封面已上传');
+      loadMaterials();
+      if (mDrawerTarget?.id === materialId) {
+        const { data } = await client.get(`/reading/materials/${materialId}`);
+        setMDrawerTarget(data);
+      }
+    } catch (err) { message.error(extractError(err)); }
+    finally { setMUploading(null); }
   };
 
   // ── Resource CRUD ──
@@ -247,18 +308,55 @@ export default function ContentPage() {
     },
     {
       title: '分类', dataIndex: 'category', width: 100,
-      render: (v: string) => {
-        const cat = READING_CATEGORIES.find(c => c.value === v);
-        return <Tag>{cat?.label || v}</Tag>;
-      },
+      render: (v: string) => <Tag>{catLabel(v)}</Tag>,
     },
     {
-      title: 'PDF', dataIndex: 'pdf_url', width: 80, align: 'center' as const,
-      render: (v: string | null) => v ? <FilePdfOutlined style={{ color: '#ff4d4f', fontSize: 16 }} /> : <Text type="secondary">—</Text>,
+      title: 'PDF', dataIndex: 'pdf_url', width: 100, align: 'center' as const,
+      render: (v: string | null, r: ReadingMaterial) =>
+        v ? (
+          <Tooltip title="下载 PDF">
+            <a href={v} target="_blank" rel="noopener" onClick={e => e.stopPropagation()}>
+              <FilePdfOutlined style={{ color: '#ff4d4f', fontSize: 18 }} />
+            </a>
+          </Tooltip>
+        ) : (
+          <Upload
+            showUploadList={false}
+            accept=".pdf"
+            beforeUpload={file => { uploadPdf(r.id, file); return false; }}
+          >
+            <Tooltip title="上传 PDF">
+              <Button type="text" size="small" icon={<CloudUploadOutlined />}
+                loading={mUploading === r.id}
+                style={{ color: '#bbb' }}
+              />
+            </Tooltip>
+          </Upload>
+        ),
     },
     {
-      title: '封面', dataIndex: 'cover_url', width: 60, align: 'center' as const,
-      render: (v: string | null) => v ? <PictureOutlined style={{ color: '#5CAADF', fontSize: 16 }} /> : <Text type="secondary">—</Text>,
+      title: '封面', dataIndex: 'cover_url', width: 80, align: 'center' as const,
+      render: (v: string | null, r: ReadingMaterial) =>
+        v ? (
+          <Image src={v} width={32} height={42}
+            style={{ objectFit: 'cover', borderRadius: 4, cursor: 'pointer' }}
+            preview={false}
+            onClick={e => { e.stopPropagation(); setMDrawerTarget(r); setMDrawerOpen(true); }}
+          />
+        ) : (
+          <Upload
+            showUploadList={false}
+            accept=".webp,.jpg,.jpeg,.png"
+            beforeUpload={file => { uploadCover(r.id, file); return false; }}
+          >
+            <Tooltip title="上传封面">
+              <Button type="text" size="small" icon={<PictureOutlined />}
+                loading={mUploading === r.id}
+                style={{ color: '#bbb' }}
+              />
+            </Tooltip>
+          </Upload>
+        ),
     },
     {
       title: '页数', dataIndex: 'page_count', width: 60, align: 'center' as const,
@@ -333,47 +431,101 @@ export default function ContentPage() {
     },
   ];
 
-  // ── Material 详情 Drawer ──
+  // ── Material 详情 Drawer（升级版） ──
   const renderMDrawer = () => {
     if (!mDrawerTarget) return null;
     const r = mDrawerTarget;
-    const cat = READING_CATEGORIES.find(c => c.value === r.category);
     return (
       <>
-        <Title level={4} style={{ marginTop: 0 }}>{r.title}</Title>
-        <Space style={{ marginBottom: 16 }}>
+        {/* 封面预览 */}
+        {r.cover_url ? (
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <Image src={r.cover_url} style={{ maxHeight: 240, borderRadius: 8, objectFit: 'contain' }} />
+          </div>
+        ) : (
+          <div style={{
+            textAlign: 'center', marginBottom: 16, padding: '32px 0',
+            background: '#fafafa', borderRadius: 8,
+          }}>
+            <PictureOutlined style={{ fontSize: 40, color: '#d9d9d9' }} />
+            <div style={{ marginTop: 8 }}>
+              <Upload
+                showUploadList={false}
+                accept=".webp,.jpg,.jpeg,.png"
+                beforeUpload={file => { uploadCover(r.id, file); return false; }}
+              >
+                <Button size="small" icon={<CloudUploadOutlined />} loading={mUploading === r.id}>
+                  上传封面
+                </Button>
+              </Upload>
+            </div>
+          </div>
+        )}
+
+        <Title level={4} style={{ marginTop: 0, marginBottom: 4 }}>{r.title}</Title>
+        <Space style={{ marginBottom: 12 }}>
           <Tag color={LEVEL_COLORS[r.level] || '#999'}>{r.level}</Tag>
-          <Tag>{cat?.label || r.category}</Tag>
+          <Tag>{catLabel(r.category)}</Tag>
           <Tag color={r.is_active ? 'green' : 'default'}>{r.is_active ? '启用' : '停用'}</Tag>
         </Space>
-        <div style={{ background: '#fafafa', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+
+        {/* PDF 区域 */}
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Space>
+              <FilePdfOutlined style={{ fontSize: 20, color: r.pdf_url ? '#ff4d4f' : '#d9d9d9' }} />
+              <div>
+                <div style={{ fontWeight: 500 }}>{r.pdf_url ? 'PDF 已上传' : '未上传 PDF'}</div>
+                {r.page_count > 0 && <Text type="secondary" style={{ fontSize: 12 }}>{r.page_count} 页</Text>}
+              </div>
+            </Space>
+            <Space>
+              {r.pdf_url && (
+                <Button size="small" icon={<DownloadOutlined />}
+                  href={r.pdf_url} target="_blank">下载</Button>
+              )}
+              <Upload
+                showUploadList={false}
+                accept=".pdf"
+                beforeUpload={file => { uploadPdf(r.id, file); return false; }}
+              >
+                <Button size="small" icon={<CloudUploadOutlined />}
+                  loading={mUploading === r.id}>
+                  {r.pdf_url ? '替换' : '上传'}
+                </Button>
+              </Upload>
+            </Space>
+          </div>
+        </Card>
+
+        {/* 元数据面板 */}
+        <div style={{ background: '#fafafa', borderRadius: 8, padding: 12, marginBottom: 12 }}>
           <table style={{ width: '100%', fontSize: 13 }}>
             <tbody>
-              <tr><td style={{ color: '#999', padding: '4px 0' }}>PDF</td><td>{r.pdf_url ? <Text copyable style={{ fontSize: 12 }}>{r.pdf_url}</Text> : '—'}</td></tr>
-              <tr><td style={{ color: '#999', padding: '4px 0' }}>封面</td><td>{r.cover_url ? <Text copyable style={{ fontSize: 12 }}>{r.cover_url}</Text> : '—'}</td></tr>
-              <tr><td style={{ color: '#999', padding: '4px 0' }}>页数</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.page_count || '—'}</td></tr>
-              <tr><td style={{ color: '#999', padding: '4px 0' }}>排序</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.sort_order}</td></tr>
+              <tr><td style={{ color: '#999', padding: '4px 0', width: 60 }}>排序</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.sort_order}</td></tr>
               <tr><td style={{ color: '#999', padding: '4px 0' }}>创建</td><td>{dayjs(r.created_at).format('YYYY-MM-DD HH:mm')}</td></tr>
               <tr><td style={{ color: '#999', padding: '4px 0' }}>更新</td><td>{dayjs(r.updated_at).format('YYYY-MM-DD HH:mm')}</td></tr>
             </tbody>
           </table>
         </div>
+
         {r.metadata && Object.keys(r.metadata).length > 0 && (
-          <Card title="Metadata" size="small" style={{ marginBottom: 16 }}>
+          <Card title="Metadata" size="small" style={{ marginBottom: 12 }}>
             <pre style={{ fontSize: 12, margin: 0 }}>{JSON.stringify(r.metadata, null, 2)}</pre>
           </Card>
         )}
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-          <Space>
-            <Button icon={<EditOutlined />} onClick={() => { setMDrawerOpen(false); openMEdit(r); }}>编辑</Button>
-            <Button onClick={() => toggleMaterialActive(r)} icon={r.is_active ? <StopOutlined /> : <CheckCircleOutlined />}>
-              {r.is_active ? '停用' : '启用'}
-            </Button>
-            <Popconfirm title="确认删除？" onConfirm={() => deleteMaterial(r.id)}>
-              <Button danger icon={<DeleteOutlined />}>删除</Button>
-            </Popconfirm>
-          </Space>
-        </div>
+
+        <Divider style={{ margin: '8px 0' }} />
+
+        <Space>
+          <Button icon={<EditOutlined />} onClick={() => { setMDrawerOpen(false); openMEdit(r); }}>编辑</Button>
+          <Button onClick={() => toggleMaterialActive(r)} icon={r.is_active ? <StopOutlined /> : <CheckCircleOutlined />}>
+            {r.is_active ? '停用' : '启用'}
+          </Button>
+          <Popconfirm title="确认删除？" onConfirm={() => deleteMaterial(r.id)}>
+            <Button danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
       </>
     );
   };
@@ -390,21 +542,37 @@ export default function ContentPage() {
           <Tag>{cat?.label || r.category}</Tag>
           <Tag color={r.is_active ? 'green' : 'default'}>{r.is_active ? '启用' : '停用'}</Tag>
         </Space>
+
+        {/* PDF 区域 */}
+        <Card size="small" style={{ marginBottom: 12 }}>
+          <Space>
+            <FilePdfOutlined style={{ fontSize: 20, color: r.pdf_url ? '#ff4d4f' : '#d9d9d9' }} />
+            {r.pdf_url ? (
+              <a href={r.pdf_url} target="_blank" rel="noopener">
+                <Button size="small" icon={<DownloadOutlined />}>下载 PDF</Button>
+              </a>
+            ) : (
+              <Text type="secondary">未上传 PDF</Text>
+            )}
+          </Space>
+        </Card>
+
         <div style={{ background: '#fafafa', borderRadius: 8, padding: 12, marginBottom: 16 }}>
           <table style={{ width: '100%', fontSize: 13 }}>
             <tbody>
-              <tr><td style={{ color: '#999', padding: '4px 0' }}>PDF</td><td>{r.pdf_url ? <Text copyable style={{ fontSize: 12 }}>{r.pdf_url}</Text> : '—'}</td></tr>
               <tr><td style={{ color: '#999', padding: '4px 0' }}>排序</td><td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.sort_order}</td></tr>
               <tr><td style={{ color: '#999', padding: '4px 0' }}>创建</td><td>{dayjs(r.created_at).format('YYYY-MM-DD HH:mm')}</td></tr>
               <tr><td style={{ color: '#999', padding: '4px 0' }}>更新</td><td>{dayjs(r.updated_at).format('YYYY-MM-DD HH:mm')}</td></tr>
             </tbody>
           </table>
         </div>
+
         {r.metadata && Object.keys(r.metadata).length > 0 && (
           <Card title="Metadata" size="small" style={{ marginBottom: 16 }}>
             <pre style={{ fontSize: 12, margin: 0 }}>{JSON.stringify(r.metadata, null, 2)}</pre>
           </Card>
         )}
+
         <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
           <Space>
             <Button icon={<EditOutlined />} onClick={() => { setRDrawerOpen(false); openREdit(r); }}>编辑</Button>
@@ -432,7 +600,7 @@ export default function ContentPage() {
             label: <span><BookOutlined /> 阅读材料</span>,
             children: (
               <div>
-                {/* 筛选栏 */}
+                {/* 筛选栏 — 增加分类筛选 */}
                 <div style={{
                   display: 'flex', gap: 12, marginBottom: 12,
                   position: 'sticky', top: 0, zIndex: 10,
@@ -442,6 +610,10 @@ export default function ContentPage() {
                   <Select placeholder="级别" allowClear style={{ width: 140 }}
                     value={mFilterLevel} onChange={setMFilterLevel}
                     options={LEVEL_OPTIONS}
+                  />
+                  <Select placeholder="分类" allowClear style={{ width: 120 }}
+                    value={mFilterCategory} onChange={setMFilterCategory}
+                    options={readingCategories}
                   />
                   <Select placeholder="状态" allowClear style={{ width: 100 }}
                     value={mFilterActive} onChange={setMFilterActive}
@@ -460,7 +632,7 @@ export default function ContentPage() {
                   loading={mLoading}
                   size="small"
                   pagination={false}
-                  scroll={{ x: 860, y: 'calc(100vh - 300px)' }}
+                  scroll={{ x: 900, y: 'calc(100vh - 300px)' }}
                   locale={{ emptyText: <Empty description="暂无阅读材料" /> }}
                 />
               </div>
@@ -471,7 +643,6 @@ export default function ContentPage() {
             label: <span><FilePdfOutlined /> 学习资源</span>,
             children: (
               <div>
-                {/* 筛选栏 */}
                 <div style={{
                   display: 'flex', gap: 12, marginBottom: 12,
                   position: 'sticky', top: 0, zIndex: 10,
@@ -525,7 +696,7 @@ export default function ContentPage() {
               <Select style={{ width: 200 }} options={LEVEL_OPTIONS} placeholder="选择级别" />
             </Form.Item>
             <Form.Item name="category" label="分类" rules={[{ required: true, message: '请选择' }]}>
-              <Select style={{ width: 200 }} options={READING_CATEGORIES} placeholder="选择分类" />
+              <Select style={{ width: 200 }} options={readingCategories} placeholder="选择分类" />
             </Form.Item>
           </Space>
           <Space style={{ width: '100%' }} size={16}>

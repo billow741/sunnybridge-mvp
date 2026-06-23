@@ -23,6 +23,7 @@ import dayjs from 'dayjs';
 import client, { extractError } from '@/api/client';
 import type { AlertItem, DashboardSummary } from '@/services/dashboard';
 import { getAlerts, getDashboardSummary } from '@/services/dashboard';
+import { useEntityDrawerStore } from '@/store/entityDrawerStore';
 
 const { Text, Title } = Typography;
 
@@ -38,6 +39,7 @@ const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const openEntity = useEntityDrawerStore(s => s.openEntity);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ students: 0, teachers: 0, todayCourses: 0, lowHours: [] as any[], monthPayments: 0 });
   const [courses, setCourses] = useState<any[]>([]);
@@ -205,8 +207,9 @@ export default function Dashboard() {
                 {courses.map((c: any) => (
                   <div key={c.id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 12px', background: '#fafafa', borderRadius: 6,
-                  }}>
+                    padding: '8px 12px', background: '#fafafa', borderRadius: 6, cursor: 'pointer',
+                  }}
+                  onClick={() => openEntity('course', c.id)}>
                     <Space>
                       <ClockCircleOutlined style={{ color: '#5CAADF' }} />
                       <div>
@@ -243,7 +246,7 @@ export default function Dashboard() {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
                   }}
-                  onClick={() => navigate(`/students/${s.id}`)}
+                  onClick={() => openEntity('student', s.id)}
                   >
                     <Text style={{ fontSize: 13 }}>{s.name}</Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
