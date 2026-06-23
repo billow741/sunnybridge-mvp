@@ -77,6 +77,24 @@ class PaginatedMaterials(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Category enum — for GET /reading/categories
+# ---------------------------------------------------------------------------
+
+CATEGORY_LABELS = {
+    "picture_book": "绘本",
+    "short_text": "短文",
+    "story": "故事",
+    "read_aloud": "跟读",
+}
+
+
+class CategoryItem(BaseModel):
+    """One category entry for the categories list endpoint."""
+    value: str
+    label: str
+
+
+# ---------------------------------------------------------------------------
 # Reading Progress — parent
 # ---------------------------------------------------------------------------
 

@@ -74,15 +74,21 @@ async def get_summary(
     except Exception:
         missing_fb = 0
 
-    # 3) 低课时预警 (remaining_hours <= 5)
+    # 3) 低课时预警 (totalhours - usedhours <= 5 且 > 0)
+    #    DB 没有 remaining_hours 列，用 exec_sql RPC 计算
     try:
-        low = sb.table("children").select("id", count="exact")\
-            .lte("remaining_hours", 5).gt("remaining_hours", 0).execute()
-        low_hours_count = low.count or 0
+        result = sb.rpc("exec_sql", {"query": (
+            "SELECT count(*) AS cnt FROM children "
+            "WHERE (COALESCE(totalhours,0) - COALESCE(usedhours,0)) <= 5 "
+            "AND (COALESCE(totalhours,0) - COALESCE(usedhours,0)) > 0"
+        )}).execute()
+        row0 = (result.data or [{}])[0]
+        low_hours_count = int(row0.get("cnt", 0))
     except Exception:
         low_hours_count = 0
 
     # 4) 待结算教师 (settlements status=pending)
+    #    降级说明：settlements 表已存在，当前 0 行数据，待后续结算流程上线后自然填充
     try:
         ps = sb.table("settlements").select("id", count="exact")\
             .eq("status", "pending").execute()
@@ -146,11 +152,16 @@ async def get_alerts(
 
     # 3) 低课时预警
     try:
-        low = sb.table("children").select("id, name, remaining_hours")\
-            .lte("remaining_hours", 5).gt("remaining_hours", 0).execute()
-        if low.data:
-            names = ", ".join(r["name"] for r in low.data[:3])
-            suffix = f"等 {len(low.data)} 名" if len(low.data) > 3 else ""
+        low_result = sb.rpc("exec_sql", {"query": (
+            "SELECT id, name, (COALESCE(totalhours,0) - COALESCE(usedhours,0)) AS remaining "
+            "FROM children "
+            "WHERE (COALESCE(totalhours,0) - COALESCE(usedhours,0)) <= 5 "
+            "AND (COALESCE(totalhours,0) - COALESCE(usedhours,0)) > 0"
+        )}).execute()
+        low_data = low_result.data or []
+        if low_data:
+            names = ", ".join(r["name"] for r in low_data[:3])
+            suffix = f"等 {len(low_data)} 名" if len(low_data) > 3 else ""
             alerts.append(AlertItem(
                 id="alert-low-hours",
                 type="low_hours",

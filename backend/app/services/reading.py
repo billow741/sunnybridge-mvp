@@ -33,6 +33,7 @@ from app.core.storage import (
     X_ACCEL_PREFIX,
 )
 from app.schemas.reading import (
+    CATEGORY_LABELS,
     MaterialCreate,
     MaterialDetail,
     MaterialOut,
@@ -48,13 +49,6 @@ settings = get_settings()
 DEFAULT_PAGE = 1
 DEFAULT_PAGE_SIZE = 20
 
-# Category display names (English enum → Chinese label)
-CATEGORY_LABELS = {
-    "picture_book": "绘本",
-    "short_text": "短文",
-    "story": "故事",
-    "read_aloud": "跟读",
-}
 
 # ---------------------------------------------------------------------------
 # Helpers

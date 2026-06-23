@@ -21,6 +21,7 @@ from fastapi.responses import Response
 from app.core.deps import get_current_user, require_role
 from app.schemas.auth import CurrentUser
 from app.schemas.reading import (
+    CategoryItem,
     MaterialCreate,
     MaterialDetail,
     MaterialOut,
@@ -41,8 +42,22 @@ from app.services.reading import (
     upload_cover,
     upload_pdf,
 )
+from app.schemas.reading import CATEGORY_LABELS
 
 router = APIRouter(prefix="/api/v1/reading", tags=["reading"])
+
+
+# ---------------------------------------------------------------------------
+# Category enum — all roles
+# ---------------------------------------------------------------------------
+
+
+@router.get("/categories", response_model=list[CategoryItem])
+async def get_categories(
+    user: CurrentUser = Depends(get_current_user),
+) -> list[CategoryItem]:
+    """Return all reading material categories with Chinese labels."""
+    return [CategoryItem(value=k, label=v) for k, v in CATEGORY_LABELS.items()]
 
 
 # ---------------------------------------------------------------------------
