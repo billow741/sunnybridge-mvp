@@ -1,25 +1,15 @@
 /**
- * CourseScheduleDrawer — 排课核心组件
+ * CourseScheduleDrawer — 排课核心组件（业务专用版）
  *
- * 通用排课 Drawer，支持：
- * - 新建课程（可预填学员/教师/日期/时间）
- * - 编辑课程（预填所有字段 + exclude_course_id 冲突检测）
- * - 实时冲突检测（教师时间重叠 + 学员时间重叠）
- * - 学员课时余额 + 风险提示
- * - 取消课程（改状态为 cancelled）
- *
- * 用法：
- * <CourseScheduleDrawer
- *   open={open}
- *   onClose={onClose}
- *   editingCourse={course | null}   // null=新建, 有值=编辑
- *   prefill={{ child_id, teacher_id, date, start_time, end_time }}
- *   onSuccess={() => { load(); }}
- * />
+ * 业务规则：
+ * - 课时时长固定两档：60min（1课时）/ 30min（0.5课时）
+ * - 默认 60min
+ * - 用户只选开始时间，系统自动计算 end_time 和 hours
+ * - 60min = 1课时, 30min = 0.5课时
  */
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Drawer, Form, Select, DatePicker, TimePicker, InputNumber,
+  Drawer, Form, Select, DatePicker, TimePicker, Radio,
   Input, Button, Space, Alert, Descriptions, Row, Col, Statistic,
   Tag, Divider, message, Tooltip, Popconfirm, Typography,
 } from 'antd';
@@ -33,13 +23,27 @@ import client, { extractError } from '@/api/client';
 
 const { Text } = Typography;
 
+// ── 时长选项 ─────────────────────────
+const DURATION_OPTIONS = [
+  { value: 60, label: '60 分钟（1 课时）' },
+  { value: 30, label: '30 分钟（0.5 课时）' },
+];
+
+const durationToHours = (min: number) => min === 60 ? 1 : 0.5;
+
+/** 根据 start_time + duration(min) 计算 end_time 字符串 HH:mm */
+const calcEndTime = (startDayjs: dayjs.Dayjs | null, durationMin: number): string => {
+  if (!startDayjs) return '';
+  return startDayjs.add(durationMin, 'minute').format('HH:mm');
+};
+
 // ── 类型 ──────────────────────────────
 interface Prefill {
   child_id?: string;
   teacher_id?: string;
   date?: string;       // YYYY-MM-DD
   start_time?: string; // HH:mm
-  end_time?: string;   // HH:mm
+  end_time?: string;   // HH:mm（仅用于推算 duration）
 }
 
 interface CourseData {
@@ -99,6 +103,17 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
   const isCompleted = editingCourse?.status === 'completed';
   const isCancelled = editingCourse?.status === 'cancelled';
 
+  // ── 计算自动字段（end_time, hours）────────
+  const syncAutoFields = useCallback(() => {
+    const startTime = form.getFieldValue('start_time');
+    const duration = form.getFieldValue('duration') ?? 60;
+    if (startTime) {
+      const endTime = calcEndTime(startTime, duration);
+      const hours = durationToHours(duration);
+      form.setFieldsValue({ end_time_dayjs: startTime.add(duration, 'minute'), hours });
+    }
+  }, [form]);
+
   // ── 加载选项 ────────────────────────
   const loadOptions = useCallback(async () => {
     try {
@@ -124,26 +139,41 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
     setConflicts([]);
     setStudentHours([]);
     if (editingCourse) {
-      // 编辑模式：预填字段
+      // 编辑模式：从 existing 推算 duration
+      const stDayjs = dayjs(editingCourse.start_time, 'HH:mm');
+      const etDayjs = dayjs(editingCourse.end_time, 'HH:mm');
+      const diffMin = etDayjs.diff(stDayjs, 'minute');
+      // 只允许 60 或 30，取最近的档位
+      const duration = diffMin >= 45 ? 60 : 30;
       const childIds = editingCourse.students?.map(s => s.id) || [];
       form.setFieldsValue({
         teacher_id: editingCourse.teacher_id,
         child_ids: childIds,
         date: dayjs(editingCourse.date),
-        start_time: dayjs(editingCourse.start_time, 'HH:mm'),
-        end_time: dayjs(editingCourse.end_time, 'HH:mm'),
-        hours: editingCourse.hours || 1,
+        start_time: stDayjs,
+        duration,
+        hours: durationToHours(duration),
+        end_time_dayjs: stDayjs.add(duration, 'minute'),
         meeting_link: editingCourse.meeting_link,
       });
     } else {
       // 新建模式：用 prefill
       form.resetFields();
-      const init: Record<string, any> = { hours: 1 };
+      const init: Record<string, any> = { duration: 60, hours: 1 };
       if (prefill?.teacher_id) init.teacher_id = prefill.teacher_id;
       if (prefill?.child_id) init.child_ids = [prefill.child_id];
       if (prefill?.date) init.date = dayjs(prefill.date);
-      if (prefill?.start_time) init.start_time = dayjs(prefill.start_time, 'HH:mm');
-      if (prefill?.end_time) init.end_time = dayjs(prefill.end_time, 'HH:mm');
+      if (prefill?.start_time) {
+        init.start_time = dayjs(prefill.start_time, 'HH:mm');
+        init.end_time_dayjs = init.start_time.add(60, 'minute');
+      }
+      // 如果prefill有end_time，用差值推duration
+      if (prefill?.start_time && prefill?.end_time) {
+        const diff = dayjs(prefill.end_time, 'HH:mm').diff(dayjs(prefill.start_time, 'HH:mm'), 'minute');
+        if (diff <= 30) { init.duration = 30; init.hours = 0.5; }
+        else { init.duration = 60; init.hours = 1; }
+        init.end_time_dayjs = init.start_time.add(init.duration, 'minute');
+      }
       form.setFieldsValue(init);
     }
   }, [open, editingCourse, prefill, form, loadOptions]);
@@ -154,7 +184,8 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
       const values = form.getFieldsValue();
       const date = values.date?.format('YYYY-MM-DD');
       const startTime = values.start_time?.format('HH:mm');
-      const endTime = values.end_time?.format('HH:mm');
+      const duration = values.duration ?? 60;
+      const endTime = startTime ? calcEndTime(values.start_time, duration) : '';
       const teacherId = values.teacher_id;
       const childIds = values.child_ids || [];
 
@@ -183,25 +214,31 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
   }, [form, editingCourse]);
 
   // 表单值变化时触发防抖检测
-  const onFormChange = useCallback(() => {
+  const onFormChange = useCallback((changedValues: any) => {
+    // start_time 或 duration 变化时自动算 end_time + hours
+    if (changedValues.start_time !== undefined || changedValues.duration !== undefined) {
+      syncAutoFields();
+    }
     if (checkTimerRef.current) clearTimeout(checkTimerRef.current);
     checkTimerRef.current = setTimeout(doCheckConflicts, 500);
-  }, [doCheckConflicts]);
+  }, [doCheckConflicts, syncAutoFields]);
 
   // ── 提交（新建/编辑）───────────────
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
+      const duration = values.duration ?? 60;
+      const endTime = calcEndTime(values.start_time, duration);
       const payload = {
         date: values.date?.format('YYYY-MM-DD'),
         start_time: values.start_time?.format('HH:mm'),
-        end_time: values.end_time?.format('HH:mm'),
+        end_time: endTime,
         teacher_id: values.teacher_id,
         child_ids: values.child_ids || [],
-        hours: values.hours ?? 1,
+        hours: durationToHours(duration),
         meeting_link: values.meeting_link || null,
-        status: editingCourse?.status, // 编辑时保持原状态
+        status: editingCourse?.status,
       };
 
       if (editingCourse) {
@@ -215,7 +252,7 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
       onClose();
       onSuccess();
     } catch (err: any) {
-      if (err?.errorFields) return; // AntD校验
+      if (err?.errorFields) return;
       message.error(extractError(err));
     } finally {
       setSubmitting(false);
@@ -245,19 +282,14 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
 
     return (
       <div style={{ marginTop: 12 }}>
-        {/* 教师冲突 */}
         {teacherConflicts.length > 0 && (
           <Alert
-            type="error"
-            showIcon
-            icon={<WarningOutlined />}
+            type="error" showIcon icon={<WarningOutlined />}
             message="教师时间冲突"
             description={
               <ul style={{ margin: 0, paddingLeft: 16 }}>
                 {teacherConflicts.map((c, i) => (
-                  <li key={i}>
-                    {c.teacher_name} 已有课程 {c.start_time?.slice(0,5)}-{c.end_time?.slice(0,5)}
-                  </li>
+                  <li key={i}>{c.teacher_name} 已有课程 {c.start_time?.slice(0,5)}-{c.end_time?.slice(0,5)}</li>
                 ))}
               </ul>
             }
@@ -265,19 +297,14 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
           />
         )}
 
-        {/* 学员冲突 */}
         {studentConflicts.length > 0 && (
           <Alert
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
+            type="warning" showIcon icon={<ExclamationCircleOutlined />}
             message="学员时间冲突"
             description={
               <ul style={{ margin: 0, paddingLeft: 16 }}>
                 {studentConflicts.map((c, i) => (
-                  <li key={i}>
-                    {c.child_name} 已有课程 {c.start_time?.slice(0,5)}-{c.end_time?.slice(0,5)}
-                  </li>
+                  <li key={i}>{c.child_name} 已有课程 {c.start_time?.slice(0,5)}-{c.end_time?.slice(0,5)}</li>
                 ))}
               </ul>
             }
@@ -285,7 +312,6 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
           />
         )}
 
-        {/* 学员课时余额 */}
         {studentHours.length > 0 && (
           <div style={{
             background: 'linear-gradient(135deg, #f0f9ff 0%, #fffbe6 100%)',
@@ -322,42 +348,26 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
           </div>
         )}
 
-        {/* 高风险提醒 */}
         {lowHours.length > 0 && (
           <Alert
-            type="error"
-            showIcon
+            type="error" showIcon
             message={`⚠️ ${lowHours.map(s => s.name).join('、')} 排课后课时将${lowHours.some(s => s.hours_after <= 0) ? '变为负数' : '不足 2h'}，请留意续费`}
             style={{ marginBottom: 8 }}
           />
         )}
 
-        {/* 无冲突提示 */}
         {conflicts.length === 0 && studentHours.length > 0 && lowHours.length === 0 && (
-          <Alert
-            type="success"
-            showIcon
-            icon={<CheckCircleOutlined />}
-            message="无时间冲突，课时充足"
-            style={{ marginBottom: 8 }}
-          />
+          <Alert type="success" showIcon icon={<CheckCircleOutlined />} message="无时间冲突，课时充足" style={{ marginBottom: 8 }} />
         )}
       </div>
     );
   };
 
-  // ── 计算hours建议 ──
-  const calcSuggestedHours = () => {
-    const st = form.getFieldValue('start_time');
-    const et = form.getFieldValue('end_time');
-    if (!st || !et) return;
-    const sMin = st.hour() * 60 + st.minute();
-    const eMin = et.hour() * 60 + et.minute();
-    const hours = (eMin - sMin) / 60;
-    if (hours > 0 && hours !== form.getFieldValue('hours')) {
-      form.setFieldsValue({ hours: Math.round(hours * 10) / 10 });
-    }
-  };
+  // ── 当前自动计算值展示 ──
+  const curStartTime = Form.useWatch('start_time', form);
+  const curDuration = Form.useWatch('duration', form);
+  const computedEndTime = curStartTime ? calcEndTime(curStartTime, curDuration ?? 60) : '--:--';
+  const computedHours = durationToHours(curDuration ?? 60);
 
   const drawerTitle = isEdit
     ? (isCompleted ? '查看课程' : isCancelled ? '已取消课程' : '编辑课程')
@@ -443,36 +453,58 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
         </Form.Item>
 
         <Row gutter={12}>
-          <Col span={8}>
-            <Form.Item name="start_time" label="开始" rules={[{ required: true, message: '请选择' }]}>
-              <TimePicker format="HH:mm" minuteStep={15} style={{ width: '100%' }}
-                onSelect={calcSuggestedHours}
-              />
+          <Col span={12}>
+            <Form.Item name="start_time" label="开始时间" rules={[{ required: true, message: '请选择' }]}>
+              <TimePicker format="HH:mm" minuteStep={15} style={{ width: '100%' }} />
             </Form.Item>
           </Col>
-          <Col span={8}>
-            <Form.Item name="end_time" label="结束" rules={[{ required: true, message: '请选择' }]}>
-              <TimePicker format="HH:mm" minuteStep={15} style={{ width: '100%' }}
-                onSelect={calcSuggestedHours}
-              />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item name="hours" label="课时" rules={[{ required: true, message: '请输入' }]}>
-              <InputNumber min={0.5} step={0.5} style={{ width: '100%' }} addonAfter="h" className="tabular" />
+          <Col span={12}>
+            <Form.Item name="duration" label="课时时长" rules={[{ required: true, message: '请选择' }]}
+              initialValue={60}
+            >
+              <Radio.Group optionType="button" buttonStyle="solid" style={{ width: '100%' }}>
+                {DURATION_OPTIONS.map(opt => (
+                  <Radio.Button key={opt.value} value={opt.value} style={{ width: '50%', textAlign: 'center' }}>
+                    {opt.label}
+                  </Radio.Button>
+                ))}
+              </Radio.Group>
             </Form.Item>
           </Col>
         </Row>
+
+        {/* 自动计算结果展示 */}
+        <div style={{
+          background: '#f6f8fa', borderRadius: 8, padding: '10px 16px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: 16, border: '1px solid #e8ecf0',
+        }}>
+          <span style={{ color: '#64748b', fontSize: 13 }}>
+            <ClockCircleOutlined style={{ marginRight: 4, color: '#5CAADF' }} />
+            自动计算
+          </span>
+          <Space size={24}>
+            <span style={{ fontSize: 13 }}>
+              结束 <Text strong style={{ fontSize: 15, fontVariantNumeric: 'tabular-nums' }}>{computedEndTime}</Text>
+            </span>
+            <span style={{ fontSize: 13 }}>
+              课时 <Text strong style={{ fontSize: 15, color: '#5CAADF', fontVariantNumeric: 'tabular-nums' }}>{computedHours}</Text>
+            </span>
+          </Space>
+        </div>
+
+        {/* 隐藏字段：提交用 */}
+        <Form.Item name="hours" hidden><Input /></Form.Item>
+        <Form.Item name="end_time_dayjs" hidden><Input /></Form.Item>
 
         <Form.Item name="meeting_link" label="会议链接">
           <Input placeholder="如 Zoom / Google Meet 链接" />
         </Form.Item>
       </Form>
 
-      {/* 冲突检测结果 — 实时更新 */}
+      {/* 冲突检测结果 */}
       {renderConflicts()}
 
-      {/* 已完成/已取消的只读提醒 */}
       {isCompleted && (
         <Alert type="info" showIcon message="已完成课程，仅可查看。编辑请使用其他途径。" style={{ marginTop: 12 }} />
       )}
@@ -480,7 +512,6 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
         <Alert type="warning" showIcon message="课程已取消。如需恢复请新建排课。" style={{ marginTop: 12 }} />
       )}
 
-      {/* 检测中状态 */}
       {checkingConflicts && (
         <div style={{ textAlign: 'center', marginTop: 8 }}>
           <Text type="secondary" style={{ fontSize: 11 }}>检测冲突中…</Text>
