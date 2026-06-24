@@ -89,8 +89,12 @@ export default function StudentDetail() {
             children: (
               <Table dataSource={courses} rowKey="id" size="small" pagination={{ pageSize: 10 }}
                 columns={[
-                  { title: '日期', dataIndex: 'date' },
-                  { title: '时间', render: (_: any, r: any) => `${r.start_time?.slice(0,5)}-${r.end_time?.slice(0,5)}` },
+                  { title: '日期', dataIndex: 'date', render: (v: string) => v ? dayjs(v).format('MM/DD') : '—' },
+                  { title: '时间', render: (_: any, r: any) => {
+                    const s = r.start_time?.slice(0,5) || '';
+                    const e = r.end_time?.slice(0,5) || '';
+                    return (s && e) ? `${s}-${e}` : '—';
+                  }},
                   { title: '教师', dataIndex: ['teacher', 'name'] },
                   { title: '课时', dataIndex: 'hours', render: (v: number) => v ?? 1 },
                   { title: '反馈', render: (_: any, r: any) => r.feedback ? <Tag color="green">已提交</Tag> : <Tag>未提交</Tag> },
