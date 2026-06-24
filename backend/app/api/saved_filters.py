@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 
 router = APIRouter(prefix="/api/v1/saved-filters", tags=["saved-filters"])
@@ -49,7 +49,7 @@ class SavedFilterOut(BaseModel):
 @router.get("", response_model=list[SavedFilterOut])
 async def list_saved_filters(
     page: str | None = Query(None, description="按页面过滤"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:read")),
 ):
     sb = get_supabase()
     q = sb.table("saved_filters").select("*")
@@ -63,7 +63,7 @@ async def list_saved_filters(
 @router.post("", response_model=SavedFilterOut, status_code=201)
 async def create_saved_filter(
     body: SavedFilterCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:write")),
 ):
     sb = get_supabase()
     data = {
@@ -83,7 +83,7 @@ async def create_saved_filter(
 async def update_saved_filter(
     filter_id: int,
     body: SavedFilterUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:write")),
 ):
     sb = get_supabase()
     updates = {}
@@ -104,7 +104,7 @@ async def update_saved_filter(
 @router.delete("/{filter_id}")
 async def delete_saved_filter(
     filter_id: int,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:delete")),
 ):
     sb = get_supabase()
     result = sb.table("saved_filters").delete().eq("id", filter_id).execute()

@@ -17,7 +17,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.deps import CurrentUser, require_role
+from app.core.deps import CurrentUser, require_role, require_permission
 from app.schemas.teacher import (
     TeacherCreateRequest,
     TeacherCreateResponse,
@@ -50,7 +50,7 @@ async def teacher_list(
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(20, ge=1, le=100, description="每页条数"),
     include_inactive: bool = Query(True, description="是否包含已停用教师"),
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:read")),
 ) -> TeacherListResponse:
     """List teachers (paginated). Admin only.
 
@@ -67,7 +67,7 @@ async def teacher_list(
 @router.post("", response_model=TeacherCreateResponse, status_code=status.HTTP_201_CREATED)
 async def teacher_create(
     body: TeacherCreateRequest,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:write")),
 ) -> TeacherCreateResponse:
     """Create a teacher with auto-generated initial password. Admin only."""
     try:
@@ -91,7 +91,7 @@ async def teacher_create(
 @router.get("/{teacher_id}", response_model=TeacherOut)
 async def teacher_detail(
     teacher_id: UUID,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:read")),
 ) -> TeacherOut:
     """Get a single teacher by ID. Admin only."""
     teacher = get_teacher(teacher_id)
@@ -112,7 +112,7 @@ async def teacher_detail(
 @router.put("/{teacher_id}/restore", response_model=TeacherRestoreResponse)
 async def teacher_restore(
     teacher_id: UUID,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:write")),
 ) -> TeacherRestoreResponse:
     """Restore a soft-deleted teacher (set is_active=true). Admin only.
 
@@ -138,7 +138,7 @@ async def teacher_restore(
 async def teacher_update(
     teacher_id: UUID,
     body: TeacherUpdateRequest,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:write")),
 ) -> TeacherOut:
     """Update teacher fields (username, phone, name, avatar_url). Admin only."""
     try:
@@ -175,7 +175,7 @@ async def teacher_update(
 @router.delete("/{teacher_id}", response_model=TeacherDeleteResponse)
 async def teacher_delete(
     teacher_id: UUID,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:delete")),
 ) -> TeacherDeleteResponse:
     """Soft-delete teacher (set is_active=false). Admin only."""
     result = delete_teacher(teacher_id)
@@ -194,7 +194,7 @@ async def teacher_delete(
 @router.put("/{teacher_id}/reset-password", response_model=TeacherResetPasswordResponse)
 async def teacher_reset_password(
     teacher_id: UUID,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("teachers:write")),
 ) -> TeacherResetPasswordResponse:
     """Reset teacher password to a new auto-generated initial password. Admin only.
 

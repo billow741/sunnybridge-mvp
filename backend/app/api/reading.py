@@ -18,7 +18,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import Response
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_role, require_permission
 from app.schemas.auth import CurrentUser
 from app.schemas.reading import (
     CategoryItem,
@@ -116,7 +116,7 @@ async def update_progress_endpoint(
 @router.post("/materials", response_model=MaterialOut, status_code=201)
 async def create_material_endpoint(
     body: MaterialCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> MaterialOut:
     """Create a reading material. Admin only."""
     return await create_material(body)
@@ -126,7 +126,7 @@ async def create_material_endpoint(
 async def update_material_endpoint(
     material_id: UUID,
     body: MaterialUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> MaterialOut:
     """Update a reading material. Admin only."""
     return await update_material(material_id, body)
@@ -135,7 +135,7 @@ async def update_material_endpoint(
 @router.delete("/materials/{material_id}")
 async def delete_material_endpoint(
     material_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:delete")),
 ) -> dict:
     """Delete a reading material. Admin only."""
     return await delete_material(material_id)
@@ -145,7 +145,7 @@ async def delete_material_endpoint(
 async def upload_pdf_endpoint(
     material_id: UUID,
     file: UploadFile = File(..., description="PDF file, max 30MB"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> MaterialDetail:
     """Upload PDF for a reading material. Admin only.
 
@@ -161,7 +161,7 @@ async def upload_pdf_endpoint(
 async def upload_cover_endpoint(
     material_id: UUID,
     file: UploadFile = File(..., description="Cover image (webp/jpeg/png), max 2MB"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> MaterialOut:
     """Upload cover image for a reading material. Admin only.
 

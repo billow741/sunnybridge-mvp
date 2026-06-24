@@ -16,7 +16,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-from app.core.deps import CurrentUser, require_role
+from app.core.deps import CurrentUser, require_role, require_permission
 from app.core.database import get_supabase
 
 router = APIRouter(prefix="/api/v1/export", tags=["export"])
@@ -142,7 +142,7 @@ async def export_csv(
     teacher_id: str | None = Query(None, description="教师ID"),
     child_id: str | None = Query(None, description="学员ID"),
     payment_method: str | None = Query(None, description="支付方式"),
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("export:read")),
 ) -> StreamingResponse:
     """导出指定模块为 CSV（UTF-8 BOM 兼容 Excel）。Admin only。"""
     if module not in MODULES:

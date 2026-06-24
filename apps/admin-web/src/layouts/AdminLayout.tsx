@@ -16,20 +16,21 @@ import { useIsMobile } from '@/hooks/useBreakpoint';
 const { Sider, Content, Header } = Layout;
 
 type MenuKey = string[];
-type MenuItem = { key: string; icon?: React.ReactNode; label: string; children?: { key: string; label: string }[] };
+type MenuItem = { key: string; icon?: React.ReactNode; label: string; permission?: string; children?: { key: string; label: string; permission?: string }[] };
 
+// 3-C: 每个菜单项绑定权限码，无权限码的默认所有人可见
 const menuItems: MenuItem[] = [
-  { key: '/', icon: <DashboardOutlined />, label: '工作台' },
-  { key: '/students', icon: <TeamOutlined />, label: '学员' },
-  { key: '/courses', icon: <BookOutlined />, label: '课程' },
-  { key: '/teachers', icon: <TrophyOutlined />, label: '教师' },
-  { key: '/finance', icon: <DollarOutlined />, label: '财务', children: [
-    { key: '/finance/reconciliation', label: '财务对账' },
-    { key: '/finance/settlements', label: '教师结算' },
-    { key: '/finance/payments', label: '收款记录' },
+  { key: '/', icon: <DashboardOutlined />, label: '工作台', permission: 'dashboard:read' },
+  { key: '/students', icon: <TeamOutlined />, label: '学员', permission: 'students:read' },
+  { key: '/courses', icon: <BookOutlined />, label: '课程', permission: 'courses:read' },
+  { key: '/teachers', icon: <TrophyOutlined />, label: '教师', permission: 'teachers:read' },
+  { key: '/finance', icon: <DollarOutlined />, label: '财务', permission: 'finance:read', children: [
+    { key: '/finance/reconciliation', label: '财务对账', permission: 'finance:read' },
+    { key: '/finance/settlements', label: '教师结算', permission: 'settlements:read' },
+    { key: '/finance/payments', label: '收款记录', permission: 'payments:read' },
   ]},
-  { key: '/content', icon: <FileTextOutlined />, label: '内容' },
-  { key: '/settings', icon: <SettingOutlined />, label: '设置' },
+  { key: '/content', icon: <FileTextOutlined />, label: '内容', permission: 'courses:read' },
+  { key: '/settings', icon: <SettingOutlined />, label: '设置', permission: 'settings:read' },
 ];
 
 function flattenMenu(items: MenuItem[]): MenuItem[] {
@@ -41,11 +42,22 @@ export default function AdminLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, hasPermission } = useAuthStore();
   const isMobile = useIsMobile();
 
+  // 3-C: 根据权限过滤菜单
+  const filteredMenuItems = useMemo(() => {
+    return menuItems
+      .filter(item => !item.permission || hasPermission(item.permission))
+      .map(item => ({
+        ...item,
+        children: item.children?.filter(c => !c.permission || hasPermission(c.permission)),
+      }))
+      .filter(item => !item.children || item.children.length > 0); // 移除子菜单全部被过滤的父级
+  }, [hasPermission]);
+
   const selectedKeys = useMemo(() => {
-    const all = flattenMenu(menuItems);
+    const all = flattenMenu(filteredMenuItems);
     // 优先匹配精确路径
     const exact = all.find(i => i.key === location.pathname);
     if (exact) return [exact.key];
@@ -84,7 +96,7 @@ export default function AdminLayout() {
         theme={menuTheme}
         selectedKeys={selectedKeys}
         openKeys={collapsed && !isMobile ? [] : undefined}
-        items={menuItems.map(item => {
+        items={filteredMenuItems.map(item => {
           if (item.children) {
             return {
               key: item.key,
@@ -149,7 +161,7 @@ export default function AdminLayout() {
             <GlobalSearch />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, color: '#64748b', fontSize: 14 }}>
-            <span>{user?.name || user?.username || '管理员'}</span>
+            <span>{user?.username || '管理员'}{user?.role_name && user.role_name !== 'super_admin' && user.role_name !== 'admin' ? ` (${user.role_name})` : ''}</span>
             <button
               onClick={() => { logout(); window.location.href = '/login'; }}
               style={{ background: 'none', border: 'none', color: '#5CAADF', cursor: 'pointer', fontSize: 13 }}

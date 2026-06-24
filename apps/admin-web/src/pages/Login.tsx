@@ -14,7 +14,12 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await client.post('/auth/admin/login', values);
-      setAuth(data.access_token, { username: values.username, role: 'admin' });
+      setAuth(data.access_token, {
+        username: values.username,
+        role: data.role || 'admin',
+        role_name: data.role_name,
+        permissions: data.permissions || [],
+      });
       navigate('/', { replace: true });
     } catch (err) {
       message.error(extractError(err, '登录失败'));

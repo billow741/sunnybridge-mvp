@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 from pydantic import BaseModel
 
@@ -45,7 +45,7 @@ class SearchMoreResult(BaseModel):
 @router.get("", response_model=SearchResult)
 async def global_search(
     q: str = Query(..., min_length=1, description="搜索关键词"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("search:read")),
 ) -> SearchResult:
     sb = get_supabase()
     keyword = q.strip()
@@ -193,7 +193,7 @@ async def search_more(
     type: str = Query(..., description="student|teacher|course|resource|payment"),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=50),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("search:read")),
 ) -> SearchMoreResult:
     """查看更多 — 单类型分页加载。"""
     sb = get_supabase()

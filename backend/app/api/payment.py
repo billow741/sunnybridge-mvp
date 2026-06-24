@@ -10,7 +10,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_role, require_permission
 from app.schemas.auth import CurrentUser
 from app.schemas.payment import PaymentCreate, PaymentOut, PaginatedPayments, PaymentUpdate
 from app.services.payment import (
@@ -33,7 +33,7 @@ async def list_payments_endpoint(
     date_from: str | None = Query(None, description="日期范围起 YYYY-MM-DD"),
     date_to: str | None = Query(None, description="日期范围止 YYYY-MM-DD"),
     type: str | None = Query(None, description="类型筛选: income/refund"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("payments:read")),
 ) -> PaginatedPayments:
     """List all payments with stats. Admin only."""
     return await list_payments(page=page, page_size=page_size, month=month,
@@ -44,7 +44,7 @@ async def list_payments_endpoint(
 @router.post("", response_model=PaymentOut)
 async def create_payment_endpoint(
     body: PaymentCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("payments:write")),
 ) -> PaymentOut:
     """Create a payment + update child hours. Admin only."""
     return await create_payment(body)
@@ -54,7 +54,7 @@ async def create_payment_endpoint(
 async def update_payment_endpoint(
     payment_id: UUID,
     body: PaymentUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("payments:write")),
 ) -> PaymentOut:
     """Update a payment. Admin only."""
     return await update_payment(payment_id, body)
@@ -63,7 +63,7 @@ async def update_payment_endpoint(
 @router.delete("/{payment_id}")
 async def delete_payment_endpoint(
     payment_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("payments:delete")),
 ) -> dict:
     """Delete a payment and deduct child hours. Admin only."""
     return await delete_payment(payment_id)

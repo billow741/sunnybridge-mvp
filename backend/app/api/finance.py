@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ class ReconciliationData(BaseModel):
 @router.get("/reconciliation", response_model=ReconciliationData)
 async def get_reconciliation(
     months: int = Query(6, ge=1, le=24, description="回看月数"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("finance:read")),
 ) -> ReconciliationData:
     """按月汇总：收款(CNY) vs 结算(PHP), 两币种独立显示。
     

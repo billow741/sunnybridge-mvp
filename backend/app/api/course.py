@@ -14,7 +14,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_role, require_permission
 from app.schemas.auth import CurrentUser
 from app.schemas.course import (
     CourseCreate,
@@ -87,7 +87,7 @@ async def all_courses_endpoint(
 @router.post("/check-conflicts", response_model=ConflictCheckResponse)
 async def check_conflicts_endpoint(
     body: ConflictCheckRequest,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> ConflictCheckResponse:
     """排课冲突检测: 教师/学员时间冲突 + 学员课时余额. Admin only."""
     return await check_schedule_conflicts(body)
@@ -101,7 +101,7 @@ async def check_conflicts_endpoint(
 @router.post("", response_model=CourseDetail, status_code=201)
 async def create_course_endpoint(
     body: CourseCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> CourseDetail:
     """Create a course + enroll students. Admin only."""
     return await create_course(body)
@@ -111,7 +111,7 @@ async def create_course_endpoint(
 async def update_course_endpoint(
     course_id: UUID,
     body: CourseUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ) -> CourseDetail:
     """Update a course. Admin only."""
     return await update_course(course_id, body)
@@ -120,7 +120,7 @@ async def update_course_endpoint(
 @router.delete("/{course_id}")
 async def delete_course_endpoint(
     course_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:delete")),
 ) -> dict:
     """Delete a course. Admin only."""
     return await delete_course(course_id)

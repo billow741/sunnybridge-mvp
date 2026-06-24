@@ -16,7 +16,7 @@ Endpoints:
 
 from fastapi import APIRouter, Depends, Request
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_role, require_permission
 from app.schemas.auth import (
     AdminLoginRequest,
     AdminLoginResponse,
@@ -181,7 +181,7 @@ async def get_me(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
 
 
 @router.get("/admin-only")
-async def admin_only(user: CurrentUser = Depends(require_role("admin"))) -> dict:
+async def admin_only(user: CurrentUser = Depends(require_permission("dashboard:read"))) -> dict:
     """Test endpoint — only admin role can access."""
     return {"message": "Welcome, admin!", "user_id": str(user.id)}
 

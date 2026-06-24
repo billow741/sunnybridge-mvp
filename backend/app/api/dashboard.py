@@ -11,7 +11,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 from pydantic import BaseModel
 
@@ -46,7 +46,7 @@ class RecentVisit(BaseModel):
 
 @router.get("/summary", response_model=DashboardSummary)
 async def get_summary(
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("dashboard:read")),
 ) -> DashboardSummary:
     sb = get_supabase()
     today = date.today().isoformat()
@@ -108,7 +108,7 @@ async def get_summary(
 
 @router.get("/alerts", response_model=list[AlertItem])
 async def get_alerts(
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("dashboard:read")),
 ) -> list[AlertItem]:
     sb = get_supabase()
     today = date.today().isoformat()

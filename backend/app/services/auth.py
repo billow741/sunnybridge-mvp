@@ -409,7 +409,7 @@ async def admin_login(username: str, password: str) -> AdminLoginResponse:
 
     # 2. Find admin user by username
     sb = get_supabase()
-    result = sb.table("users").select("id, username, password_hash, role").eq("username", username).eq("role", "admin").limit(1).execute()
+    result = sb.table("users").select("id, username, password_hash, role, role_name").eq("username", username).eq("role", "admin").limit(1).execute()
 
     if not result.data:
         raise HTTPException(
@@ -465,7 +465,14 @@ async def admin_login(username: str, password: str) -> AdminLoginResponse:
     access_token = create_access_token(user["id"], "admin")
     refresh_token = create_refresh_token(user["id"], "admin")
 
-    logger.info("admin_login_success", username=username)
+    # 3-C: 查 role_name 对应的 permissions
+    from app.core.deps import get_user_permissions, CurrentUser as _CU
+    role_name = user.get("role_name") or "super_admin"
+    tmp_user = _CU(id=user["id"], role="admin", role_name=role_name)
+    perm_set = await get_user_permissions(tmp_user)
+    perm_list = sorted(perm_set)
+
+    logger.info("admin_login_success", username=username, role_name=role_name)
 
     return AdminLoginResponse(
         access_token=access_token,
@@ -473,6 +480,8 @@ async def admin_login(username: str, password: str) -> AdminLoginResponse:
         token_type="Bearer",
         expires_in=settings.jwt_access_expire_minutes * 60,
         role="admin",
+        role_name=role_name,
+        permissions=perm_list,
     )
 
 

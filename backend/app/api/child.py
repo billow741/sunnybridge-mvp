@@ -13,7 +13,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_role, require_permission
 from app.schemas.auth import CurrentUser
 from app.schemas.child import (
     ChildCreate,
@@ -44,7 +44,7 @@ async def list_children_endpoint(
     page_size: int = Query(20, ge=1, le=500, description="Items per page"),
     search: str | None = Query(None, description="姓名模糊搜索"),
     level: str | None = Query(None, description="级别筛选"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("students:read")),
 ) -> PaginatedChildren:
     """List all children with pagination + search. Admin only."""
     return await list_children(page=page, page_size=page_size, search=search, level=level)
@@ -53,7 +53,7 @@ async def list_children_endpoint(
 @router.post("", response_model=ChildOut, status_code=201)
 async def create_child_endpoint(
     body: ChildCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("students:write")),
 ) -> ChildOut:
     """Create a child. Auto-create parent if phone not found. Admin only."""
     return await create_child(body)
@@ -70,7 +70,7 @@ async def get_my_child_endpoint(
 @router.get("/{child_id}", response_model=ChildOut)
 async def get_child_endpoint(
     child_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("students:read")),
 ) -> ChildOut:
     """Get child detail by ID. Admin only."""
     return await get_child(child_id)
@@ -80,7 +80,7 @@ async def get_child_endpoint(
 async def update_child_endpoint(
     child_id: UUID,
     body: ChildUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("students:write")),
 ) -> ChildOut:
     """Update child fields. Admin only."""
     return await update_child(child_id, body)
@@ -89,7 +89,7 @@ async def update_child_endpoint(
 @router.delete("/{child_id}")
 async def delete_child_endpoint(
     child_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("students:delete")),
 ) -> dict:
     """Delete a child. Admin only."""
     return await delete_child(child_id)

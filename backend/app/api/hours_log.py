@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 from pydantic import BaseModel
 
@@ -109,7 +109,7 @@ async def get_hours_log(
     child_id: UUID,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("hours:read")),
 ) -> PaginatedHoursLog:
     """查看学员课时变动历史。按时间倒序。"""
     _ensure_table()

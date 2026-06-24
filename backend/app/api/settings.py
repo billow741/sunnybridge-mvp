@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
@@ -47,7 +47,7 @@ class SettingUpdate(BaseModel):
 @router.get("", response_model=list[SettingOut])
 async def list_settings(
     category: str | None = Query(None, description="Filter by category"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:read")),
 ):
     sb = get_supabase()
     q = sb.table("settings").select("*")
@@ -61,7 +61,7 @@ async def list_settings(
 async def upsert_setting(
     key: str,
     body: SettingUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:write")),
 ):
     sb = get_supabase()
     existing = sb.table("settings").select("*").eq("key", key).execute()
@@ -88,7 +88,7 @@ async def upsert_setting(
 @router.delete("/{key}")
 async def delete_setting(
     key: str,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("settings:delete")),
 ):
     sb = get_supabase()
     result = sb.table("settings").delete().eq("key", key).execute()

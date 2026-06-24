@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.deps import CurrentUser, require_role
+from app.core.deps import CurrentUser, require_role, require_permission
 from app.core.database import get_supabase
 from app.schemas.payment import PaymentOut
 from pydantic import BaseModel, Field
@@ -29,7 +29,7 @@ class RefundRequest(BaseModel):
 @router.post("/refund", response_model=PaymentOut)
 async def refund_payment(
     body: RefundRequest,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("refunds:write")),
 ) -> PaymentOut:
     """对原收款记录执行退款：插入一条 type=refund 的负数记录 + 扣减 totalhours。"""
     sb = get_supabase()

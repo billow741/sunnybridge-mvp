@@ -12,7 +12,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.deps import CurrentUser, require_role
+from app.core.deps import CurrentUser, require_role, require_permission
 from app.schemas.settlement import (
     HoursCalcRequest,
     HoursCalcResponse,
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/v1/settlements", tags=["settlements"])
 @router.post("/calc-hours", response_model=HoursCalcResponse)
 async def calculate_hours(
     body: HoursCalcRequest,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("settlements:write")),
 ) -> HoursCalcResponse:
     """按教师 + 时间段自动统计课时数。Admin only。
 
@@ -57,7 +57,7 @@ async def calculate_hours(
 
 @router.get("/summary", response_model=SettlementSummaryOut)
 async def settlement_summary(
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("settlements:read")),
 ) -> SettlementSummaryOut:
     """结算汇总（待付款/已付款/总额/教师数）。Admin only。"""
     return await get_summary()
@@ -68,7 +68,7 @@ async def settlement_list(
     status: str | None = Query(None, description="状态: pending/paid"),
     teacher_id: str | None = Query(None, description="教师ID"),
     month: str | None = Query(None, description="月份 YYYY-MM"),
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("settlements:read")),
 ) -> SettlementListResponse:
     """获取结算记录（支持筛选）。Admin only。"""
     return await list_settlements(status=status, teacher_id=teacher_id, month=month)
@@ -77,7 +77,7 @@ async def settlement_list(
 @router.post("", response_model=SettlementOut, status_code=status.HTTP_201_CREATED)
 async def settlement_create(
     body: SettlementCreateRequest,
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("settlements:write")),
 ) -> SettlementOut:
     """新建结算记录。Admin only。"""
     try:
@@ -93,7 +93,7 @@ async def settlement_create(
 async def settlement_pay(
     settlement_id: UUID,
     body: SettlementPayRequest = SettlementPayRequest(),
-    _admin: CurrentUser = Depends(require_role("admin")),
+    _admin: CurrentUser = Depends(require_permission("settlements:write")),
 ) -> SettlementOut:
     """标记结算为已付款。Admin only。"""
     try:

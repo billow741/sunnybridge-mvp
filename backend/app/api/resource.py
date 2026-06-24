@@ -16,7 +16,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, UploadFile, File
 from fastapi.responses import Response
 
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 from app.schemas.resource import (
     PaginatedResources,
@@ -71,7 +71,7 @@ async def list_resources_endpoint(
 @router.post("/resources", response_model=ResourceOut, status_code=201)
 async def create_resource_endpoint(
     body: ResourceCreate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("resources:write")),
 ) -> ResourceOut:
     """Create a resource. Admin only."""
     return await create_resource(body)
@@ -81,7 +81,7 @@ async def create_resource_endpoint(
 async def update_resource_endpoint(
     resource_id: UUID,
     body: ResourceUpdate,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("resources:write")),
 ) -> ResourceOut:
     """Update a resource. Admin only."""
     return await update_resource(resource_id, body)
@@ -90,7 +90,7 @@ async def update_resource_endpoint(
 @router.delete("/resources/{resource_id}")
 async def delete_resource_endpoint(
     resource_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("resources:delete")),
 ) -> dict:
     """Delete a resource. Admin only."""
     return await delete_resource(resource_id)
@@ -100,7 +100,7 @@ async def delete_resource_endpoint(
 async def upload_resource_pdf_endpoint(
     resource_id: UUID,
     file: UploadFile = File(..., description="PDF file, max 30MB"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("resources:write")),
 ) -> ResourceDetail:
     """Upload PDF for a resource. Admin only.
 
@@ -147,7 +147,7 @@ async def get_resource_detail_endpoint(
 @router.post("/upload/pdf", response_model=UploadPdfOut)
 async def upload_pdf_general_endpoint(
     file: UploadFile = File(..., description="PDF file, max 50MB"),
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("resources:write")),
 ) -> UploadPdfOut:
     """Generic PDF upload — returns logical path for later binding."""
     return await upload_pdf_general(file)

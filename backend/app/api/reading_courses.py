@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Body
 from pydantic import BaseModel
 
 from app.core.database import get_supabase
-from app.core.deps import require_role
+from app.core.deps import require_role, require_permission
 from app.schemas.auth import CurrentUser
 
 logger = structlog.get_logger()
@@ -58,7 +58,7 @@ class MaterialLinkOut(BaseModel):
 @router.get("/reading/materials/{material_id}/courses")
 async def get_material_courses(
     material_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:read")),
 ):
     """查看内容关联的课程列表。"""
     sb = get_supabase()
@@ -88,7 +88,7 @@ async def get_material_courses(
 async def link_material_to_course(
     material_id: UUID,
     body: CourseLink,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ):
     """关联内容到课程。"""
     sb = get_supabase()
@@ -113,7 +113,7 @@ async def link_material_to_course(
 async def unlink_material_from_course(
     material_id: UUID,
     course_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:write")),
 ):
     """取消内容与课程的关联。"""
     sb = get_supabase()
@@ -132,7 +132,7 @@ async def unlink_material_from_course(
 @router.get("/courses/{course_id}/materials")
 async def get_course_materials(
     course_id: UUID,
-    user: CurrentUser = Depends(require_role("admin")),
+    user: CurrentUser = Depends(require_permission("courses:read")),
 ):
     """查看课程关联的阅读内容。"""
     sb = get_supabase()

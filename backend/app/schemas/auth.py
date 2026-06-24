@@ -22,6 +22,7 @@ class CurrentUser(BaseModel):
 
     id: UUID
     role: str = Field(pattern=r"^(parent|teacher|admin)$")
+    role_name: str | None = None  # 3-C: 细分角色名 (super_admin/admin/operations/finance_readonly)
     teacher_id: UUID | None = None  # set when role=teacher
 
 
@@ -127,6 +128,8 @@ class AdminLoginResponse(BaseModel):
     token_type: str = "Bearer"
     expires_in: int
     role: str = "admin"
+    role_name: str | None = None  # 3-C: 细分角色名
+    permissions: list[str] = []  # 3-C: 权限码列表
 
 
 class AdminLoginErrorResponse(BaseModel):
