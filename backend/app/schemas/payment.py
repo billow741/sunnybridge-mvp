@@ -46,7 +46,7 @@ class PaymentUpdate(BaseModel):
 
 class PaymentOut(BaseModel):
     id: UUID
-    child_id: UUID
+    child_id: UUID | None = None
     child_name: str = ""
     payment_method: str
     hours_purchased: int
