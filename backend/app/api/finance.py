@@ -79,41 +79,43 @@ async def get_reconciliation(
         month_end = (next_first - timedelta(days=1)).isoformat()
         next_month_start = next_first.isoformat()
 
-        # 收款汇总
+        # 收款汇总（用 Supabase ORM 替代 exec_sql）
         p_total = 0.0
         p_count = 0
         hp = 0
         try:
-            pay_result = sb.rpc("exec_sql", {"query": (
-                f"SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt, "
-                f"COALESCE(SUM(hours_purchased),0) AS hp "
-                f"FROM payments "
-                f"WHERE payment_date >= '{month_start}' "
-                f"AND payment_date < '{next_month_start}'"
-            )}).execute()
-            row = (pay_result.data or [{}])[0]
-            p_total = float(row.get("total", 0))
-            p_count = int(row.get("cnt", 0))
-            hp = int(float(row.get("hp", 0)))
+            pay_result = (
+                sb.table("payments")
+                .select("amount, hours_purchased")
+                .gte("payment_date", month_start)
+                .lt("payment_date", next_month_start)
+                .execute()
+            )
+            rows = pay_result.data or []
+            p_count = len(rows)
+            for r in rows:
+                p_total += float(r.get("amount") or 0)
+                hp += int(float(r.get("hours_purchased") or 0))
         except Exception as e:
             logger.warning("reconciliation_payment_fail", month=month_label, error=str(e))
 
-        # 结算汇总
+        # 结算汇总（用 Supabase ORM 替代 exec_sql）
         s_total = 0.0
         s_count = 0
         sh = 0.0
         try:
-            set_result = sb.rpc("exec_sql", {"query": (
-                f"SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt, "
-                f"COALESCE(SUM(hours),0) AS sh "
-                f"FROM settlements "
-                f"WHERE period_end >= '{month_start}' "
-                f"AND period_end < '{next_month_start}'"
-            )}).execute()
-            row = (set_result.data or [{}])[0]
-            s_total = float(row.get("total", 0))
-            s_count = int(row.get("cnt", 0))
-            sh = float(row.get("sh", 0))
+            set_result = (
+                sb.table("settlements")
+                .select("amount, hours")
+                .gte("period_end", month_start)
+                .lt("period_end", next_month_start)
+                .execute()
+            )
+            rows = set_result.data or []
+            s_count = len(rows)
+            for r in rows:
+                s_total += float(r.get("amount") or 0)
+                sh += float(r.get("hours") or 0)
         except Exception as e:
             logger.warning("reconciliation_settlement_fail", month=month_label, error=str(e))
 
