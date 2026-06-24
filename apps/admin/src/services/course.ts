@@ -53,7 +53,7 @@ export interface Course {
   meeting_link: string | null;
   status: CourseStatus;
   hours: number;
-  children: ChildBrief[];
+  students: ChildBrief[];
   created_at: string;
   updated_at: string;
 }
