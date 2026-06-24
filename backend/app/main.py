@@ -26,6 +26,8 @@ from app.api.reading import router as reading_router
 from app.api.resource import router as resource_router
 from app.api.search import router as search_router
 from app.api.settlement import router as settlement_router
+from app.api.settings import router as settings_router
+from app.api.saved_filters import router as saved_filters_router
 from app.api.teacher import router as teacher_router
 from app.core.config import get_settings
 
@@ -112,6 +114,8 @@ app.include_router(resource_router)
 app.include_router(event_router)
 app.include_router(dashboard_router)
 app.include_router(search_router)
+app.include_router(settings_router)
+app.include_router(saved_filters_router)
 
 # ---------------------------------------------------------------------------
 # Startup event: validate JWT keys exist
