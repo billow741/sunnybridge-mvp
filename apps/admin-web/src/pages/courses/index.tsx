@@ -112,10 +112,7 @@ export default function CoursesPage() {
       const { data: res } = await client.get('/courses/all', {
         params: { page: 1, page_size: 100 },
       });
-      const items = (res.items || []).map((c: any) => {
-        const { children, ...rest } = c;
-        return { ...rest, students: children };
-      });
+      const items = (res.items || []);
       setData(items);
     } catch (err) {
       message.error(extractError(err));
