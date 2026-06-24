@@ -122,7 +122,7 @@ export default function Students() {
       });
       const all = cRes.items || [];
       const mine = all.filter((c: any) =>
-        c.children?.some?.((ch: any) => ch.id === record.id),
+        c.students?.some?.((ch: any) => ch.id === record.id),
       );
       setCourses(mine);
     } catch {

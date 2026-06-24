@@ -143,7 +143,7 @@ async def _enrich_course(row: dict, include_feedback: bool = False) -> CourseOut
     enriched = {
         **row,
         "teacher": teacher,
-        "children": children,
+        "students": children,
     }
 
     if include_feedback:
@@ -491,7 +491,7 @@ async def get_history_courses_parent(
         t_id = row.get("teacher_id")
         teacher = teacher_map.get(t_id) if t_id else None
         children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
-        enriched = {**row, "teacher": teacher, "children": children}
+        enriched = {**row, "teacher": teacher, "students": children}
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)
@@ -610,7 +610,7 @@ async def get_all_courses(
         teacher = teacher_map.get(t_id) if t_id else None
         children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
         feedbacks = feedback_map.get(row["id"], [])
-        enriched = {**row, "teacher": teacher, "children": children, "feedbacks": feedbacks}
+        enriched = {**row, "teacher": teacher, "students": children, "feedbacks": feedbacks}
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)

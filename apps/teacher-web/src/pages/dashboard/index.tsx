@@ -86,7 +86,7 @@ function TodaysCourses({ courses }: { courses: any[] }) {
     if (courseSearchQuery.trim()) {
       const q = courseSearchQuery.toLowerCase();
       result = result.filter((c: any) =>
-        (c.children?.map((ch: any) => ch.name).join(', ') || '').toLowerCase().includes(q)
+        (c.students?.map((ch: any) => ch.name).join(', ') || '').toLowerCase().includes(q)
       );
     }
     if (courseStatusFilter !== 'all') {
@@ -158,7 +158,7 @@ function TodaysCourses({ courses }: { courses: any[] }) {
                 }
                 title={
                   <span style={{ fontWeight: 600 }}>
-                    {c.children?.map((ch: any) => ch.name).join(', ') || '未分配学生'}
+                    {c.students?.map((ch: any) => ch.name).join(', ') || '未分配学生'}
                   </span>
                 }
                 description={
@@ -189,7 +189,7 @@ function RecentCoursesTable({ courses }: { courses: any[] }) {
     {
       title: '学生',
       key: 'students',
-      render: (_: any, c: any) => c.children?.map((ch: any) => ch.name).join(', ') || '-',
+      render: (_: any, c: any) => c.students?.map((ch: any) => ch.name).join(', ') || '-',
     },
     {
       title: '时间',

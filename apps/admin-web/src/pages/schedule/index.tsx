@@ -73,7 +73,7 @@ export default function Schedule() {
                   <div key={`${dateStr}-${time}`} style={{ background: '#fff', minHeight: 40, padding: 2, cursor: 'pointer', fontSize: 11 }} onClick={() => !slotCourses.length && onSlotClick(dateStr, time)}>
                     {slotCourses.map(c => (
                       <div key={c.id} style={{ background: (c.feedback ? '#f6ffed' : '#f9f0ff'), borderLeft: `3px solid ${c.feedback ? '#52c41a' : '#722ed1'}`, padding: '2px 4px', marginBottom: 2, borderRadius: 2 }}>
-                        <div style={{ fontWeight: 600 }}>{c.children?.map((ch: any) => ch.name).join(',')}</div>
+                        <div style={{ fontWeight: 600 }}>{c.students?.map((ch: any) => ch.name).join(',')}</div>
                         <div>{c.teacher?.name}</div>
                         <a style={{ fontSize: 10, color: '#ff4d4f' }} onClick={e => { e.stopPropagation(); onDelete(c.id); }}>删除</a>
                       </div>

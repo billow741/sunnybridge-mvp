@@ -81,7 +81,7 @@ export default function Classes() {
         columns={[
           { title: '日期', dataIndex: 'date' },
           { title: '时间', render: (_: any, r: any) => `${r.start_time?.slice(0,5)}-${r.end_time?.slice(0,5)}` },
-          { title: '学生', render: (_: any, r: any) => r.children?.map((c: any) => c.name).join(', ') },
+          { title: '学生', render: (_: any, r: any) => r.students?.map((c: any) => c.name).join(', ') },
           { title: '教师', dataIndex: ['teacher', 'name'] },
           { title: '课时', dataIndex: 'hours', render: (v: number) => v ?? 1 },
           { title: '反馈', render: (_: any, r: any) => r.feedback ? <Tag color="green">已提交</Tag> : <Tag>未提交</Tag> },

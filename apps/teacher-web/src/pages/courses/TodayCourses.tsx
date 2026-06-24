@@ -26,7 +26,7 @@ export default function TodayCourses() {
             <span><ClockCircleOutlined /> {c.start_time?.slice(0,5)} - {c.end_time?.slice(0,5)}</span>
             <Tag color={c.feedback ? 'green' : 'purple'}>{c.feedback ? '已完成' : '待上课'}</Tag>
           </div>
-          <div style={{ fontWeight: 600 }}>{c.children?.map((ch: any) => ch.name).join(', ') || '-'}</div>
+          <div style={{ fontWeight: 600 }}>{c.students?.map((ch: any) => ch.name).join(', ') || '-'}</div>
         </Card>
       </List.Item>
     )} />

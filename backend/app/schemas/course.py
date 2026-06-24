@@ -84,7 +84,7 @@ class CourseOut(BaseModel):
     meeting_link: str | None = None
     status: str = "pending"
     hours: float = 1
-    children: list[ChildBrief] = []
+    students: list[ChildBrief] = []
     feedbacks: list[FeedbackBrief] = []
     created_at: datetime
     updated_at: datetime

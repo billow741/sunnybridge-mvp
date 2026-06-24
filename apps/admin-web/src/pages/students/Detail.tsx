@@ -27,7 +27,7 @@ export default function StudentDetail() {
       setChild(data);
       const { data: cRes } = await client.get('/courses/all', { params: { page: 1, page_size: 100 } });
       const all = cRes.items || [];
-      setCourses(all.filter((c: any) => c.children?.some((ch: any) => ch.id === id)));
+      setCourses(all.filter((c: any) => c.students?.some((ch: any) => ch.id === id)));
     } catch (err) { message.error(extractError(err)); }
     finally { setLoading(false); }
   };

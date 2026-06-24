@@ -32,7 +32,7 @@ def _build_out(row: dict) -> PaymentOut:
         child_name = child_info.get("name", "")
     return PaymentOut(
         id=row["id"],
-        child_id=row["child_id"],
+        child_id=row.get("child_id") or None,
         child_name=child_name,
         payment_method=row.get("payment_method", "现金"),
         hours_purchased=row.get("hours_purchased", 0),

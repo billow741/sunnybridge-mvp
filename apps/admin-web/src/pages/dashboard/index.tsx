@@ -218,7 +218,7 @@ export default function Dashboard() {
                         </Text>
                         <div>
                           <Text type="secondary" style={{ fontSize: 11 }}>
-                            {(c.teacher?.name || c.teachers?.name || '—')} · {(c.students?.[0]?.name || c.children?.[0]?.name || '—')}
+                            {(c.teacher?.name || c.teachers?.name || '—')} · {(c.students?.[0]?.name || '—')}
                           </Text>
                         </div>
                       </div>

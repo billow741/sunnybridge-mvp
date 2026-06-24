@@ -152,7 +152,7 @@ const CourseForm: React.FC<CourseFormProps> = ({
           hours: course.hours ?? 1,
           // 排课信息
           teacher_id: course.teacher_id,
-          child_id: course.children[0]?.id || '',
+          child_id: course.students[0]?.id || '',
           start_date: dayjs(course.date),
           end_date: undefined,
           time_range: [

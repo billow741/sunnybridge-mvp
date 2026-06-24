@@ -40,7 +40,7 @@ export default function CourseDetail() {
           <Descriptions.Item label="日期">{course.date}</Descriptions.Item>
           <Descriptions.Item label="时间">{course.start_time?.slice(0,5)} - {course.end_time?.slice(0,5)}</Descriptions.Item>
           <Descriptions.Item label="课时">{course.hours ?? 1}</Descriptions.Item>
-          <Descriptions.Item label="学生">{course.children?.map((c: any) => c.name).join(', ')}</Descriptions.Item>
+          <Descriptions.Item label="学生">{course.students?.map((c: any) => c.name).join(', ')}</Descriptions.Item>
           <Descriptions.Item label="教师">{course.teacher?.name}</Descriptions.Item>
           <Descriptions.Item label="状态"><Tag color={course.feedback ? 'green' : 'orange'}>{course.feedback ? '已完成' : '待上课'}</Tag></Descriptions.Item>
         </Descriptions>

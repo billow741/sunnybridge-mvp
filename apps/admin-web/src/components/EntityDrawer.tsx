@@ -90,7 +90,7 @@ export default function EntityDrawer() {
           <Descriptions column={1} size="small" labelStyle={{ color: '#999', width: 80 }}>
             <Descriptions.Item label="日期">{data.date}</Descriptions.Item>
             <Descriptions.Item label="时间">{data.start_time?.slice(0,5)} - {data.end_time?.slice(0,5)}</Descriptions.Item>
-            <Descriptions.Item label="学员">{data.students?.[0]?.name || data.children?.[0]?.name || '—'}</Descriptions.Item>
+            <Descriptions.Item label="学员">{data.students?.[0]?.name || '—'}</Descriptions.Item>
             <Descriptions.Item label="课时"><span style={{ fontVariantNumeric: 'tabular-nums' }}>{data.hours ?? '—'}</span></Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag color={data.status === 'completed' ? 'green' : data.status === 'cancelled' ? 'red' : 'orange'}>

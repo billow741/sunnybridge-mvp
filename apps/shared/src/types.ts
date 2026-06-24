@@ -52,7 +52,7 @@ export interface Course {
   start_time: string;
   end_time: string;
   teacher?: { id: string; name: string };
-  children?: { id: string; name: string }[];
+  students?: { id: string; name: string }[];
   hours?: number;
   meeting_link?: string;
   feedback?: FeedbackBrief | null;

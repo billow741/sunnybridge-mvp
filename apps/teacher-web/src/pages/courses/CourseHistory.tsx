@@ -26,7 +26,7 @@ export default function CourseHistory() {
       columns={[
         { title: '日期', dataIndex: 'date' },
         { title: '时间', render: (_: any, r: any) => `${r.start_time?.slice(0,5)}-${r.end_time?.slice(0,5)}` },
-        { title: '学生', render: (_: any, r: any) => r.children?.map((c: any) => c.name).join(', ') },
+        { title: '学生', render: (_: any, r: any) => r.students?.map((c: any) => c.name).join(', ') },
         { title: '课时', dataIndex: 'hours', render: (v: number) => v ?? 1 },
         { title: '反馈', render: (_: any, r: any) => <Tag color={r.feedback ? 'green' : 'default'}>{r.feedback ? '已提交' : '未提交'}</Tag> },
       ]}

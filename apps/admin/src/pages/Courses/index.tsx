@@ -107,7 +107,7 @@ const CoursesPage: React.FC = () => {
         const origStartTime = editingCourse.start_time.substring(0, 5);
         const origEndTime = editingCourse.end_time.substring(0, 5);
         const origTeacherId = editingCourse.teacher_id;
-        const origChildIds = editingCourse.children.map((c) => c.id).sort().join(',');
+        const origChildIds = editingCourse.students.map((c) => c.id).sort().join(',');
         const origMeetingLink = editingCourse.meeting_link || '';
         const origStatus = editingCourse.status;
 
@@ -219,7 +219,7 @@ const CoursesPage: React.FC = () => {
       key: 'students',
       width: 120,
       render: (_: unknown, record: Course) => {
-        const student = record.children?.[0];
+        const student = record.students?.[0];
         if (!student) return <span>—</span>;
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

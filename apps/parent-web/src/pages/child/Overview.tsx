@@ -39,7 +39,7 @@ export default function ChildOverview() {
     <div>
       {children.map((child: any) => {
         const remaining = child.remaining_hours ?? (child.totalhours - child.usedhours);
-        const childCourses = courses.filter((c: any) => c.children?.some((ch: any) => ch.id === child.id));
+        const childCourses = courses.filter((c: any) => c.students?.some((ch: any) => ch.id === child.id));
         const recentCourses = childCourses.slice(0, 5);
 
         return (
