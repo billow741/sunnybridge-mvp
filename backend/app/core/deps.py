@@ -22,7 +22,7 @@ logger = logging.getLogger("permission_check")
 # True  = 迁移期(Step 3-4): admin 角色缺权限映射时 fallback 放行 + 日志
 # False = 正式期(Step 4 后): 所有角色缺权限一律 403
 # 切换方法: 改此值 + 部署 + 重启
-FAIL_OPEN_ENABLED = True  # TODO: Step 4 全量验证后改为 False
+FAIL_OPEN_ENABLED = False  # 3-C: FAIL-CLOSED 验证通过，迁移窗口关闭
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/admin/login")
 
