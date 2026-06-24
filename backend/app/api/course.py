@@ -46,18 +46,25 @@ router = APIRouter(prefix="/api/v1/courses", tags=["courses"])
 # ---------------------------------------------------------------------------
 
 
+# ── Teacher/Parent-scoped: 保留 get_current_user + 属主过滤 ──
 @router.get("/today", response_model=list[CourseOut])
 async def today_courses_endpoint(
-    user: CurrentUser = Depends(get_current_user),
+    user: CurrentUser = Depends(require_role("parent", "teacher")),
 ) -> list[CourseOut]:
-    """Today's courses. Parent → own child's courses. Teacher → own courses. Admin → all today."""
+    """Today's courses. Parent → own child's. Teacher → own courses."""
     if user.role == "parent":
         return await get_today_courses_parent(user.id)
-    elif user.role == "teacher":
-        return await get_today_courses_teacher(user.teacher_id)
     else:
-        # Admin: get all today's courses
-        return await get_today_courses_admin()
+        return await get_today_courses_teacher(user.teacher_id)
+
+
+# ── Admin-scoped: require_permission 接管 ──
+@router.get("/today/admin", response_model=list[CourseOut])
+async def today_courses_admin_endpoint(
+    user: CurrentUser = Depends(require_permission("courses:read")),
+) -> list[CourseOut]:
+    """Today's all courses (admin). Requires courses:read permission."""
+    return await get_today_courses_admin()
 
 
 @router.get("/history", response_model=PaginatedCourses)
@@ -70,18 +77,33 @@ async def history_courses_endpoint(
     return await get_history_courses_parent(user.id, page=page, page_size=page_size)
 
 
-@router.get("/all", response_model=PaginatedCourses)
-async def all_courses_endpoint(
+# ── Teacher-scoped: 保留 require_role + 属主过滤 ──
+@router.get("/all/teacher", response_model=PaginatedCourses)
+async def all_courses_teacher_endpoint(
     month: str | None = Query(None, description="Month filter YYYY-MM"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
     status: str | None = Query(None, description="状态筛选: pending/completed/cancelled"),
-    user: CurrentUser = Depends(require_role("teacher", "admin")),
+    user: CurrentUser = Depends(require_role("teacher")),
 ) -> PaginatedCourses:
-    """All courses with optional month/status filter. Teacher sees own courses; Admin sees all."""
-    teacher_id = str(user.teacher_id) if user.role == "teacher" and user.teacher_id else None
+    """Teacher's own courses with optional month/status filter."""
+    teacher_id = str(user.teacher_id) if user.teacher_id else None
     return await get_all_courses(month=month, page=page, page_size=page_size,
                                  teacher_id=teacher_id, course_status=status)
+
+
+# ── Admin-scoped: require_permission 接管 ──
+@router.get("/all", response_model=PaginatedCourses)
+async def all_courses_admin_endpoint(
+    month: str | None = Query(None, description="Month filter YYYY-MM"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=500),
+    status: str | None = Query(None, description="状态筛选: pending/completed/cancelled"),
+    user: CurrentUser = Depends(require_permission("courses:read")),
+) -> PaginatedCourses:
+    """All courses (admin). Requires courses:read permission. No teacher-id filter."""
+    return await get_all_courses(month=month, page=page, page_size=page_size,
+                                 teacher_id=None, course_status=status)
 
 
 @router.post("/check-conflicts", response_model=ConflictCheckResponse)
@@ -126,13 +148,21 @@ async def delete_course_endpoint(
     return await delete_course(course_id)
 
 
+# ── Teacher/Parent-scoped: 保留 require_role ──
 @router.get("/{course_id}", response_model=CourseDetail)
 async def get_course_detail_endpoint(
     course_id: UUID,
-    user: CurrentUser = Depends(require_role("parent", "teacher", "admin")),
+    user: CurrentUser = Depends(require_role("parent", "teacher")),
 ) -> CourseDetail:
-    """Get course detail with feedback. Parent/Teacher/Admin.
-    
-    Parent: only own child's courses. Teacher/Admin: all.
-    """
+    """Get course detail with feedback. Parent: own child's courses. Teacher: all."""
+    return await get_course_detail(course_id, user_id=str(user.id), role=user.role)
+
+
+# ── Admin-scoped: require_permission ──
+@router.get("/{course_id}/admin", response_model=CourseDetail)
+async def get_course_detail_admin_endpoint(
+    course_id: UUID,
+    user: CurrentUser = Depends(require_permission("courses:read")),
+) -> CourseDetail:
+    """Get course detail (admin). Requires courses:read permission."""
     return await get_course_detail(course_id, user_id=str(user.id), role=user.role)
