@@ -16,10 +16,11 @@ import {
 import {
   PlusOutlined, CheckOutlined, EyeOutlined, DollarOutlined,
   CalendarOutlined, LoadingOutlined, DownloadOutlined,
+  AuditOutlined, SendOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { SettlementItem, SettlementSummary } from '@/services/settlement';
-import { getSettlementList, getSettlementSummary, createSettlement, paySettlement, calcSettlementHours } from '@/services/settlement';
+import { getSettlementList, getSettlementSummary, createSettlement, paySettlement, calcSettlementHours, submitApproval } from '@/services/settlement';
 import client, { extractError } from '@/api/client';
 import { useExportCSV } from '@/hooks/useExportCSV';
 
@@ -176,6 +177,17 @@ export default function Settlements() {
     }
   };
 
+  // ── 提交审批 ─────────────────────────
+  const handleSubmitApproval = async (record: SettlementItem) => {
+    try {
+      await submitApproval('settlement', record.id);
+      message.success('审批已提交');
+      load();
+    } catch (err) {
+      message.error(extractError(err));
+    }
+  };
+
   // ── 打开详情 Drawer ─────────────────
   const openDetail = (record: SettlementItem) => {
     setSelected(record);
@@ -225,12 +237,36 @@ export default function Settlements() {
       ),
     },
     {
-      title: '操作', width: 160,
+      title: '审批', dataIndex: 'approval_status', width: 90,
+      render: (s: string) => {
+        const map: Record<string, { color: string; label: string }> = {
+          not_required: { color: 'default', label: '无需审批' },
+          pending: { color: 'processing', label: '待审批' },
+          approved: { color: 'success', label: '已通过' },
+          rejected: { color: 'error', label: '已驳回' },
+        };
+        const cfg = map[s] || map.not_required;
+        return <Tag color={cfg.color}>{cfg.label}</Tag>;
+      },
+    },
+    {
+      title: '操作', width: 200,
       render: (_: any, r: SettlementItem) => (
         <Space size={4}>
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => openDetail(r)}>明细</Button>
-          {r.status === 'pending' && (
+          {r.status === 'pending' && r.approval_status === 'pending' && (
+            <Tooltip title="审批中，无法付款">
+              <Button type="primary" size="small" icon={<AuditOutlined />} disabled>待审批</Button>
+            </Tooltip>
+          )}
+          {r.status === 'pending' && (r.approval_status === 'not_required' || r.approval_status === 'approved') && (
             <Button type="primary" size="small" icon={<CheckOutlined />} onClick={() => openPayModal(r)}>确认付款</Button>
+          )}
+          {r.status === 'pending' && (r.approval_status === 'not_required' || r.approval_status === 'rejected') && (
+            <Button size="small" icon={<SendOutlined />} onClick={() => handleSubmitApproval(r)}>提交审批</Button>
+          )}
+          {r.status === 'pending' && r.approval_status === 'rejected' && (
+            <Tag color="error" style={{ fontSize: 11 }}>已驳回</Tag>
           )}
         </Space>
       ),
@@ -284,7 +320,16 @@ export default function Settlements() {
           {selected.paid_at && <Descriptions.Item label="付款时间">{selected.paid_at}</Descriptions.Item>}
         </Descriptions>
 
-        {selected.status === 'pending' && (
+        {selected.status === 'pending' && selected.approval_status === 'pending' && (
+          <div style={{ marginTop: 16, textAlign: 'right' }}>
+            <Tooltip title="审批中，无法付款">
+              <Button type="primary" icon={<AuditOutlined />} size="large" disabled>
+                待审批 ₱{selected.amount.toLocaleString()}
+              </Button>
+            </Tooltip>
+          </div>
+        )}
+        {selected.status === 'pending' && (selected.approval_status === 'not_required' || selected.approval_status === 'approved') && (
           <div style={{ marginTop: 16, textAlign: 'right' }}>
             <Button type="primary" icon={<CheckOutlined />} size="large"
               onClick={() => openPayModal(selected)}>

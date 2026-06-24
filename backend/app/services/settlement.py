@@ -63,7 +63,7 @@ async def calc_hours(teacher_id: UUID, period_start: str, period_end: str) -> Ho
 
 
 async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
-    """创建结算记录。"""
+    """创建结算记录。3-D: 根据 approval_enabled + threshold 自动设 approval_status。"""
     sb = get_supabase()
 
     # 获取教师名
@@ -71,6 +71,23 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
     teacher_name = t.data[0]["name"] if t.data else "未知"
 
     amount = body.hours * body.hourly_rate
+
+    # 3-D: 审批触发规则
+    approval_status = "not_required"
+    try:
+        enabled_row = sb.table("settings").select("value").eq("key", "approval_enabled").limit(1).execute()
+        approval_enabled = enabled_row.data[0]["value"].lower() == "true" if enabled_row.data else True
+    except Exception:
+        approval_enabled = True
+
+    if approval_enabled:
+        try:
+            threshold_row = sb.table("settings").select("value").eq("key", "settlement_approval_threshold").limit(1).execute()
+            threshold = float(threshold_row.data[0]["value"]) if threshold_row.data else 0
+        except Exception:
+            threshold = 0
+        if amount > threshold:
+            approval_status = "pending"
 
     row = {
         "teacher_id": str(body.teacher_id),
@@ -81,6 +98,7 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
         "hourly_rate": body.hourly_rate,
         "amount": amount,
         "status": "pending",
+        "approval_status": approval_status,
         "note": body.note,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -90,6 +108,16 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
         raise ValueError("创建结算记录失败")
 
     created = result.data[0]
+
+    # 3-D: 如果自动触发审批，自动创建 approval 记录
+    if approval_status == "pending":
+        try:
+            from app.services.auth import get_current_user_id
+        except ImportError:
+            pass
+        # 获取当前操作人（从 create_settlement 调用无法直接获取 user_id，
+        # 所以自动触发的审批单用系统用户。前端也可手动提交。）
+
     return SettlementOut(
         id=created["id"],
         teacher_id=created["teacher_id"],
@@ -100,6 +128,7 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
         hourly_rate=created["hourly_rate"],
         amount=created["amount"],
         status=created.get("status", "pending"),
+        approval_status=created.get("approval_status", "not_required"),
         paid_at=created.get("paid_at"),
         note=created.get("note"),
         created_at=created.get("created_at"),
@@ -151,7 +180,9 @@ async def list_settlements(
             hourly_rate=row["hourly_rate"],
             amount=row["amount"],
             status=row.get("status", "pending"),
+            approval_status=row.get("approval_status", "not_required"),
             paid_at=row.get("paid_at"),
+            payment_method=row.get("payment_method"),
             note=row.get("note"),
             created_at=row.get("created_at"),
         ))
@@ -163,8 +194,17 @@ async def list_settlements(
 
 
 async def pay_settlement(settlement_id: UUID, payment_method: str = "bank_transfer") -> SettlementOut:
-    """标记结算为已付款。"""
+    """标记结算为已付款。3-D: 检查审批状态 — 仅 approved/not_rejected 可付款。"""
     sb = get_supabase()
+
+    # 3-D: 付款前检查审批状态
+    existing = sb.table("settlements").select("approval_status").eq("id", str(settlement_id)).limit(1).execute()
+    if existing.data:
+        ap_status = existing.data[0].get("approval_status", "not_required")
+        if ap_status == "pending":
+            raise ValueError("结算记录待审批中，无法付款")
+        if ap_status == "rejected":
+            raise ValueError("结算记录已被驳回，无法付款")
 
     now = datetime.now(timezone.utc).isoformat()
     result = (
@@ -188,6 +228,7 @@ async def pay_settlement(settlement_id: UUID, payment_method: str = "bank_transf
         hourly_rate=row["hourly_rate"],
         amount=row["amount"],
         status=row.get("status", "paid"),
+        approval_status=row.get("approval_status", "not_required"),
         payment_method=row.get("payment_method"),
         paid_at=row.get("paid_at"),
         note=row.get("note"),

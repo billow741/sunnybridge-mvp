@@ -21,6 +21,7 @@ export interface SettlementItem {
   hourly_rate: number;
   amount: number;
   status: 'pending' | 'paid' | 'cancelled';
+  approval_status: 'not_required' | 'pending' | 'approved' | 'rejected';
   payment_method?: string;
   paid_at?: string;
   note?: string;
@@ -81,6 +82,30 @@ export async function createSettlement(values: {
   note?: string;
 }): Promise<SettlementItem> {
   const { data } = await client.post('/settlements', values);
+  return data;
+}
+
+/** 提交审批 */
+export async function submitApproval(targetType: string, targetId: string): Promise<any> {
+  const { data } = await client.post('/approvals', { target_type: targetType, target_id: targetId });
+  return data;
+}
+
+/** 审批列表 */
+export async function getApprovalList(params?: { status?: string; target_type?: string; page?: number; page_size?: number }): Promise<{ items: any[]; total: number }> {
+  const { data } = await client.get('/approvals', { params });
+  return data;
+}
+
+/** 审批通过 */
+export async function approveApproval(id: string, comment?: string): Promise<any> {
+  const { data } = await client.put(`/approvals/${id}/approve`, { comment });
+  return data;
+}
+
+/** 审批驳回 */
+export async function rejectApproval(id: string, comment?: string): Promise<any> {
+  const { data } = await client.put(`/approvals/${id}/reject`, { comment });
   return data;
 }
 

@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.auth import router as auth_router
+from app.api.approval import router as approval_router
 from app.api.child import router as child_router
 from app.api.course import router as course_router
 from app.api.dashboard import router as dashboard_router
@@ -118,6 +119,7 @@ app.include_router(search_router)
 app.include_router(settings_router)
 app.include_router(saved_filters_router)
 app.include_router(roles_router)
+app.include_router(approval_router)
 
 # ---------------------------------------------------------------------------
 # Startup event: validate JWT keys exist

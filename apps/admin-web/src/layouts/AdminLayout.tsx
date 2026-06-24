@@ -27,6 +27,7 @@ const menuItems: MenuItem[] = [
   { key: '/finance', icon: <DollarOutlined />, label: '财务', permission: 'finance:read', children: [
     { key: '/finance/reconciliation', label: '财务对账', permission: 'finance:read' },
     { key: '/finance/settlements', label: '教师结算', permission: 'settlements:read' },
+    { key: '/finance/approvals', label: '审批管理', permission: 'settlements:approve' },
     { key: '/finance/payments', label: '收款记录', permission: 'payments:read' },
   ]},
   { key: '/content', icon: <FileTextOutlined />, label: '内容', permission: 'courses:read' },

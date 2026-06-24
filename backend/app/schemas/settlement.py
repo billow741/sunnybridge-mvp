@@ -47,6 +47,7 @@ class SettlementOut(BaseModel):
     hourly_rate: float
     amount: float
     status: str = "pending"   # pending | paid
+    approval_status: str = "not_required"  # 3-D: not_required | pending | approved | rejected
     payment_method: str | None = None
     paid_at: str | None = None
     note: str | None = None

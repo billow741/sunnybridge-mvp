@@ -14,6 +14,7 @@ import Teachers from './pages/teachers';
 import ContentPage from './pages/content'
 import SettingsPage from './pages/settings'
 import SettlementsPage from './pages/settlements'
+import ApprovalsPage from './pages/approvals'
 import PaymentsPage from './pages/payments'
 import ReconciliationPage from './pages/finance/Reconciliation'
 
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="courses" element={<Courses />} />
             <Route path="teachers" element={<Teachers />} />
             <Route path="finance/settlements" element={<SettlementsPage />} />
+            <Route path="finance/approvals" element={<ApprovalsPage />} />
             <Route path="finance/payments" element={<PaymentsPage />} />
             <Route path="finance/reconciliation" element={<ReconciliationPage />} />
             <Route path="content" element={<ContentPage />} />
