@@ -1,12 +1,12 @@
 /**
  * 财务对账页面（P0-C）
- * 按月汇总：收款 vs 结算金额 vs 差额
+ * 按月汇总：收款(CNY) vs 结算(PHP)，两币种独立显示，不混算差额
  * 数据源：GET /api/v1/finance/reconciliation?months=6
  */
 import { useEffect, useState } from 'react';
-import { Table, Card, Row, Col, Statistic, Spin, Select, Typography } from 'antd';
+import { Table, Card, Row, Col, Statistic, Spin, Select, Typography, Divider } from 'antd';
 import {
-  DollarOutlined, ArrowUpOutlined, ArrowDownOutlined, AuditOutlined,
+  ArrowUpOutlined, AuditOutlined, PayCircleOutlined, TransactionOutlined,
 } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
 import { message } from 'antd';
@@ -21,19 +21,17 @@ interface MonthRec {
   settlement_count: number;
   settlement_total: number;
   settlement_hours: number;
-  balance: number;
 }
 
 interface ReconciliationData {
   months: MonthRec[];
   grand_payment: number;
   grand_settlement: number;
-  grand_balance: number;
 }
 
 export default function Reconciliation() {
   const [data, setData] = useState<ReconciliationData>({
-    months: [], grand_payment: 0, grand_settlement: 0, grand_balance: 0,
+    months: [], grand_payment: 0, grand_settlement: 0,
   });
   const [loading, setLoading] = useState(false);
   const [months, setMonths] = useState(6);
@@ -61,8 +59,8 @@ export default function Reconciliation() {
       title: '收款笔数', dataIndex: 'payment_count', width: 90, align: 'center' as const,
     },
     {
-      title: '收款金额', dataIndex: 'payment_total', width: 120, align: 'right' as const,
-      render: (v: number) => <Text style={{ color: '#52c41a', fontWeight: 600 }}>₱{v.toLocaleString()}</Text>,
+      title: '收款金额(CNY)', dataIndex: 'payment_total', width: 130, align: 'right' as const,
+      render: (v: number) => <Text style={{ color: '#52c41a', fontWeight: 600 }}>¥{v.toLocaleString()}</Text>,
     },
     {
       title: '购入课时', dataIndex: 'hours_purchased', width: 90, align: 'center' as const,
@@ -72,44 +70,30 @@ export default function Reconciliation() {
       title: '结算笔数', dataIndex: 'settlement_count', width: 90, align: 'center' as const,
     },
     {
-      title: '结算金额', dataIndex: 'settlement_total', width: 120, align: 'right' as const,
+      title: '结算金额(PHP)', dataIndex: 'settlement_total', width: 130, align: 'right' as const,
       render: (v: number) => <Text style={{ color: '#F4A230', fontWeight: 600 }}>₱{v.toLocaleString()}</Text>,
     },
     {
       title: '结算课时', dataIndex: 'settlement_hours', width: 90, align: 'center' as const,
       render: (v: number) => v > 0 ? `${v}h` : '—',
     },
-    {
-      title: '差额', dataIndex: 'balance', width: 120, align: 'right' as const,
-      render: (v: number) => {
-        const color = v >= 0 ? '#52c41a' : '#ff4d4f';
-        const icon = v >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />;
-        return <Text style={{ color, fontWeight: 700 }}>{icon} ₱{Math.abs(v).toLocaleString()}</Text>;
-      },
-    },
   ];
 
   return (
     <div style={{ padding: 16 }}>
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
+        <Col span={12}>
           <Card className="sb-card">
-            <Statistic title="累计收款" value={data.grand_payment} prefix="₱"
-              valueStyle={{ color: '#52c41a', fontWeight: 700 }} />
+            <Statistic title="累计收款 (CNY)" value={data.grand_payment} prefix="¥"
+              valueStyle={{ color: '#52c41a', fontWeight: 700 }}
+              prefix={<PayCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />} />
           </Card>
         </Col>
-        <Col span={8}>
+        <Col span={12}>
           <Card className="sb-card">
-            <Statistic title="累计结算" value={data.grand_settlement} prefix="₱"
-              valueStyle={{ color: '#F4A230', fontWeight: 700 }} />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card className="sb-card">
-            <Statistic title="净差额" value={data.grand_balance}
-              prefix={data.grand_balance >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-              suffix="₱"
-              valueStyle={{ color: data.grand_balance >= 0 ? '#52c41a' : '#ff4d4f', fontWeight: 700 }} />
+            <Statistic title="累计结算 (PHP)" value={data.grand_settlement} prefix="₱"
+              valueStyle={{ color: '#F4A230', fontWeight: 700 }}
+              prefix={<TransactionOutlined style={{ color: '#F4A230', marginRight: 4 }} />} />
           </Card>
         </Col>
       </Row>
@@ -136,7 +120,7 @@ export default function Reconciliation() {
                   <Text strong>{data.months.reduce((s, r) => s + r.payment_count, 0)}</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={2} align="right">
-                  <Text strong style={{ color: '#52c41a' }}>₱{data.grand_payment.toLocaleString()}</Text>
+                  <Text strong style={{ color: '#52c41a' }}>¥{data.grand_payment.toLocaleString()}</Text>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={3} align="center">
                   <Text strong>{data.months.reduce((s, r) => s + r.hours_purchased, 0)}h</Text>
@@ -149,12 +133,6 @@ export default function Reconciliation() {
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={6} align="center">
                   <Text strong>{data.months.reduce((s, r) => s + r.settlement_hours, 0)}h</Text>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} align="right">
-                  <Text strong style={{ color: data.grand_balance >= 0 ? '#52c41a' : '#ff4d4f' }}>
-                    {data.grand_balance >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                    {' '}₱{Math.abs(data.grand_balance).toLocaleString()}
-                  </Text>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             )}

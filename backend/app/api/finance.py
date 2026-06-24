@@ -27,7 +27,6 @@ class MonthRec(BaseModel):
     settlement_count: int = 0
     settlement_total: float = 0
     settlement_hours: float = 0
-    balance: float = 0
 
 
 class ReconciliationData(BaseModel):
@@ -119,7 +118,6 @@ async def get_reconciliation(
         except Exception as e:
             logger.warning("reconciliation_settlement_fail", month=month_label, error=str(e))
 
-        balance = p_total - s_total
         rec = MonthRec(
             month=month_label,
             payment_count=p_count,
@@ -128,7 +126,6 @@ async def get_reconciliation(
             settlement_count=s_count,
             settlement_total=round(s_total, 2),
             settlement_hours=round(sh, 2),
-            balance=round(balance, 2),
         )
         result_months.append(rec)
         grand_p += p_total
@@ -140,5 +137,4 @@ async def get_reconciliation(
         months=result_months,
         grand_payment=round(grand_p, 2),
         grand_settlement=round(grand_s, 2),
-        grand_balance=round(grand_p - grand_s, 2),
     )
