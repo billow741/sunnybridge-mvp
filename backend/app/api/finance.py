@@ -33,7 +33,6 @@ class ReconciliationData(BaseModel):
     months: list[MonthRec] = []
     grand_payment: float = 0
     grand_settlement: float = 0
-    grand_balance: float = 0
 
 
 # ── Reconciliation ──
@@ -43,14 +42,13 @@ async def get_reconciliation(
     months: int = Query(6, ge=1, le=24, description="回看月数"),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> ReconciliationData:
-    """按月汇总：收款(payments) vs 结算(settlements), 计算差额。
-
+    """按月汇总：收款(CNY) vs 结算(PHP), 两币种独立显示。
+    
     口径:
-    - payment_total: SUM(amount) FROM payments WHERE payment_date IN month
+    - payment_total: SUM(amount) FROM payments WHERE payment_date IN month (CNY)
     - hours_purchased: SUM(hours_purchased) FROM payments WHERE payment_date IN month
-    - settlement_total: SUM(amount) FROM settlements WHERE period_end IN month
+    - settlement_total: SUM(amount) FROM settlements WHERE period_end IN month (PHP)
     - settlement_hours: SUM(hours) FROM settlements WHERE period_end IN month
-    - balance = payment_total - settlement_total
     """
     sb = get_supabase()
     today = date.today()
