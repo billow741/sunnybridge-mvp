@@ -17,10 +17,12 @@ import {
   PlusOutlined, UserOutlined, PhoneOutlined,
   SearchOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
   BookOutlined, HistoryOutlined, TeamOutlined, CalendarOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import client, { extractError } from '@/api/client';
 import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
+import { useExportCSV } from '@/hooks/useExportCSV';
 
 const { Text } = Typography;
 
@@ -74,6 +76,7 @@ export default function Students() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [coursesLoading, setCoursesLoading] = useState(false);
 
+  const { exportCSV, exporting } = useExportCSV('children');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [modalLoading, setModalLoading] = useState(false);

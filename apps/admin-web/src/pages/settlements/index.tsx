@@ -15,12 +15,13 @@ import {
 } from 'antd';
 import {
   PlusOutlined, CheckOutlined, EyeOutlined, DollarOutlined,
-  CalendarOutlined, LoadingOutlined,
+  CalendarOutlined, LoadingOutlined, DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { SettlementItem, SettlementSummary } from '@/services/settlement';
 import { getSettlementList, getSettlementSummary, createSettlement, paySettlement, calcSettlementHours } from '@/services/settlement';
 import client, { extractError } from '@/api/client';
+import { useExportCSV } from '@/hooks/useExportCSV';
 
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
@@ -30,6 +31,7 @@ export default function Settlements() {
   const [summary, setSummary] = useState<SettlementSummary>({
     total_pending: 0, total_paid: 0, total_amount: 0, teacher_count: 0,
   });
+  const { exportCSV, exporting } = useExportCSV('settlements');
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<SettlementItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -333,6 +335,8 @@ export default function Settlements() {
             <Text type="secondary" style={{ fontSize: 12 }}>
               结算周期可灵活选择，如 3月12日 — 4月11日
             </Text>
+            <Button icon={<DownloadOutlined />} size="small" loading={exporting}
+              onClick={() => exportCSV()}>导出</Button>
             <Button type="primary" icon={<PlusOutlined />} size="small"
               onClick={() => {
                 form.resetFields();

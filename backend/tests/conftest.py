@@ -146,17 +146,26 @@ def _create_child(name: str, parent_id: str, level: str | None = None) -> str:
 
 
 def _cleanup_redis():
-    """Clean up all test-related Redis keys."""
-    r = _sync_redis()
-    for prefix in ["admin:", "teacher:", "parent:", "sms:"]:
-        # Best-effort: delete specific keys
-        for suffix in ["lock", "fail", "rate"]:
-            for identifier in [ADMIN_USERNAME, TEACHER_USERNAME, PARENT_PHONE, PARENT_NO_PW_PHONE, PARENT2_PHONE]:
-                r.delete(f"{prefix}{suffix}:{identifier}")
-    # Clean blacklist keys
-    for key in r.scan_iter("blocklist:*"):
-        r.delete(key)
-    r.close()
+    """Clean up all test-related Redis keys. Best-effort: ignore if Redis unavailable."""
+    try:
+        r = _sync_redis()
+        for prefix in ["admin:", "teacher:", "parent:", "sms:"]:
+            # Best-effort: delete specific keys
+            for suffix in ["lock", "fail", "rate"]:
+                for identifier in [ADMIN_USERNAME, TEACHER_USERNAME, PARENT_PHONE, PARENT_NO_PW_PHONE, PARENT2_PHONE]:
+                    try:
+                        r.delete(f"{prefix}{suffix}:{identifier}")
+                    except Exception:
+                        pass
+        # Clean blacklist keys
+        try:
+            for key in r.scan_iter("blocklist:*"):
+                r.delete(key)
+        except Exception:
+            pass
+        r.close()
+    except Exception:
+        pass  # Redis unavailable — skip cleanup
 
 
 def _delete_test_data():

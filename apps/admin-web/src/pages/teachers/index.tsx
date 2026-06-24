@@ -7,6 +7,7 @@ import { Card, Row, Col, Button, Modal, Form, Input, InputNumber, Tag, message, 
 import { PlusOutlined, UserOutlined, RedoOutlined, SearchOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, StopOutlined, PhoneOutlined, DollarOutlined, KeyOutlined, WalletOutlined } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
 import CourseScheduleDrawer from '@/components/CourseScheduleDrawer';
+import FilterBar from '@/components/FilterBar';
 
 const { Text, Title } = Typography;
 
@@ -159,8 +160,7 @@ export default function Teachers() {
 
   return (
     <div>
-      {/* Sticky filter bar */}
-      <div className="sb-filter-bar">
+      <FilterBar>
         <Input prefix={<SearchOutlined />} placeholder="搜索教师姓名/手机号"
           size="small" style={{ width: 220 }}
           value={search} onChange={e => setSearch(e.target.value)} allowClear
@@ -170,7 +170,7 @@ export default function Teachers() {
           onClick={() => { setEditItem(null); form.resetFields(); setModalOpen(true); }}>
           添加教师
         </Button>
-      </div>
+      </FilterBar>
 
       {loading ? (
         <div className="sb-spin-center"><Spin size="large" /></div>

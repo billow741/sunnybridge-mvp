@@ -1,13 +1,15 @@
 """Payment schemas for admin payments CRUD.
 
-适配 payments 表结构 (2026-06 新增 payment_date, receipt_number, description):
+适配 payments 表结构 (2026-06 新增 type/refund_of):
+- type: income(默认) / refund
+- refund_of: 退款时关联原收款 ID
 - hours_purchased: integer (DB列类型为integer，不能用Decimal避免"2.0"小数语法被PG拒绝)
 - payment_method (而非 method)
 - notes (而非 note)
 - payment_date (可选，真实收款日期; 无则 fallback 到 created_at)
 - receipt_number (可选)
 - description (可选)
-- status, package_id, transaction_ref, updated_at
+- status: completed / refunded / partial_refund
 """
 
 from datetime import date, datetime
@@ -56,6 +58,8 @@ class PaymentOut(BaseModel):
     notes: Optional[str] = None
     package_id: Optional[UUID] = None
     transaction_ref: Optional[str] = None
+    type: str = "income"           # income | refund
+    refund_of: Optional[UUID] = None  # 退款时关联原收款 ID
     created_at: datetime
     updated_at: Optional[datetime] = None
 

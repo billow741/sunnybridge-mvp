@@ -82,21 +82,31 @@ async def _enrich_child(row: dict) -> ChildOut:
     return ChildOut(**row)
 
 
-async def list_children(page: int = DEFAULT_PAGE, page_size: int = DEFAULT_PAGE_SIZE) -> PaginatedChildren:
-    """List all children with pagination. Admin only."""
+async def list_children(page: int = DEFAULT_PAGE, page_size: int = DEFAULT_PAGE_SIZE,
+                       search: str | None = None, level: str | None = None) -> PaginatedChildren:
+    """List all children with pagination + search. Admin only."""
     sb = get_supabase()
 
-    count_result = sb.table("children").select("id", count="exact").execute()
+    count_q = sb.table("children").select("id", count="exact")
+    if search:
+        count_q = count_q.ilike("name", f"%{search}%")
+    if level:
+        count_q = count_q.eq("level", level)
+    count_result = count_q.execute()
     total = count_result.count if count_result.count is not None else 0
 
     offset = (page - 1) * page_size
-    result = (
+    result_q = (
         sb.table("children")
         .select("*")
         .order("created_at", desc=True)
         .range(offset, offset + page_size - 1)
-        .execute()
     )
+    if search:
+        result_q = result_q.ilike("name", f"%{search}%")
+    if level:
+        result_q = result_q.eq("level", level)
+    result = result_q.execute()
 
     items = [await _enrich_child(row) for row in result.data]
     return PaginatedChildren(items=items, total=total, page=page, page_size=page_size)

@@ -10,7 +10,7 @@ Endpoints:
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.deps import CurrentUser, require_role
 from app.schemas.settlement import (
@@ -65,10 +65,13 @@ async def settlement_summary(
 
 @router.get("", response_model=SettlementListResponse)
 async def settlement_list(
+    status: str | None = Query(None, description="状态: pending/paid"),
+    teacher_id: str | None = Query(None, description="教师ID"),
+    month: str | None = Query(None, description="月份 YYYY-MM"),
     _admin: CurrentUser = Depends(require_role("admin")),
 ) -> SettlementListResponse:
-    """获取所有结算记录。Admin only。"""
-    return await list_settlements()
+    """获取结算记录（支持筛选）。Admin only。"""
+    return await list_settlements(status=status, teacher_id=teacher_id, month=month)
 
 
 @router.post("", response_model=SettlementOut, status_code=status.HTTP_201_CREATED)

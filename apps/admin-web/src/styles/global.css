@@ -117,3 +117,33 @@ body {
 .ant-layout-content {
   margin: 0 !important;
 }
+
+/* ══════════════════════════════════════════
+   Responsive: 2-C 移动端关键路径
+   ══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sb-filter-bar {
+    position: static;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+  }
+  .sb-filter-bar .ant-picker,
+  .sb-filter-bar .ant-select,
+  .sb-filter-bar .ant-input {
+    width: 100%;
+  }
+  .ant-layout-sider {
+    position: fixed;
+    z-index: 99;
+  }
+  .ant-table {
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sb-filter-bar {
+    flex-wrap: wrap;
+  }
+}

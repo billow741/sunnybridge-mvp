@@ -261,8 +261,8 @@ async def update_course(course_id: UUID, body: CourseUpdate) -> CourseDetail:
         for cid in child_ids:
             ch = sb.table("children").select("id, name, usedhours").eq("id", cid).limit(1).execute()
             if ch.data:
-                old_used = ch.data[0].get("usedhours") or 0
-                new_used = old_used + course_hours
+                old_used = int(ch.data[0].get("usedhours") or 0)
+                new_used = old_used + int(course_hours)
                 sb.table("children").update({
                     "usedhours": new_used,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -502,8 +502,9 @@ async def get_all_courses(
     page: int = DEFAULT_PAGE,
     page_size: int = DEFAULT_PAGE_SIZE,
     teacher_id: str | None = None,
+    course_status: str | None = None,
 ) -> PaginatedCourses:
-    """All courses with optional month filter + teacher isolation.
+    """All courses with optional month/status filter + teacher isolation.
 
     If teacher_id is provided, only that teacher's courses are returned.
     Otherwise (admin), all courses are returned.
@@ -515,6 +516,10 @@ async def get_all_courses(
     # Teacher isolation: only show own courses
     if teacher_id:
         query = query.eq("teacher_id", teacher_id)
+
+    # Status filter
+    if course_status:
+        query = query.eq("status", course_status)
 
     # Month filter: ?month=2026-06 → filter date >= 2026-06-01 AND date < 2026-07-01
     if month:
@@ -545,6 +550,10 @@ async def get_all_courses(
     # Teacher isolation on page query too
     if teacher_id:
         page_query = page_query.eq("teacher_id", teacher_id)
+
+    # Status filter on page query too
+    if course_status:
+        page_query = page_query.eq("status", course_status)
 
     if month:
         try:

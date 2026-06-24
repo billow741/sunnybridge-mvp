@@ -23,9 +23,12 @@ import {
 import {
   PlusOutlined, DeleteOutlined, EyeOutlined, DollarOutlined,
   SearchOutlined, ReloadOutlined, UndoOutlined, EditOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import client from '@/api/client';
+import { useExportCSV } from '@/hooks/useExportCSV';
+import FilterBar from '@/components/FilterBar';
 
 const { Text } = Typography;
 
@@ -48,6 +51,7 @@ interface Payment {
   payment_date?: string; receipt_number?: string; description?: string;
   notes?: string; package_id?: string; transaction_ref?: string;
   created_at: string; updated_at?: string;
+  type?: string; refund_of?: string; /* 退款项相关字段 */
 }
 
 interface Stats {
@@ -86,14 +90,28 @@ export default function PaymentsPage() {
   const [filterMonth, setFilterMonth] = useState<string | undefined>();
   const [filterMethod, setFilterMethod] = useState<string | undefined>();
   const [searchText, setSearchText] = useState('');
+  const [filterType, setFilterType] = useState<string | undefined>();
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
 
   // 详情 Drawer
+  const openDrawer = (record: Payment) => {
+    setSelected(record);
+    setDrawerOpen(true);
+  };
   const [selected, setSelected] = useState<Payment | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // 退款 Drawer
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundForm] = Form.useForm();
+  const [refunding, setRefunding] = useState(false);
 
   // 新建 Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [form] = Form.useForm();
+
+  // 导出
+  const { exportCSV, exporting } = useExportCSV('payments');
 
   // 编辑 Modal
   const [editOpen, setEditOpen] = useState(false);
@@ -119,6 +137,11 @@ export default function PaymentsPage() {
       const params: Record<string, any> = { page, page_size: 20 };
       if (filterMonth) params.month = filterMonth;
       if (filterMethod) params.payment_method = filterMethod;
+      if (filterType) params.type = filterType;
+      if (dateRange) {
+        params.date_from = dateRange[0].format('YYYY-MM-DD');
+        params.date_to = dateRange[1].format('YYYY-MM-DD');
+      }
       const res = (await client.get('/payments', { params })).data;
       setItems(res.items || []);
       setTotal(res.total || 0);
@@ -126,7 +149,7 @@ export default function PaymentsPage() {
       if (res.stats?.method_stats) setStats(s => ({ ...s, method_stats: res.stats.method_stats }));
     } catch (err) { message.error(extractError(err)); }
     setLoading(false);
-  }, [page, filterMonth, filterMethod]);
+  }, [page, filterMonth, filterMethod, filterType, dateRange]);
 
   useEffect(() => { load(); loadStudents(); }, [load]);
 
@@ -201,7 +224,40 @@ export default function PaymentsPage() {
     } catch (err) { message.error(extractError(err)); }
   };
 
-  const openDrawer = (r: Payment) => { setSelected(r); setDrawerOpen(true); };
+  /* ── 退款 ── */
+  const onRefund = async () => {
+    if (!selected) return;
+    try {
+      const values = await refundForm.validateFields();
+      setRefunding(true);
+      await client.post('/payments/refund', {
+        payment_id: selected.id,
+        refund_amount: values.refund_amount,
+        refund_hours: values.refund_hours,
+        reason: values.reason,
+      });
+      message.success('退款成功');
+      setRefundOpen(false);
+      refundForm.resetFields();
+      load();
+    } catch (err: any) {
+      if (err?.errorFields) return;
+      message.error(extractError(err));
+    } finally {
+      setRefunding(false);
+    }
+  };
+
+  const openRefundDrawer = () => {
+    if (!selected) return;
+    // 预制退款金额
+    refundForm.setFieldsValue({
+      refund_amount: selected.amount,
+      refund_hours: 0,
+      reason: '',
+    });
+    setRefundOpen(true);
+  };
 
   /* ── 日期显示：优先 payment_date，无则 fallback created_at ── */
   const displayDate = (r: Payment) => {
@@ -288,21 +344,35 @@ export default function PaymentsPage() {
       </Row>
 
       {/* ── 工具栏 (sticky) ── */}
-      <div className="sb-filter-bar">
+      <FilterBar>
         <Input placeholder="搜索学员/备注/收据号" prefix={<SearchOutlined />} style={{ width: 200 }}
           value={searchText} onChange={e => setSearchText(e.target.value)} allowClear />
         <DatePicker picker="month" placeholder="月份" style={{ width: 130 }}
           onChange={(_v, ds) => setFilterMonth(typeof ds === 'string' ? ds : undefined)}
           allowClear
         />
+        <DatePicker.RangePicker
+          placeholder={['开始日期', '结束日期']}
+          value={dateRange}
+          onChange={vals => setDateRange(vals as [dayjs.Dayjs, dayjs.Dayjs] | null)}
+        />
         <Select placeholder="支付方式" style={{ width: 120 }} allowClear
           value={filterMethod} onChange={v => setFilterMethod(v)}>
           {PAYMENT_METHODS.map(m => <Select.Option key={m.value} value={m.value}>{m.label}</Select.Option>)}
         </Select>
+        <Select placeholder="类型" style={{ width: 120 }} allowClear
+          value={filterType} onChange={v => setFilterType(v)}>
+          <Select.Option value="income">收入</Select.Option>
+          <Select.Option value="refund">退款</Select.Option>
+        </Select>
         <Button icon={<ReloadOutlined />} onClick={load}>刷新</Button>
         <div style={{ flex: 1 }} />
+        <Button icon={<DownloadOutlined />} loading={exporting}
+          onClick={() => exportCSV({ month: filterMonth, date_from: dateRange?.[0]?.format('YYYY-MM-DD'), date_to: dateRange?.[1]?.format('YYYY-MM-DD'), type: filterType, payment_method: filterMethod })}>
+          导出 CSV
+        </Button>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>添加收款</Button>
-      </div>
+      </FilterBar>
 
       {/* ── 数据表 ── */}
       <Table<Payment>
@@ -345,8 +415,8 @@ export default function PaymentsPage() {
           </Descriptions>
           <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
             <Button type="primary" icon={<EditOutlined />} onClick={() => { setDrawerOpen(false); openEdit(selected); }}>编辑</Button>
-            <Button icon={<UndoOutlined />} disabled type="dashed">
-              退款（暂未开放）
+            <Button icon={<UndoOutlined />} type="dashed" onClick={openRefundDrawer}>
+              退款
             </Button>
           </div>
         </>}
@@ -415,6 +485,24 @@ export default function PaymentsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ── 退款 Drawer ── */}
+      <Drawer title="退款" open={refundOpen} onClose={() => setRefundOpen(false)} width={400}
+        extra={
+          <Button type="primary" onClick={onRefund} loading={refunding}>确认退款</Button>
+        }>
+        <Form form={refundForm} layout="vertical">
+          <Form.Item name="refund_amount" label="退款金额" rules={[{ required: true, message: '请输入退款金额' }]}>
+            <InputNumber min={0} step={1} prefix="¥" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="refund_hours" label="退课时数" rules={[{ required: true, message: '请输入退课时数' }]}>
+            <InputNumber min={0} step={1} addonAfter="h" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item name="reason" label="退款原因">
+            <Input.TextArea rows={3} placeholder="请输入退款原因" />
+          </Form.Item>
+        </Form>
+      </Drawer>
     </div>
   );
 }

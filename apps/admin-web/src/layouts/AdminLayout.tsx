@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Layout, Menu } from 'antd';
+import { Layout, Menu, Drawer } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   DashboardOutlined, TeamOutlined, BookOutlined, TrophyOutlined,
@@ -11,6 +11,7 @@ import AppLogo from '@/components/AppLogo';
 import GlobalSearch from '@/components/GlobalSearch';
 import EntityDrawer from '@/components/EntityDrawer';
 import { useAuthStore } from '@/store/authStore';
+import { useIsMobile } from '@/hooks/useBreakpoint';
 
 const { Sider, Content, Header } = Layout;
 
@@ -37,9 +38,11 @@ function flattenMenu(items: MenuItem[]): MenuItem[] {
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const isMobile = useIsMobile();
 
   const selectedKeys = useMemo(() => {
     const all = flattenMenu(menuItems);
@@ -67,29 +70,68 @@ export default function AdminLayout() {
 
   const menuTheme = 'dark';
 
+  // 导航点击后关闭移动菜单
+  const onMenuClick = (key: string) => {
+    navigate(key);
+    if (isMobile) setMobileMenuOpen(false);
+  };
+
+  const menuContent = (
+    <>
+      <AppLogo collapsed={isMobile ? false : collapsed} />
+      <Menu
+        mode="inline"
+        theme={menuTheme}
+        selectedKeys={selectedKeys}
+        openKeys={collapsed && !isMobile ? [] : undefined}
+        items={menuItems.map(item => {
+          if (item.children) {
+            return {
+              key: item.key,
+              icon: item.icon,
+              label: item.label,
+              children: item.children.map(c => ({ key: c.key, label: c.label, onClick: () => onMenuClick(c.key) })),
+            };
+          }
+          return { key: item.key, icon: item.icon, label: item.label, onClick: () => onMenuClick(item.key) };
+        })}
+        style={{ background: 'transparent', borderRight: 0, padding: '0 0 0 0' }}
+      />
+      <div style={{ padding: '12px 0', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+        v1.0.0
+      </div>
+    </>
+  );
+
   return (
     <Layout style={{ minHeight: '100vh', background: '#f0f2f5' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        width={232}
-        collapsedWidth={80}
-        style={{ background: '#1a1a2e', boxShadow: '2px 0 12px rgba(0,0,0,0.15)' }}
-      >
-        <AppLogo collapsed={collapsed} />
-        <Menu
-          mode="inline"
-          theme={menuTheme}
-          selectedKeys={selectedKeys}
-          openKeys={collapsed ? [] : undefined}
-          items={items}
-          style={{ background: 'transparent', borderRight: 0, padding: '0 0 0 0' }}
-        />
-        <div style={{ padding: '12px 0', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-          v1.0.0
-        </div>
-      </Sider>
+      {/* 桌面端: 固定 Sider */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          width={232}
+          collapsedWidth={80}
+          style={{ background: '#1a1a2e', boxShadow: '2px 0 12px rgba(0,0,0,0.15)' }}
+        >
+          {menuContent}
+        </Sider>
+      )}
+      {/* 移动端: Drawer 弹出菜单 */}
+      {isMobile && (
+        <Drawer
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          placement="left"
+          width={260}
+          bodyStyle={{ padding: 0, background: '#1a1a2e' }}
+          headerStyle={{ display: 'none' }}
+          closable={false}
+        >
+          {menuContent}
+        </Drawer>
+      )}
       <Layout>
         <Header
           style={{
@@ -100,8 +142,9 @@ export default function AdminLayout() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ cursor: 'pointer', color: '#64748b', fontSize: 18 }} onClick={() => setCollapsed(!collapsed)}>
-              {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            <div style={{ cursor: 'pointer', color: '#64748b', fontSize: 18 }}
+              onClick={() => isMobile ? setMobileMenuOpen(true) : setCollapsed(!collapsed)}>
+              {isMobile ? <MenuUnfoldOutlined /> : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)}
             </div>
             <GlobalSearch />
           </div>

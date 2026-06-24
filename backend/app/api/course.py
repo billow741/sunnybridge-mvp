@@ -75,11 +75,13 @@ async def all_courses_endpoint(
     month: str | None = Query(None, description="Month filter YYYY-MM"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
+    status: str | None = Query(None, description="状态筛选: pending/completed/cancelled"),
     user: CurrentUser = Depends(require_role("teacher", "admin")),
 ) -> PaginatedCourses:
-    """All courses with optional month filter. Teacher sees own courses; Admin sees all."""
+    """All courses with optional month/status filter. Teacher sees own courses; Admin sees all."""
     teacher_id = str(user.teacher_id) if user.role == "teacher" and user.teacher_id else None
-    return await get_all_courses(month=month, page=page, page_size=page_size, teacher_id=teacher_id)
+    return await get_all_courses(month=month, page=page, page_size=page_size,
+                                 teacher_id=teacher_id, course_status=status)
 
 
 @router.post("/check-conflicts", response_model=ConflictCheckResponse)

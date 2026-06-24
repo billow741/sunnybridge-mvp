@@ -106,15 +106,38 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
     )
 
 
-async def list_settlements() -> SettlementListResponse:
-    """获取所有结算记录。"""
+async def list_settlements(
+    status: str | None = None,
+    teacher_id: str | None = None,
+    month: str | None = None,
+) -> SettlementListResponse:
+    """获取所有结算记录（支持筛选）。"""
     sb = get_supabase()
-    result = (
+
+    query = (
         sb.table("settlements")
         .select("*", count="exact")
-        .order("created_at", desc=True)
-        .execute()
     )
+
+    if status:
+        query = query.eq("status", status)
+    if teacher_id:
+        query = query.eq("teacher_id", teacher_id)
+    if month:
+        try:
+            year, m = month.split("-")
+            start = f"{year}-{m}-01"
+            m_int = int(m)
+            y_int = int(year)
+            if m_int == 12:
+                end = f"{y_int + 1}-01-01"
+            else:
+                end = f"{y_int}-{m_int + 1:02d}-01"
+            query = query.gte("period_start", start).lt("period_start", end)
+        except (ValueError, AttributeError):
+            pass
+
+    result = query.order("created_at", desc=True).execute()
 
     items = []
     for row in (result.data or []):

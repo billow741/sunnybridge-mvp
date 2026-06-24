@@ -44,6 +44,8 @@ def _build_out(row: dict) -> PaymentOut:
         notes=row.get("notes"),
         package_id=row.get("package_id"),
         transaction_ref=row.get("transaction_ref"),
+        type=row.get("type", "income"),
+        refund_of=row.get("refund_of"),
         created_at=row["created_at"],
         updated_at=row.get("updated_at"),
     )
@@ -55,6 +57,9 @@ async def list_payments(
     month: str | None = None,
     child_id: str | None = None,
     payment_method: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    type: str | None = None,
 ) -> PaginatedPayments:
     """List all payments with stats (admin)."""
     sb = get_supabase()
@@ -113,6 +118,12 @@ async def list_payments(
         query = query.eq("child_id", child_id)
     if payment_method:
         query = query.eq("payment_method", payment_method)
+    if date_from:
+        query = query.gte("created_at", date_from)
+    if date_to:
+        query = query.lte("created_at", date_to + "T23:59:59")
+    if type:
+        query = query.eq("type", type)
 
     count_result = query.execute()
     total = count_result.count if count_result.count is not None else 0
@@ -138,6 +149,12 @@ async def list_payments(
         page_query = page_query.eq("child_id", child_id)
     if payment_method:
         page_query = page_query.eq("payment_method", payment_method)
+    if date_from:
+        page_query = page_query.gte("created_at", date_from)
+    if date_to:
+        page_query = page_query.lte("created_at", date_to + "T23:59:59")
+    if type:
+        page_query = page_query.eq("type", type)
 
     result = page_query.execute()
     items = [_build_out(row) for row in result.data]
@@ -169,6 +186,7 @@ async def create_payment(body: PaymentCreate) -> PaymentOut:
         "description": body.description,
         "notes": body.notes,
         "status": "completed",
+        "type": "income",
     }).execute()
 
     # Update child totalhours

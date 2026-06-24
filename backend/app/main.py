@@ -15,11 +15,13 @@ from app.api.child import router as child_router
 from app.api.course import router as course_router
 from app.api.dashboard import router as dashboard_router
 from app.api.event import router as event_router
+from app.api.export import router as export_router
 from app.api.feedback import router as feedback_router
 from app.api.finance import router as finance_router
 from app.api.hours_log import router as hours_log_router
 from app.api.reading_courses import router as reading_courses_router
 from app.api.payment import router as payment_router
+from app.api.refund import router as refund_router
 from app.api.reading import router as reading_router
 from app.api.resource import router as resource_router
 from app.api.search import router as search_router
@@ -102,6 +104,8 @@ app.include_router(teacher_router)
 app.include_router(child_router)
 app.include_router(course_router)
 app.include_router(payment_router)
+app.include_router(refund_router)
+app.include_router(export_router)
 app.include_router(feedback_router)
 app.include_router(reading_router)
 app.include_router(resource_router)

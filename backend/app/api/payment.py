@@ -30,10 +30,15 @@ async def list_payments_endpoint(
     month: str | None = Query(None),
     child_id: str | None = Query(None),
     payment_method: str | None = Query(None),
+    date_from: str | None = Query(None, description="日期范围起 YYYY-MM-DD"),
+    date_to: str | None = Query(None, description="日期范围止 YYYY-MM-DD"),
+    type: str | None = Query(None, description="类型筛选: income/refund"),
     user: CurrentUser = Depends(require_role("admin")),
 ) -> PaginatedPayments:
     """List all payments with stats. Admin only."""
-    return await list_payments(page=page, page_size=page_size, month=month, child_id=child_id, payment_method=payment_method)
+    return await list_payments(page=page, page_size=page_size, month=month,
+                               child_id=child_id, payment_method=payment_method,
+                               date_from=date_from, date_to=date_to, type=type)
 
 
 @router.post("", response_model=PaymentOut)
