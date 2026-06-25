@@ -36,7 +36,7 @@ class AdminUserOut(BaseModel):
     id: str
     username: str
     nickname: Optional[str] = None
-    phone: str
+    phone: Optional[str] = None
     role_name: str
     is_active: bool
     has_password: bool = True
@@ -62,7 +62,7 @@ class AdminUserListOut(BaseModel):
     id: str
     username: str
     nickname: Optional[str] = None
-    phone: str
+    phone: Optional[str] = None
     role_name: str
     role_label: str = ""
     is_active: bool
@@ -76,15 +76,18 @@ def _hash_password(plain: str) -> str:
 
 def _to_out(row: dict, current_user_id: str = "") -> AdminUserListOut:
     rn = row.get("role_name", "admin")
+    # 统一为标准 UUID 字符串格式（去掉花括号）
+    raw_id = str(row["id"]).strip("{}")
+    cu_id = str(current_user_id).strip("{}")
     return AdminUserListOut(
-        id=row["id"],
+        id=raw_id,
         username=row.get("username", ""),
         nickname=row.get("nickname"),
-        phone=row.get("phone", ""),
+        phone=row.get("phone"),
         role_name=rn,
         role_label=ROLE_NAME_LABELS.get(rn, rn),
         is_active=row.get("is_active", True),
-        is_current_user=(row["id"] == current_user_id),
+        is_current_user=(raw_id == cu_id),
         created_at=row.get("created_at"),
     )
 
@@ -98,7 +101,7 @@ async def list_admin_users(user: CurrentUser = Depends(require_permission("roles
         "id, username, nickname, phone, role_name, is_active, created_at"
     ).eq("role", "admin").order("created_at", desc=False).execute()
 
-    return [_to_out(r, user.id) for r in res.data]
+    return [_to_out(r, str(user.id)) for r in res.data]
 
 
 @router.post("", response_model=AdminUserOut, status_code=status.HTTP_201_CREATED)
@@ -215,7 +218,7 @@ async def disable_admin_user(
     sb = get_supabase()
 
     # 不能禁用自己
-    if user_id == current_user.id:
+    if str(user_id).strip("{}") == str(current_user.id).strip("{}"):
         raise HTTPException(400, detail="不能禁用自己的账号")
 
     # 确认目标存在且是 admin
