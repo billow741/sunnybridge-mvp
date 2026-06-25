@@ -113,17 +113,17 @@ async def test_admin_delete_material(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_materials_with_level_filter(client: AsyncClient):
-    """GET /reading/materials?level=L1 — filter by level."""
+    """GET /reading/materials?level=starter — filter by level."""
     _cleanup_materials()
     admin_token, _ = await login_admin(client)
-    await create_material_via_api(client, admin_token, level="L1")
+    await create_material_via_api(client, admin_token, level="starter")
 
-    resp = await client.get("/api/v1/reading/materials", params={"level": "L1"}, headers=auth_headers(admin_token))
+    resp = await client.get("/api/v1/reading/materials", params={"level": "starter"}, headers=auth_headers(admin_token))
     assert resp.status_code == 200
     data = resp.json()
     assert "items" in data
     for item in data["items"]:
-        assert item["level"] == "L1"
+        assert item["level"] == "starter"
     _cleanup_materials()
 
 
@@ -151,7 +151,7 @@ async def test_list_materials_parent_sees_active_only(client: AsyncClient):
     # Create an inactive material
     resp = await client.post("/api/v1/reading/materials", json={
         "title": "不活跃材料",
-        "level": "L1",
+        "level": "starter",
         "category": "picture_book",
         "pdf_url": "reading/test/inactive_material.pdf",
         "page_count": 5,
@@ -185,7 +185,7 @@ async def test_parent_cannot_view_inactive_material(client: AsyncClient):
 
     resp = await client.post("/api/v1/reading/materials", json={
         "title": "不活跃详情",
-        "level": "L1",
+        "level": "starter",
         "category": "short_text",
         "pdf_url": "reading/test/inactive_detail.pdf",
         "page_count": 3,
@@ -218,7 +218,7 @@ async def test_parent_upsert_progress(client: AsyncClient):
     """PUT /reading/progress/{material_id} — parent updates reading progress."""
     _cleanup_materials()
     admin_token, _ = await login_admin(client)
-    mat = await create_material_via_api(client, admin_token, level="L1")
+    mat = await create_material_via_api(client, admin_token, level="starter")
     mat_id = mat["id"]
 
     parent_token, _ = await login_parent(client)
@@ -245,7 +245,7 @@ async def test_progress_auto_complete(client: AsyncClient):
     """PUT /reading/progress/{material_id} — current_page == page_count → auto completed=true."""
     _cleanup_materials()
     admin_token, _ = await login_admin(client)
-    mat = await create_material_via_api(client, admin_token, level="L1")
+    mat = await create_material_via_api(client, admin_token, level="starter")
     mat_id = mat["id"]
     page_count = mat["page_count"]
 
@@ -272,7 +272,7 @@ async def test_parent_list_progress(client: AsyncClient):
     """GET /reading/progress — parent lists their child's progress."""
     _cleanup_materials()
     admin_token, _ = await login_admin(client)
-    mat = await create_material_via_api(client, admin_token, level="L1")
+    mat = await create_material_via_api(client, admin_token, level="starter")
     mat_id = mat["id"]
 
     parent_token, _ = await login_parent(client)
@@ -310,7 +310,7 @@ async def test_teacher_cannot_create_material(client: AsyncClient):
     teacher_token, _ = await login_teacher(client)
     resp = await client.post("/api/v1/reading/materials", json={
         "title": "非法创建",
-        "level": "L1",
+        "level": "starter",
         "category": "picture_book",
         "page_count": 5,
     }, headers=auth_headers(teacher_token))
@@ -323,7 +323,7 @@ async def test_parent_cannot_create_material(client: AsyncClient):
     parent_token, _ = await login_parent(client)
     resp = await client.post("/api/v1/reading/materials", json={
         "title": "非法创建",
-        "level": "L1",
+        "level": "starter",
         "category": "picture_book",
         "page_count": 5,
     }, headers=auth_headers(parent_token))

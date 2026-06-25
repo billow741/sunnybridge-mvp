@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 class MaterialCreate(BaseModel):
     """Request body for POST /reading/materials. 草稿态允许只填 title."""
     title: str = Field(..., min_length=1, max_length=200)
-    level: str | None = Field(None, pattern=r"^L[1-6]$", description="L1-L6, 草稿时可留空")
+    level: str | None = Field(None, pattern=r"^(starter|A1|A2|B1|B2|C1|C2)$", description="CEFR级别: starter,A1,A2,B1,B2,C1,C2, 草稿时可留空")
     category: str | None = Field(
         None,
         min_length=1,
@@ -28,7 +28,7 @@ class MaterialCreate(BaseModel):
         description="分类，如 picturebook/shorttext/story/readaloud 等",
     )
     cover_url: str | None = None
-    pdf_url: str | None = Field(None, min_length=0, description="逻辑存储路径，如 reading/L3/xxx.pdf; 上传后自动填充")
+    pdf_url: str | None = Field(None, min_length=0, description="逻辑存储路径，如 reading/A2/xxx.pdf; 上传后自动填充")
     page_count: int = Field(0, ge=0)
     sort_order: int = Field(0, ge=0)
     is_active: bool = True

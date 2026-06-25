@@ -20,7 +20,7 @@ export const DISPLAY_L1: Record<string, string[]> = {
 
 export const DISPLAY_L2: Record<string, string[]> = {
   '绘本阅读': ['启蒙绘本', '进阶绘本', '主题绘本'],
-  '分级阅读': ['L1入门', 'L2基础', 'L3进阶', 'L4熟练'],
+  '分级阅读': ['Starter入门', 'A1基础', 'A2进阶', 'B1中级'],
   '自然拼读': ['字母认知', '拼读规则', '拼读练习'],
   '词汇识记': ['Sight Words', '主题词汇', '词卡游戏'],
   '学习工具': ['练习册', '闪卡', '工作纸'],
@@ -73,12 +73,13 @@ export const TAG_POOL: string[] = [
 // ── 级别选项 (仅阅读材料) ──────────────────────────
 
 export const LEVEL_OPTIONS = [
-  { value: 'L1', label: 'L1 启蒙' },
-  { value: 'L2', label: 'L2 基础' },
-  { value: 'L3', label: 'L3 进阶' },
-  { value: 'L4', label: 'L4 熟练' },
-  { value: 'L5', label: 'L5 精读' },
-  { value: 'L6', label: 'L6 拓展' },
+  { value: 'starter', label: 'Starter 入门' },
+  { value: 'A1', label: 'A1 基础' },
+  { value: 'A2', label: 'A2 进阶' },
+  { value: 'B1', label: 'B1 中级' },
+  { value: 'B2', label: 'B2 高级' },
+  { value: 'C1', label: 'C1 精通' },
+  { value: 'C2', label: 'C2 精通+' },
 ];
 
 // ── 统一封面读取函数 ───────────────────────────────

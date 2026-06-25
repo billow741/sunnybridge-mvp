@@ -2,7 +2,7 @@
  * StudentForm — A-STUDENT-FORM Modal (create / edit reuse).
  *
  * 设计方案: 基本信息区块
- * - 姓名*, 手机号*(+86), 英文名, 生日, 级别(L1-L6), 家长电话*(+86)
+ * * - 姓名*, 手机号*(+86), 英文名, 生日, 级别(CEFR: starter,A1-C2), 家长电话*(+86)
  * 对齐后端: StudentCreateParams { name, parent_phone, english_name, birth_date, level }
  */
 
@@ -39,12 +39,13 @@ interface StudentFormProps {
 }
 
 const LEVEL_OPTIONS: { value: Level; label: string }[] = [
-  { value: 'L1', label: 'L1 一年级' },
-  { value: 'L2', label: 'L2 二年级' },
-  { value: 'L3', label: 'L3 三年级' },
-  { value: 'L4', label: 'L4 四年级' },
-  { value: 'L5', label: 'L5 五年级' },
-  { value: 'L6', label: 'L6 六年级' },
+  { value: 'starter', label: 'Starter 入门' },
+  { value: 'A1', label: 'A1 基础' },
+  { value: 'A2', label: 'A2 进阶' },
+  { value: 'B1', label: 'B1 中级' },
+  { value: 'B2', label: 'B2 高级' },
+  { value: 'C1', label: 'C1 精通' },
+  { value: 'C2', label: 'C2 精通+' },
 ];
 
 const StudentForm: React.FC<StudentFormProps> = ({

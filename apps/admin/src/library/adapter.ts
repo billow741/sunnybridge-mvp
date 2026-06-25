@@ -11,7 +11,7 @@
 
 export type LibraryType = 'reading' | 'teaching' | 'parent_support' | 'curation';
 
-export type MaterialLevel = 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6';
+export type MaterialLevel = 'starter' | 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
 
 export type Audience = 'parent' | 'teacher' | 'both';
 
@@ -105,12 +105,13 @@ export const RESOURCE_CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const LEVEL_LABELS: Record<string, string> = {
-  L1: 'L1 启蒙',
-  L2: 'L2 基础',
-  L3: 'L3 进阶',
-  L4: 'L4 中级',
-  L5: 'L5 高级',
-  L6: 'L6 精通',
+  starter: 'Starter 入门',
+  A1: 'A1 基础',
+  A2: 'A2 进阶',
+  B1: 'B1 中级',
+  B2: 'B2 高级',
+  C1: 'C1 精通',
+  C2: 'C2 精通+',
 };
 
 export const AUDIENCE_LABELS: Record<Audience, string> = {
@@ -288,7 +289,7 @@ export function buildCatalogTree(): TreeNode[] {
           filter: { library: 'reading', collection: 'wordcard' },
         },
         // Level 分区
-        ...(['L1','L2','L3','L4','L5','L6'] as MaterialLevel[]).map(lv => ({
+        ...(['starter','A1','A2','B1','B2','C1','C2'] as MaterialLevel[]).map(lv => ({
           key: `reading.level.${lv}`,
           title: LEVEL_LABELS[lv]!,
           filter: { library: 'reading', level: lv } as { library: LibraryType; level: MaterialLevel },

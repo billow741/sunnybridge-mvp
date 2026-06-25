@@ -7,7 +7,7 @@
  *
  * Fields:
  * - title (required, 1-200 chars)
- * - level (可选, L1-L6, 草稿态可空→后端默认L1)
+ * - level (可选, CEFR: starter,A1-C2, 草稿态可空→后端默认starter)
  * - category (可选, Select受限, 草稿态可空→后端默认__draft__)
  * - cover_url (optional, URL string)
  * - pdf_url (create: auto-filled pending_upload, edit: read-only display)

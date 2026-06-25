@@ -17,8 +17,8 @@ import client from '../api/client';
 
 // ── Types ─────────────────────────────────────────
 
-/** L1-L6 level enum */
-export const LEVELS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'] as const;
+/** CEFR level enum: starter,A1,A2,B1,B2,C1,C2 */
+export const LEVELS = ['starter', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export type Level = (typeof LEVELS)[number];
 
 /** Brief parent info embedded in child response (from backend schema). */

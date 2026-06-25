@@ -34,8 +34,8 @@ import {
 import type { Student, Level } from '../../services/student';
 
 const LEVEL_GRADE_MAP: Record<string, string> = {
-  L1: "一年级", L2: "二年级", L3: "三年级",
-  L4: "四年级", L5: "五年级", L6: "六年级",
+  starter: "入门", A1: "基础", A2: "进阶",
+  B1: "中级", B2: "高级", C1: "精通", C2: "精通+",
 };
 
 const StudentsPage: React.FC = () => {

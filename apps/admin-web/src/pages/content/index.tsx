@@ -145,12 +145,13 @@ interface CategoryOption { value: string; label: string; }
 
 // ── 常量 ──
 const LEVEL_OPTIONS = [
-  { value: 'L1', label: 'L1 — 入门' },
-  { value: 'L2', label: 'L2 — 基础' },
-  { value: 'L3', label: 'L3 — 进阶' },
-  { value: 'L4', label: 'L4 — 中级' },
-  { value: 'L5', label: 'L5 — 高级' },
-  { value: 'L6', label: 'L6 — 精通' },
+  { value: 'starter', label: 'Starter — 入门' },
+  { value: 'A1', label: 'A1 — 基础' },
+  { value: 'A2', label: 'A2 — 进阶' },
+  { value: 'B1', label: 'B1 — 中级' },
+  { value: 'B2', label: 'B2 — 高级' },
+  { value: 'C1', label: 'C1 — 精通' },
+  { value: 'C2', label: 'C2 — 精通+' },
 ];
 
 const RESOURCE_CATEGORIES: CategoryOption[] = [
@@ -161,8 +162,8 @@ const RESOURCE_CATEGORIES: CategoryOption[] = [
 ];
 
 const LEVEL_COLORS: Record<string, string> = {
-  L1: '#52c41a', L2: '#5CAADF', L3: '#F4A230',
-  L4: '#722ed1', L5: '#eb2f96', L6: '#f5222d',
+  starter: '#52c41a', A1: '#5CAADF', A2: '#F4A230',
+  B1: '#722ed1', B2: '#eb2f96', C1: '#f5222d', C2: '#8b5cf6',
 };
 
 export default function ContentPage() {

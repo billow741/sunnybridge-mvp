@@ -173,7 +173,7 @@ class _LibraryPageState extends State<LibraryPage> {
     {'value': 'read_aloud', 'label': '跟读'},
   ];
 
-  static const _levels = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
+  static const _levels = ['starter', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
   // ── Build ───────────────────────────────────────────
 
@@ -254,7 +254,7 @@ class _LibraryPageState extends State<LibraryPage> {
         ),
         selected: isSelected,
         backgroundColor: AppColors.cardBackground,
-        selectedColor: AppColors.levelColor(value ?? 'L1'),
+        selectedColor: AppColors.levelColor(value ?? 'starter'),
         onSelected: (_) => _setLevel(value),
         visualDensity: VisualDensity.compact,
       ),

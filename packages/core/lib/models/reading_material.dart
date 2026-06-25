@@ -9,7 +9,7 @@
 class ReadingMaterial {
   final String id;
   final String title;
-  final String level; // L1-L6
+  final String level; // CEFR: starter,A1,A2,B1,B2,C1,C2
   final String category; // picture_book | short_text | story | read_aloud
   final String? coverUrl;
   final String? pdfUrl;

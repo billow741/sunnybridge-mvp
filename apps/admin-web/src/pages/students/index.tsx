@@ -55,7 +55,7 @@ const hoursColor = (h: number) =>
   h <= 2 ? '#ff4d4f' : h <= 5 ? '#F4A230' : '#52c41a';
 
 const LEVEL_COLORS: Record<string, string> = {
-  L1: 'green', L2: 'cyan', L3: 'blue', L4: 'purple', L5: 'orange', L6: 'red',
+  starter: 'green', A1: 'cyan', A2: 'blue', B1: 'purple', B2: 'orange', C1: 'red', C2: 'magenta',
 };
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
@@ -429,7 +429,7 @@ export default function Students() {
             <Col span={12}>
               <Form.Item name="level" label="级别">
                 <Select placeholder="选择级别" allowClear>
-                  {['L1','L2','L3','L4','L5','L6'].map(l => (
+                  {['starter','A1','A2','B1','B2','C1','C2'].map(l => (
                     <Select.Option key={l} value={l}>{l}</Select.Option>
                   ))}
                 </Select>

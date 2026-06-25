@@ -95,7 +95,7 @@ export default function LibraryCuration() {
   // Predefined shelves
   const featuredItems = filterResources(allItems, { isFeatured: true, isActive: true });
   const newItems = [...allItems].filter(i => i.isActive).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 15);
-  const l1Items = filterResources(allItems, { library: 'reading', level: 'L1', category: 'picture_book', isActive: true });
+  const l1Items = filterResources(allItems, { library: 'reading', level: 'starter', category: 'picture_book', isActive: true });
   const phonicsItems = filterResources(allItems, { category: 'phonics', isActive: true });
   // TODO: 热门资源 needs backend view_count tracking
   const hotItems: ResourceItem[] = []; // placeholder
@@ -110,7 +110,7 @@ export default function LibraryCuration() {
       <Shelf title="本周推荐" icon={<StarOutlined style={{ color: '#722ed1' }} />} items={featuredItems} loading={loading} onItemClick={handleItemClick} emptyText="暂无推荐资源，可在编目页标记 isFeatured" />
       <Shelf title="热门资源" icon={<FireOutlined style={{ color: '#f5222d' }} />} items={hotItems} loading={loading} onItemClick={handleItemClick} emptyText="TODO: 需要后端记录资源访问量 (view_count)" />
       <Shelf title="新上架" icon={<PlusOutlined style={{ color: '#1890ff' }} />} items={newItems} loading={loading} onItemClick={handleItemClick} />
-      <Shelf title="L1 入门绘本" icon={<BookOutlined style={{ color: '#52c41a' }} />} items={l1Items} loading={loading} onItemClick={handleItemClick} />
+      <Shelf title="Starter 入门绘本" icon={<BookOutlined style={{ color: '#52c41a' }} />} items={l1Items} loading={loading} onItemClick={handleItemClick} />
       <Shelf title="Phonics 专题" icon={<SoundOutlined style={{ color: '#fa8c16' }} />} items={phonicsItems} loading={loading} onItemClick={handleItemClick} />
 
       <Card style={{ marginTop: 16, background: '#fafafa' }}>

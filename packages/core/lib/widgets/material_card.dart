@@ -8,7 +8,7 @@ import '../theme/app_typography.dart';
 /// Shows cover placeholder, title, level badge, category, and read status.
 class MaterialCard extends StatelessWidget {
   final String title;
-  final String level; // L1-L6
+  final String level; // CEFR: starter,A1,A2,B1,B2,C1,C2
   final String category; // picture_book / short_text / story / read_aloud
   final bool isRead;
   final VoidCallback? onTap;

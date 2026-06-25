@@ -11,7 +11,7 @@ class ChildProfile {
   final String name;
   final String? englishName;
   final String? birthDate;
-  final String level; // L1-L6
+  final String level; // CEFR: starter,A1,A2,B1,B2,C1,C2
   final String parentId;
   final String? createdAt;
   final String? updatedAt;
@@ -32,7 +32,7 @@ class ChildProfile {
         name: json['name'] as String,
         englishName: json['english_name'] as String?,
         birthDate: json['birth_date'] as String?,
-        level: json['level'] as String? ?? 'L1',
+        level: json['level'] as String? ?? 'starter',
         parentId: json['parent_id'] as String,
         createdAt: json['created_at'] as String?,
         updatedAt: json['updated_at'] as String?,
@@ -42,7 +42,7 @@ class ChildProfile {
   bool get hasEnglishName =>
       englishName != null && englishName!.isNotEmpty;
 
-  /// Display string for level (already "L1"-"L6" from backend).
+  /// Display string for level (already CEFR from backend, e.g. "starter","A1"..."C2").
   String get levelDisplay => level;
 
   /// Short birth year display (e.g. "2020年").

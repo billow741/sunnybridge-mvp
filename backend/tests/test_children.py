@@ -52,12 +52,12 @@ async def test_admin_create_child(client: AsyncClient):
     resp = await client.post("/api/v1/children", json={
         "name": "新建学生",
         "parent_phone": new_phone,
-        "level": "L3",
+        "level": "A2",
     }, headers=auth_headers(token))
     assert resp.status_code == 201
     child = resp.json()
     assert child["name"] == "新建学生"
-    assert child["level"] == "L3"
+    assert child["level"] == "A2"
     assert "parent" in child
 
     # Cleanup

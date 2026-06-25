@@ -22,7 +22,7 @@ class ChildCreate(BaseModel):
     parent_phone: str = Field(..., min_length=5, max_length=20, description="Parent phone number")
     english_name: str | None = Field(None, max_length=50, description="English name")
     birth_date: date | None = Field(None, description="Birth date")
-    level: str | None = Field(None, pattern=r"^L[1-6]$", description="Level L1-L6")
+    level: str | None = Field(None, pattern=r"^(starter|A1|A2|B1|B2|C1|C2)$", description="CEFR级别: starter,A1,A2,B1,B2,C1,C2")
     totalhours: int = Field(0, ge=0, description="总课时 (children.totalhours)")
     usedhours: int = Field(0, ge=0, description="已用课时 (children.usedhours)")
 

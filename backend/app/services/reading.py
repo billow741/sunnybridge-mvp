@@ -80,8 +80,8 @@ async def create_material(body: MaterialCreate) -> MaterialOut:
     sb = get_supabase()
 
     data = {"title": body.title}
-    # DB NOT NULL + CHECK(L1-L6) — 草稿态默认 L1，后续可修改
-    data["level"] = body.level if body.level is not None else "L1"
+    # DB NOT NULL + CHECK(CEFR) — 草稿态默认 starter，后续可修改
+    data["level"] = body.level if body.level is not None else "starter"
     # DB NOT NULL — 草稿态用占位值
     data["category"] = body.category if body.category is not None else "__draft__"
     if body.cover_url is not None:

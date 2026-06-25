@@ -52,15 +52,15 @@ PARENT2_PASSWORD = "Parent2Pass123!"
 
 # Child
 CHILD_NAME = "测试学生"
-CHILD_LEVEL = "L2"
+CHILD_LEVEL = "A1"
 
 # Second child (for parent2)
 CHILD2_NAME = "另一个学生"
-CHILD2_LEVEL = "L1"
+CHILD2_LEVEL = "starter"
 
 # Reading material
 MATERIAL_TITLE = "测试阅读材料"
-MATERIAL_LEVEL = "L1"
+MATERIAL_LEVEL = "starter"
 MATERIAL_CATEGORY = "picture_book"
 MATERIAL_PDF_URL = "reading/test/test_material.pdf"
 

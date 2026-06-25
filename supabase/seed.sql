@@ -37,9 +37,9 @@ ON CONFLICT (phone) DO NOTHING;
 -- 4. 测试学生 × 3（关联家长）
 -- ============================================================
 INSERT INTO children (name, english_name, level, parent_id) VALUES
- ('张小明', 'Tom', 'L2', (SELECT id FROM users WHERE phone = '13900002001')),
- ('陈小花', 'Lily', 'L3', (SELECT id FROM users WHERE phone = '13900002002')),
- ('刘小天', 'Jack', 'L1', (SELECT id FROM users WHERE phone = '13900002003'))
+ ('张小明', 'Tom', 'A1', (SELECT id FROM users WHERE phone = '13900002001')),
+ ('陈小花', 'Lily', 'A2', (SELECT id FROM users WHERE phone = '13900002002')),
+ ('刘小天', 'Jack', 'starter', (SELECT id FROM users WHERE phone = '13900002003'))
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
@@ -117,9 +117,9 @@ ON CONFLICT (course_id) DO NOTHING;
 -- 8. 测试阅读材料 × 3
 -- ============================================================
 INSERT INTO reading_materials (title, level, category, pdf_url, page_count, sort_order, is_active) VALUES
- ('My First ABC Book', 'L1', 'picture_book', 'reading/L1/abc-book.pdf', 24, 1, true),
- ('Funny Stories Vol.1', 'L2', 'story', 'reading/L2/funny-stories.pdf', 16, 1, true),
- ('Short Texts for Beginners', 'L3', 'short_text', 'reading/L3/short-texts.pdf', 20, 1, true)
+ ('My First ABC Book', 'starter', 'picture_book', 'reading/starter/abc-book.pdf', 24, 1, true),
+ ('Funny Stories Vol.1', 'A1', 'story', 'reading/A1/funny-stories.pdf', 16, 1, true),
+ ('Short Texts for Beginners', 'A2', 'short_text', 'reading/A2/short-texts.pdf', 20, 1, true)
 ON CONFLICT DO NOTHING;
 
 -- ============================================================

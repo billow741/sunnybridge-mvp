@@ -105,7 +105,7 @@ class TestData {
     'name': '小明',
     'english_name': 'Tom',
     'birth_date': '2019-03-15',
-    'level': 'L3',
+    'level': 'A2',
     'parent_id': parentId,
     'created_at': '2026-01-01T00:00:00Z',
     'updated_at': '2026-06-15T10:00:00Z',
@@ -114,7 +114,7 @@ class TestData {
   // ── Display helpers ──
   static const childName = '小明';
   static const childEnglishName = 'Tom';
-  static const childLevel = 'L3';
+  static const childLevel = 'A2';
   static const teacherName = '王老师';
   static const pendingCourseDate = '2026-06-16';
 }
