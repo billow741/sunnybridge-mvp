@@ -30,6 +30,7 @@ from app.api.settlement import router as settlement_router
 from app.api.settings import router as settings_router
 from app.api.saved_filters import router as saved_filters_router
 from app.api.roles import router as roles_router
+from app.api.admin_users import router as admin_users_router
 from app.api.teacher import router as teacher_router
 from app.core.config import get_settings
 
@@ -119,6 +120,7 @@ app.include_router(search_router)
 app.include_router(settings_router)
 app.include_router(saved_filters_router)
 app.include_router(roles_router)
+app.include_router(admin_users_router)
 app.include_router(approval_router)
 
 # ---------------------------------------------------------------------------

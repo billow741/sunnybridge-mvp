@@ -409,7 +409,7 @@ async def admin_login(username: str, password: str) -> AdminLoginResponse:
 
     # 2. Find admin user by username
     sb = get_supabase()
-    result = sb.table("users").select("id, username, password_hash, role, role_name").eq("username", username).eq("role", "admin").limit(1).execute()
+    result = sb.table("users").select("id, username, password_hash, role, role_name, is_active").eq("username", username).eq("role", "admin").limit(1).execute()
 
     if not result.data:
         raise HTTPException(
@@ -422,6 +422,14 @@ async def admin_login(username: str, password: str) -> AdminLoginResponse:
         )
 
     user = result.data[0]
+
+    # 2b. 检查账号是否已禁用
+    if not user.get("is_active", True):
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "ACCOUNT_DISABLED", "message": "该账号已被禁用，请联系超级管理员"},
+        )
+
     stored_hash = user.get("password_hash", "")
 
     # 3. Verify password
