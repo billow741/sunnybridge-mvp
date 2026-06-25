@@ -38,7 +38,11 @@ async def submit_approval(target_type: str, target_id: UUID, requested_by: UUID)
     target_row = target.data[0]
     current_status = target_row.get("approval_status", "not_required")
     if current_status == "pending":
-        raise ValueError(f"该{target_type}已在审批中，不能重复提交")
+        # 检查是否有对应的审批记录，无则允许重新提交（孤立修复）
+        existing = sb.table("approvals").select("id").eq("target_type", target_type).eq("target_id", str(target_id)).eq("status", "pending").limit(1).execute()
+        if existing.data:
+            raise ValueError(f"该{target_type}已在审批中，不能重复提交")
+        # 孤立 pending：无审批记录，允许修复
     if current_status == "approved":
         raise ValueError(f"该{target_type}已审批通过，无需再次提交")
 

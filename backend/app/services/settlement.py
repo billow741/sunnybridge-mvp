@@ -62,7 +62,7 @@ async def calc_hours(teacher_id: UUID, period_start: str, period_end: str) -> Ho
     )
 
 
-async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
+async def create_settlement(body: SettlementCreateRequest, requested_by: UUID | None = None) -> SettlementOut:
     """创建结算记录。3-D: 根据 approval_enabled + threshold 自动设 approval_status。"""
     sb = get_supabase()
 
@@ -98,7 +98,7 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
         "hourly_rate": body.hourly_rate,
         "amount": amount,
         "status": "pending",
-        "approval_status": approval_status,
+        "approval_status": "not_required",  # 先写 not_required，审批创建后再更新为 pending
         "note": body.note,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -109,14 +109,23 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
 
     created = result.data[0]
 
-    # 3-D: 如果自动触发审批，自动创建 approval 记录
+    # 3-D: 如果自动触发审批，创建 approval 记录
     if approval_status == "pending":
         try:
-            from app.services.auth import get_current_user_id
-        except ImportError:
-            pass
-        # 获取当前操作人（从 create_settlement 调用无法直接获取 user_id，
-        # 所以自动触发的审批单用系统用户。前端也可手动提交。）
+            from app.services.approval import submit_approval as _submit
+            # 自动审批：用 requested_by 或系统用户
+            from uuid import UUID as _UUID
+            caller = requested_by or _UUID("00000000-0000-0000-0000-000000000000")
+            await _submit(
+                target_type="settlement",
+                target_id=_UUID(str(created["id"])),
+                requested_by=caller,
+            )
+        except Exception as e:
+            logger.warning(f"自动创建审批记录失败 (settlement={created['id']}): {e}")
+
+    # 审批成功后 created 缓存仍是 not_required，用实际生效的状态
+    final_approval = "pending" if approval_status == "pending" else "not_required"
 
     return SettlementOut(
         id=created["id"],
@@ -128,7 +137,7 @@ async def create_settlement(body: SettlementCreateRequest) -> SettlementOut:
         hourly_rate=created["hourly_rate"],
         amount=created["amount"],
         status=created.get("status", "pending"),
-        approval_status=created.get("approval_status", "not_required"),
+        approval_status=final_approval,
         paid_at=created.get("paid_at"),
         note=created.get("note"),
         created_at=created.get("created_at"),

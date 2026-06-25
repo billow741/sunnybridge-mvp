@@ -81,7 +81,7 @@ async def settlement_create(
 ) -> SettlementOut:
     """新建结算记录。Admin only。"""
     try:
-        return await create_settlement(body)
+        return await create_settlement(body, requested_by=_admin.id)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
