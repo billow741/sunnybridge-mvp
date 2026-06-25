@@ -38,7 +38,7 @@ class MaterialCreate(BaseModel):
 class MaterialUpdate(BaseModel):
     """Request body for PUT /reading/materials/{id}. All optional."""
     title: str | None = Field(None, min_length=1, max_length=200)
-    level: str | None = Field(None, pattern=r"^L[1-6]$")
+    level: str | None = Field(None, pattern=r"^(starter|A1|A2|B1|B2|C1|C2)$", description="CEFR级别")
     category: str | None = Field(None, min_length=1, max_length=50)
     cover_url: str | None = None
     sort_order: int | None = Field(None, ge=0)

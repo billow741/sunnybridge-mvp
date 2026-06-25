@@ -32,7 +32,7 @@ class ChildUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=50)
     english_name: str | None = Field(None, max_length=50)
     birth_date: date | None = None
-    level: str | None = Field(None, pattern=r"^L[1-6]$")
+    level: str | None = Field(None, pattern=r"^(starter|A1|A2|B1|B2|C1|C2)$", description="CEFR级别")
     parent_phone: str | None = Field(None, min_length=5, max_length=20,
                                        description="New parent phone (re-assigns parent)")
     totalhours: int | None = Field(None, ge=0, description="总课时")
