@@ -10,6 +10,8 @@ import {
   DashboardOutlined,
   LogoutOutlined,
   UserOutlined,
+  TeamOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import AppLogo from '@/components/AppLogo';
 import { useAuthStore } from '@/store/authStore';
@@ -20,6 +22,8 @@ const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
   { key: '/today', icon: <CalendarOutlined />, label: '今日课程' },
   { key: '/courses', icon: <HistoryOutlined />, label: '全部课程' },
+  { key: '/students', icon: <TeamOutlined />, label: '我的学员' },
+  { key: '/materials', icon: <BookOutlined />, label: '阅读材料' },
   { key: '/change-password', icon: <KeyOutlined />, label: '修改密码' },
 ];
 

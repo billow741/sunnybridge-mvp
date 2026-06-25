@@ -7,6 +7,8 @@ import Dashboard from './pages/dashboard';
 import CourseHistory from './pages/courses/CourseHistory';
 import TodayCourses from './pages/courses/TodayCourses';
 import CourseDetail from './pages/courses/CourseDetail';
+import MyStudents from './pages/students';
+import Materials from './pages/materials';
 
 export default function App() {
   return (
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="today" element={<TodayCourses />} />
           <Route path="courses" element={<CourseHistory />} />
           <Route path="courses/:id" element={<CourseDetail />} />
+          <Route path="students" element={<MyStudents />} />
+          <Route path="materials" element={<Materials />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

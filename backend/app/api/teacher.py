@@ -16,6 +16,7 @@ Endpoints:
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from app.core.deps import CurrentUser, require_role, require_permission
 from app.schemas.teacher import (
@@ -39,6 +40,56 @@ from app.services.teacher import (
 )
 
 router = APIRouter(prefix="/api/v1/teachers", tags=["teachers"])
+
+
+# ---------------------------------------------------------------------------
+# GET /teachers/me — 教师查自己的资料
+# ---------------------------------------------------------------------------
+
+@router.get("/me", response_model=TeacherOut)
+async def teacher_me(
+    user: CurrentUser = Depends(require_role("teacher")),
+) -> TeacherOut:
+    """当前登录教师查看自己的资料。"""
+    if not user.teacher_id:
+        raise HTTPException(400, detail="当前用户无教师身份")
+    teacher = get_teacher(user.teacher_id)
+    if teacher is None:
+        raise HTTPException(404, detail={"code": "TEACHER_NOT_FOUND", "message": "教师不存在"})
+    return teacher
+
+
+# ---------------------------------------------------------------------------
+# PUT /teachers/me — 教师修改自己的资料
+# ---------------------------------------------------------------------------
+
+class TeacherSelfUpdateRequest(BaseModel):
+    """教师自改：仅允许改昵称和手机号"""
+    name: str | None = Field(None, min_length=1, max_length=50, description="姓名")
+    phone: str | None = Field(None, min_length=5, max_length=20, description="手机号")
+
+@router.put("/me", response_model=TeacherOut)
+async def teacher_update_me(
+    body: TeacherSelfUpdateRequest,
+    user: CurrentUser = Depends(require_role("teacher")),
+) -> TeacherOut:
+    """当前登录教师修改自己的资料（仅姓名、手机号）。"""
+    if not user.teacher_id:
+        raise HTTPException(400, detail="当前用户无教师身份")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        # 无修改，直接返回当前数据
+        teacher = get_teacher(user.teacher_id)
+        if teacher is None:
+            raise HTTPException(404, detail={"code": "TEACHER_NOT_FOUND", "message": "教师不存在"})
+        return teacher
+    try:
+        result = update_teacher(user.teacher_id, **updates)
+    except ValueError as e:
+        raise HTTPException(409, detail={"code": "TEACHER_PHONE_DUPLICATE", "message": str(e)})
+    if result is None:
+        raise HTTPException(404, detail={"code": "TEACHER_NOT_FOUND", "message": "教师不存在"})
+    return result
 
 
 # ---------------------------------------------------------------------------
