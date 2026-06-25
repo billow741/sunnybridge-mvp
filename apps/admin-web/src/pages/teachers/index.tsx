@@ -160,7 +160,7 @@ export default function Teachers() {
 
   return (
     <div>
-      <FilterBar>
+      <FilterBar page="teachers" currentFilters={{ search }}>
         <Input prefix={<SearchOutlined />} placeholder="搜索教师姓名/手机号"
           size="small" style={{ width: 220 }}
           value={search} onChange={e => setSearch(e.target.value)} allowClear

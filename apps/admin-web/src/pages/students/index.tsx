@@ -320,7 +320,7 @@ export default function Students() {
                     setSchedulePrefill({ child_id: selected.id });
                     setScheduleOpen(true);
                   }}>排课</Button>
-                <Button size=\"small\" onClick={() => {
+                <Button size="small" onClick={() => {
                   setEditingStudent(selected);
                   form.setFieldsValue({
                     ...selected,

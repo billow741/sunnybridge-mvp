@@ -84,16 +84,16 @@ export default function Reconciliation() {
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={12}>
           <Card className="sb-card">
-            <Statistic title="累计收款 (CNY)" value={data.grand_payment} prefix="¥"
+            <Statistic title="累计收款 (CNY)" value={data.grand_payment}
               valueStyle={{ color: '#52c41a', fontWeight: 700 }}
-              prefix={<PayCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />} />
+              prefix={<><PayCircleOutlined style={{ color: '#52c41a', marginRight: 4 }} />¥</>} />
           </Card>
         </Col>
         <Col span={12}>
           <Card className="sb-card">
-            <Statistic title="累计结算 (PHP)" value={data.grand_settlement} prefix="₱"
+            <Statistic title="累计结算 (PHP)" value={data.grand_settlement}
               valueStyle={{ color: '#F4A230', fontWeight: 700 }}
-              prefix={<TransactionOutlined style={{ color: '#F4A230', marginRight: 4 }} />} />
+              prefix={<><TransactionOutlined style={{ color: '#F4A230', marginRight: 4 }} />₱</>} />
           </Card>
         </Col>
       </Row>

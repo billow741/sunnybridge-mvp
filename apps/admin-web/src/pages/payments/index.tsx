@@ -344,7 +344,7 @@ export default function PaymentsPage() {
       </Row>
 
       {/* ── 工具栏 (sticky) ── */}
-      <FilterBar>
+      <FilterBar page="payments" currentFilters={{ search: searchText, month: filterMonth }}>
         <Input placeholder="搜索学员/备注/收据号" prefix={<SearchOutlined />} style={{ width: 200 }}
           value={searchText} onChange={e => setSearchText(e.target.value)} allowClear />
         <DatePicker picker="month" placeholder="月份" style={{ width: 130 }}
