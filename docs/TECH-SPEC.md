@@ -18,7 +18,7 @@
 | **缓存/会话** | Redis | 7+ | ✅ 本期 | 验证码限流 + JWT 黑名单 + 热数据缓存 |
 | **短信** | 腾讯云 SMS | — | ✅ 本期 | 仅家长端验证码使用；教师端不使用短信 |
 | **PDF 渲染** | flutter_pdfview / pdfrx | — | ✅ 本期 | 原生渲染，支持翻页+缩放+页码回调 |
-| **推送通知** | — | — | 🔮 后续 | MVP 不做推送 |
+| **推送通知** | Messenger (教师) + 微信 (家长) + SMS (兜底) | — | 🔜 3-E | 教师→FB Messenger，家长→微信服务号模板消息，SMS紧急兜底 |
 | **CI/CD** | GitHub Actions | — | ✅ 本期 | Flutter build + FastAPI deploy |
 | **App 分发** | TestFlight + Firebase App Distribution | — | ✅ 本期 | 内测阶段够用 |
 | **监控** | Sentry | — | ✅ 本期 | Flutter + Python 统一错误追踪 |
@@ -775,7 +775,7 @@ Authorization: Bearer <token>
 
 | 债务 | 本期妥协 | 后续方案 |
 |------|----------|----------|
-| 无推送通知 | 用户需主动打开 App | 接入极光/FCM |
+| 无推送通知 | 用户需主动打开 App | ✅ 3-E 已规划：教师→Messenger，家长→微信，SMS兜底 |
 | 无离线缓存 | 无网络时 App 不可用 | 本地 SQLite + 同步队列 |
 | 无自动测试 | ~~手动测试为主~~ pytest 集成测试已完成(TEST-01: 69 tests) | Flutter integration_test + 扩展 pytest 覆盖 |
 | 硬编码分类 | level/category 写死在代码 | 后台可配置标签系统 |
