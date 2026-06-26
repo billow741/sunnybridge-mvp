@@ -11,8 +11,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import get_current_user, require_role, require_permission
+from app.core.database import get_supabase
 from app.schemas.auth import CurrentUser
-from app.schemas.payment import PaymentCreate, PaymentOut, PaginatedPayments, PaymentUpdate
+from app.schemas.payment import PaymentCreate, PaymentOut, PaginatedPayments, PaymentUpdate, PaymentStats
 from app.services.payment import (
     create_payment,
     delete_payment,
@@ -21,6 +22,23 @@ from app.services.payment import (
 )
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
+
+
+@router.get("/mine", response_model=PaginatedPayments)
+async def my_payments_endpoint(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    user: CurrentUser = Depends(require_role("parent")),
+) -> PaginatedPayments:
+    """Parent views own child's payments. Parent only."""
+    sb = get_supabase()
+    # 查家长的孩子
+    child_res = sb.table("children").select("id").eq("parent_id", str(user.id)).limit(1).execute()
+    if not child_res.data:
+        from decimal import Decimal as D
+        return PaginatedPayments(items=[], total=0, page=page, page_size=page_size, stats=PaymentStats(total_amount=D("0"), month_amount=D("0"), count=0))
+    child_id = str(child_res.data[0]["id"])
+    return await list_payments(page=page, page_size=page_size, child_id=child_id)
 
 
 @router.get("", response_model=PaginatedPayments)

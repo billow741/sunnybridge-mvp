@@ -1,46 +1,198 @@
-import { useEffect, useState } from 'react';
-import { Card, List, Tag, Spin, Select } from 'antd';
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  Select,
+  Button,
+  Spin,
+  Progress,
+  Typography,
+  Empty,
+  message,
+  Space,
+  Tag,
+} from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
+import { useAuthStore } from '@/store/authStore';
+
+const { Title } = Typography;
+
+interface ReadingMaterial {
+  id: string;
+  title: string;
+  cefr_level: string;
+  suitable_info: string;
+  initial: string;
+}
+
+interface ReadingProgressItem {
+  material_id: string;
+  status: string; // 'in_progress' | 'completed'
+  progress_percentage: number;
+}
+
+interface MergedItem extends ReadingMaterial {
+  progress: number;
+  status: string;
+}
+
+const CEFR_LEVELS = ['starter', 'A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export default function ReadingList() {
-  const [materials, setMaterials] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [levelFilter, setLevelFilter] = useState<string>();
+  const { user } = useAuthStore();
+  const childId = user?.childId || user?.child_id;
+
+  const [loading, setLoading] = useState(false);
+  const [materials, setMaterials] = useState<MergedItem[]>([]);
+  const [cefrFilter, setCefrFilter] = useState<string | undefined>(undefined);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    if (!childId) return;
+    setLoading(true);
+    try {
+      const [materialsRes, progressRes] = await Promise.all([
+        client.get('/reading/materials', {
+          params: cefrFilter ? { cefr_level: cefrFilter } : {},
+        }),
+        client.get('/reading/progress', { params: { child_id: String(childId) } }),
+      ]);
+
+      const matItems: ReadingMaterial[] = materialsRes.data?.items || [];
+      const progItems: ReadingProgressItem[] = progressRes.data?.items || [];
+      const progMap = new Map(progItems.map((p) => [p.material_id, p]));
+
+      const merged: MergedItem[] = matItems.map((m) => {
+        const p = progMap.get(m.id);
+        return {
+          ...m,
+          progress: p?.progress_percentage || 0,
+          status: p?.status || 'not_started',
+        };
+      });
+
+      setMaterials(merged);
+    } catch (err) {
+      message.error(extractError(err, '获取阅读材料失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await client.get('/reading-materials', { params: { page: 1, page_size: 200 } });
-        setMaterials(Array.isArray(data) ? data : (data.items || []));
-      } catch (err) { console.error(extractError(err)); }
-      finally { setLoading(false); }
-    })();
-  }, []);
+    fetchData();
+  }, [childId, cefrFilter]);
 
-  if (loading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
-
-  const levels = [...new Set(materials.map((m: any) => m.level).filter(Boolean))];
-  const filtered = levelFilter ? materials.filter(m => m.level === levelFilter) : materials;
+  const handleComplete = async (materialId: string) => {
+    if (!childId) return;
+    setCompletingId(materialId);
+    try {
+      await client.put('/reading/progress', {
+        child_id: childId,
+        material_id: materialId,
+        status: 'completed',
+      });
+      message.success('标记完成！');
+      fetchData();
+    } catch (err) {
+      message.error(extractError(err, '标记失败'));
+    } finally {
+      setCompletingId(null);
+    }
+  };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div style={{ fontWeight: 600, fontSize: 18 }}>阅读资源</div>
-        {levels.length > 0 && <Select placeholder="筛选级别" style={{ width: 120 }} allowClear onChange={setLevelFilter}
-          options={levels.map(l => ({ value: l, label: l }))} />}
+    <div style={{ padding: 24 }}>
+      {/* 顶部标题 + 筛选 */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 24,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <Title level={3} style={{ margin: 0 }}>
+          阅读材料
+        </Title>
+        <Select
+          placeholder="筛选 CEFR 级别"
+          allowClear
+          style={{ width: 180 }}
+          value={cefrFilter}
+          onChange={setCefrFilter}
+          options={CEFR_LEVELS.map((l) => ({ label: l, value: l }))}
+        />
       </div>
-      <List grid={{ gutter: 12, xs: 1, sm: 2, md: 3 }} dataSource={filtered} renderItem={(m: any) => (
-        <List.Item>
-          <Card hoverable size="small" style={{ borderRadius: 10 }}
-            cover={m.cover_url ? <img src={m.cover_url} alt={m.title} style={{ height: 120, objectFit: 'cover', borderRadius: '10px 10px 0 0' }} /> : undefined}
-            actions={m.pdf_url ? [<a href={m.pdf_url} target="_blank" rel="noopener" style={{ fontSize: 13 }}>查看PDF</a>] : undefined}>
-            <Card.Meta
-              title={<span style={{ fontSize: 14 }}>{m.title}</span>}
-              description={<>{m.level && <Tag color="blue">{m.level}</Tag>}{m.category && <Tag>{m.category}</Tag>}{m.page_count && <span style={{ color: '#94a3b8', fontSize: 12 }}>{m.page_count}页</span>}</>}
-            />
-          </Card>
-        </List.Item>
-      )} />
+
+      {/* 卡片列表 */}
+      <Spin spinning={loading}>
+        {materials.length === 0 ? (
+          <Empty description="暂无阅读材料" />
+        ) : (
+          <Space direction="vertical" size={16} style={{ display: 'flex' }}>
+            {materials.map((item) => (
+              <Card key={item.id} bodyStyle={{ padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  {/* 字母方块 */}
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      backgroundColor: '#F4A230',
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: 20,
+                      fontWeight: 'bold',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.initial || item.title.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* 文字信息 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 4 }}>
+                      {item.title}
+                    </div>
+                    <div style={{ color: '#666', fontSize: 13, marginBottom: 8 }}>
+                      适合级别: {item.cefr_level} · {item.suitable_info}
+                    </div>
+                    <Progress
+                      percent={item.progress}
+                      strokeColor="#F4A230"
+                      trailColor="#FFF3E0"
+                      size="small"
+                      showInfo
+                    />
+                  </div>
+
+                  {/* 标记完成按钮 */}
+                  <div style={{ flexShrink: 0 }}>
+                    {item.status === 'completed' ? (
+                      <Tag color="success">已完成</Tag>
+                    ) : (
+                      <Button
+                        type="primary"
+                        icon={<CheckOutlined />}
+                        loading={completingId === item.id}
+                        onClick={() => handleComplete(item.id)}
+                      >
+                        标记完成
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </Space>
+        )}
+      </Spin>
     </div>
   );
 }
