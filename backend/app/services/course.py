@@ -396,10 +396,10 @@ async def get_today_courses_parent(user_id: UUID) -> list[CourseOut]:
 
     course_ids = [row["course_id"] for row in cs.data]
 
-    # Get today's courses for those IDs
+    # Get today's courses for those IDs (exclude cancelled)
     courses = []
     for cid in course_ids:
-        c = sb.table("courses").select("*").eq("id", cid).eq("date", today).limit(1).execute()
+        c = sb.table("courses").select("*").eq("id", cid).eq("date", today).neq("status", "cancelled").limit(1).execute()
         if c.data:
             courses.append(await _enrich_course(c.data[0]))
 
@@ -413,7 +413,7 @@ async def get_today_courses_teacher(teacher_id: UUID) -> list[CourseOut]:
     sb = get_supabase()
     today = date.today().isoformat()
 
-    result = sb.table("courses").select("*").eq("teacher_id", str(teacher_id)).eq("date", today).order("start_time").execute()
+    result = sb.table("courses").select("*").eq("teacher_id", str(teacher_id)).eq("date", today).neq("status", "cancelled").order("start_time").execute()
 
     courses = []
     for row in result.data:
@@ -456,8 +456,8 @@ async def get_history_courses_parent(
 
     course_ids = [row["course_id"] for row in cs.data]
 
-    # Get courses in one batch (IN query)
-    all_courses_res = sb.table("courses").select("*").in_("id", course_ids).order("date", desc=True).order("start_time", desc=True).execute()
+    # Get courses in one batch (IN query), exclude cancelled
+    all_courses_res = sb.table("courses").select("*").in_("id", course_ids).neq("status", "cancelled").order("date", desc=True).order("start_time", desc=True).execute()
     all_courses = sorted(all_courses_res.data, key=lambda x: (x["date"], x.get("start_time", "")), reverse=True)
 
     total = len(all_courses)
@@ -513,9 +513,9 @@ async def get_all_courses(
 
     query = sb.table("courses").select("*", count="exact")
 
-    # Teacher isolation: only show own courses
+    # Teacher isolation: only show own courses + hide cancelled
     if teacher_id:
-        query = query.eq("teacher_id", teacher_id)
+        query = query.eq("teacher_id", teacher_id).neq("status", "cancelled")
 
     # Status filter
     if course_status:
