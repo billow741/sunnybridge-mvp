@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  Card, Row, Col, Statistic, Tag, Spin, Input, Button, Table,
+  Card, Row, Col, Statistic, Tag, Spin, Input, Button,
   Space, Typography, Dropdown, Badge, Empty, Modal, Form,
 } from 'antd';
 import {
@@ -8,6 +8,7 @@ import {
   UserOutlined, BookOutlined, SearchOutlined, FilterOutlined,
   ArrowUpOutlined, ArrowDownOutlined, ExclamationCircleOutlined,
   VideoCameraOutlined, LinkOutlined, EditOutlined, HistoryOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import client, { extractError } from '@/api/client';
@@ -22,7 +23,6 @@ const STATUS_TAG: Record<string, { bg: string; text: string; label: string }> = 
   in_progress: { bg: '#eff6ff', text: '#1d4ed8', label: '进行中' },
   completed:   { bg: '#f0fdf4', text: '#16a34a', label: '已完成' },
   absent:      { bg: '#fef2f2', text: '#dc2626', label: '学生缺席' },
-  cancelled:   { bg: '#f9fafb', text: '#6b7280', label: '已取消' },
 };
 
 /* ── 统计卡片 ── */
@@ -80,11 +80,7 @@ function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
 }
 
 /* ── 今日课程: 卡片网格 ── */
-function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
-  courses: any[];
-  onOpenFeedback: (idx: number) => void;
-  onEditLink: (idx: number) => void;
-}) {
+function TodayCardGrid({ courses }: { courses: any[] }) {
   const navigate = useNavigate();
   const { courseSearchQuery, setCourseSearchQuery, courseStatusFilter, setCourseStatusFilter } = useDashboardStore();
 
@@ -146,7 +142,7 @@ function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-          {filtered.map((c: any, idx: number) => {
+          {filtered.map((c: any) => {
             const hasFeedback = !!c.feedback;
             const hasLink = !!c.meeting_link;
             const statusKey = hasFeedback ? 'completed' : (c.status || 'scheduled');
@@ -170,7 +166,6 @@ function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'none'; }}
               >
-                {/* 时间 + 状态 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ClockCircleOutlined style={{ color: '#9ca3af', fontSize: 14 }} />
@@ -180,8 +175,6 @@ function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
                     {s.label}
                   </span>
                 </div>
-
-                {/* 学生 + 科目 */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <UserOutlined style={{ color: '#9ca3af', fontSize: 14 }} />
@@ -192,8 +185,6 @@ function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
                     <span style={{ color: '#6b7280', fontSize: 14 }}>English</span>
                   </div>
                 </div>
-
-                {/* 会议链接指示 */}
                 <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   {hasLink ? (
                     <span style={{ fontSize: 12, color: '#722ed1', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -217,28 +208,51 @@ function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
   );
 }
 
-/* ── 最近课程: 表格 ── */
-function RecentCoursesTable({ courses }: { courses: any[] }) {
+/* ── 课程行 ── */
+function CourseRow({ c, onClick }: { c: any; onClick: () => void }) {
+  const hasFeedback = !!c.feedback;
+  const statusKey = hasFeedback ? 'completed' : (c.status || 'scheduled');
+  const s = STATUS_TAG[statusKey] || STATUS_TAG.scheduled;
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '10px 0', borderBottom: '1px solid #f3f4f6', cursor: 'pointer',
+        transition: 'background 0.15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#fafafa'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: hasFeedback ? '#f0fdf4' : '#faf5ff',
+        }}>
+          <ClockCircleOutlined style={{ color: hasFeedback ? '#16a34a' : '#722ed1', fontSize: 14 }} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 14, color: '#1f2937', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {c.students?.map((ch: any) => ch.name).join(', ') || '-'}
+          </div>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
+            {c.date} · {c.start_time?.slice(0,5)}-{c.end_time?.slice(0,5)}
+          </div>
+        </div>
+      </div>
+      <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 12, background: s.bg, color: s.text, fontWeight: 500, flexShrink: 0 }}>
+        {s.label}
+      </span>
+    </div>
+  );
+}
+
+/* ── 最近课程: 左右两栏 ── */
+function RecentCoursesSplit({ courses }: { courses: any[] }) {
   const navigate = useNavigate();
-  const columns = [
-    { title: '日期', dataIndex: 'date', key: 'date', width: 110 },
-    { title: '学生', key: 'students', render: (_: any, c: any) => c.students?.map((ch: any) => ch.name).join(', ') || '-' },
-    { title: '时间', key: 'time', width: 110, render: (_: any, c: any) => `${c.start_time?.slice(0,5)}-${c.end_time?.slice(0,5)}` },
-    { title: '课时', dataIndex: 'hours', key: 'hours', width: 60, render: (v: number) => v ?? 1 },
-    {
-      title: '状态', key: 'status', width: 90,
-      render: (_: any, c: any) => {
-        const s = STATUS_TAG[c.feedback ? 'completed' : (c.status || 'scheduled')] || STATUS_TAG.scheduled;
-        return <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 12, background: s.bg, color: s.text }}>{s.label}</span>;
-      },
-    },
-    {
-      title: '反馈', key: 'feedback', width: 70,
-      render: (_: any, c: any) => (
-        <Button type="link" size="small" onClick={() => navigate(`/courses/${c.id}`)}>查看</Button>
-      ),
-    },
-  ];
+  const upcoming = courses.filter((c: any) => !c.feedback);
+  const completed = courses.filter((c: any) => !!c.feedback);
 
   return (
     <section>
@@ -249,16 +263,58 @@ function RecentCoursesTable({ courses }: { courses: any[] }) {
         </div>
         <Button type="link" onClick={() => navigate('/courses')} style={{ padding: 0 }}>查看全部 →</Button>
       </div>
-      <Card bodyStyle={{ padding: 0 }} style={{ borderRadius: 12, overflow: 'hidden' }}>
-        <Table
-          dataSource={courses.slice(0, 10)}
-          columns={columns}
-          rowKey="id"
-          size="small"
-          pagination={false}
-          onRow={(r) => ({ onClick: () => navigate(`/courses/${r.id}`), style: { cursor: 'pointer' } })}
-        />
-      </Card>
+
+      <Row gutter={16}>
+        {/* 左栏: 即将上课 */}
+        <Col xs={24} md={12}>
+          <div style={{
+            background: '#fff', borderRadius: 12,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            borderTop: '3px solid #722ed1',
+            overflow: 'hidden',
+          }}>
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f3f4f6' }}>
+              <ThunderboltOutlined style={{ color: '#722ed1', fontSize: 16 }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#1f2937' }}>即将上课</span>
+              <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4 }}>({upcoming.length})</span>
+            </div>
+            <div style={{ padding: '0 16px', maxHeight: 320, overflowY: 'auto' }}>
+              {upcoming.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: '#d1d5db', fontSize: 13 }}>暂无即将上课</div>
+              ) : (
+                upcoming.slice(0, 8).map((c: any) => (
+                  <CourseRow key={c.id} c={c} onClick={() => navigate(`/courses/${c.id}`)} />
+                ))
+              )}
+            </div>
+          </div>
+        </Col>
+
+        {/* 右栏: 已完成 */}
+        <Col xs={24} md={12}>
+          <div style={{
+            background: '#fff', borderRadius: 12,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            borderTop: '3px solid #22c55e',
+            overflow: 'hidden',
+          }}>
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f3f4f6' }}>
+              <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 16 }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#1f2937' }}>已完成</span>
+              <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4 }}>({completed.length})</span>
+            </div>
+            <div style={{ padding: '0 16px', maxHeight: 320, overflowY: 'auto' }}>
+              {completed.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: '#d1d5db', fontSize: 13 }}>暂无已完成</div>
+              ) : (
+                completed.slice(0, 8).map((c: any) => (
+                  <CourseRow key={c.id} c={c} onClick={() => navigate(`/courses/${c.id}`)} />
+                ))
+              )}
+            </div>
+          </div>
+        </Col>
+      </Row>
     </section>
   );
 }
@@ -270,16 +326,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
   const navigate = useNavigate();
-
-  // 反馈弹窗
-  const [fbModal, setFbModal] = useState<{ open: boolean; courseIndex: number }>({ open: false, courseIndex: -1 });
-  const [fbForm] = Form.useForm();
-  const [fbSubmitting, setFbSubmitting] = useState(false);
-
-  // 会议链接弹窗
-  const [linkModal, setLinkModal] = useState<{ open: boolean; courseIndex: number; value: string; saving: boolean }>({
-    open: false, courseIndex: -1, value: '', saving: false,
-  });
 
   useEffect(() => {
     (async () => {
@@ -332,11 +378,11 @@ export default function Dashboard() {
 
       {/* 今日课程卡片 */}
       <div style={{ marginBottom: 28 }}>
-        <TodayCardGrid courses={todayCourses} onOpenFeedback={() => {}} onEditLink={() => {}} />
+        <TodayCardGrid courses={todayCourses} />
       </div>
 
-      {/* 最近课程表格 */}
-      <RecentCoursesTable courses={allCourses} />
+      {/* 最近课程: 即将上课 + 已完成 并排 */}
+      <RecentCoursesSplit courses={allCourses} />
     </div>
   );
 }
