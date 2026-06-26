@@ -4,7 +4,7 @@ import { Tag, Form, Input, Button, message, Spin, Alert, Card } from 'antd';
 import {
   ArrowLeftOutlined, VideoCameraOutlined, ClockCircleOutlined,
   UserOutlined, BookOutlined, LinkOutlined, CheckCircleOutlined,
-  CalendarOutlined,
+  CalendarOutlined, EditOutlined,
 } from '@ant-design/icons';
 import client, { extractError } from '@/api/client';
 
@@ -26,6 +26,47 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
+/* 反馈只读显示（深色可读） */
+function FeedbackView({ feedback, onEdit }: { feedback: any; onEdit: () => void }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>上课内容</div>
+        <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+          {feedback.content || '-'}
+        </div>
+      </div>
+      {feedback.homework && (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>作业布置</div>
+          <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+            {feedback.homework}
+          </div>
+        </div>
+      )}
+      {feedback.notes && (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>备注</div>
+          <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+            {feedback.notes}
+          </div>
+        </div>
+      )}
+      <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+        <Button
+          type="primary"
+          ghost
+          icon={<EditOutlined />}
+          onClick={onEdit}
+          style={{ borderRadius: 8, borderColor: '#722ed1', color: '#722ed1', height: 36, fontWeight: 500 }}
+        >
+          编辑反馈
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -34,6 +75,8 @@ export default function CourseDetail() {
   const [fbForm] = Form.useForm();
   const [meetingLink, setMeetingLink] = useState('');
   const [savingLink, setSavingLink] = useState(false);
+  const [editingFeedback, setEditingFeedback] = useState(false);
+  const [fbSubmitting, setFbSubmitting] = useState(false);
 
   const load = async () => {
     try {
@@ -58,11 +101,19 @@ export default function CourseDetail() {
 
   const submitFeedback = async (values: any) => {
     try {
-      if (course.feedback) { await client.put(`/courses/${id}/feedback`, values); }
-      else { await client.post(`/courses/${id}/feedback`, values); }
-      message.success('反馈已保存，课时已自动扣减');
+      setFbSubmitting(true);
+      if (course.feedback) {
+        // 编辑反馈 → PUT，不扣课时
+        await client.put(`/courses/${id}/feedback`, values);
+        message.success('反馈已更新');
+      } else {
+        // 首次提交 → POST，自动扣课时
+        await client.post(`/courses/${id}/feedback`, values);
+        message.success('反馈已保存，课时已自动扣减');
+      }
+      setEditingFeedback(false);
       load();
-    } catch (err) { message.error(extractError(err)); }
+    } catch (err) { message.error(extractError(err)); } finally { setFbSubmitting(false); }
   };
 
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
@@ -89,7 +140,6 @@ export default function CourseDetail() {
         padding: 24, marginBottom: 16,
         borderTop: `4px solid ${isCompleted ? '#22c55e' : '#722ed1'}`,
       }}>
-        {/* 顶部时间+状态 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ClockCircleOutlined style={{ color: '#722ed1', fontSize: 18 }} />
@@ -120,7 +170,7 @@ export default function CourseDetail() {
         {isCompleted ? (
           <div style={{
             background: '#f9fafb', borderRadius: 8, padding: '12px 14px',
-            fontSize: 13, color: '#6b7280',
+            fontSize: 13, color: '#374151',
           }}>
             {course.meeting_link
               ? <span><LinkOutlined style={{ marginRight: 6 }} />{course.meeting_link}</span>
@@ -165,27 +215,65 @@ export default function CourseDetail() {
         <div style={{ fontSize: 15, fontWeight: 600, color: '#1f2937', marginBottom: 14 }}>
           课程反馈
         </div>
-        {isCompleted && !course.feedback?.content ? (
-          <Alert type="info" message="课程已完成" style={{ borderRadius: 8 }} />
+
+        {/* 有反馈 + 非编辑模式 → 只读深色显示 + 编辑按钮 */}
+        {course.feedback && !editingFeedback ? (
+          <FeedbackView feedback={course.feedback} onEdit={() => setEditingFeedback(true)} />
+        ) : course.feedback && editingFeedback ? (
+          /* 编辑模式 → 表单可编辑，PUT保存不扣课时 */
+          <>
+            <Alert
+              type="info"
+              message="编辑反馈不会额外扣减课时"
+              style={{ marginBottom: 14, borderRadius: 8 }}
+            />
+            <Form form={fbForm} layout="vertical" onFinish={submitFeedback}>
+              <Form.Item name="content" label="上课内容" rules={[{ required: true, message: '请填写上课内容' }]}>
+                <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8 }} />
+              </Form.Item>
+              <Form.Item name="homework" label="作业布置">
+                <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8 }} />
+              </Form.Item>
+              <Form.Item name="notes" label="备注">
+                <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8 }} />
+              </Form.Item>
+              <Form.Item style={{ marginBottom: 0 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button onClick={() => { setEditingFeedback(false); fbForm.setFieldsValue(course.feedback); }} style={{ borderRadius: 8 }}>
+                    取消
+                  </Button>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    loading={fbSubmitting}
+                    style={{ background: '#722ed1', borderColor: '#722ed1', borderRadius: 8, height: 38, fontWeight: 600 }}
+                  >
+                    保存修改
+                  </Button>
+                </div>
+              </Form.Item>
+            </Form>
+          </>
         ) : (
+          /* 无反馈 → 提交表单（POST，扣课时） */
           <Form form={fbForm} layout="vertical" onFinish={submitFeedback}>
             <Form.Item name="content" label="上课内容" rules={[{ required: true, message: '请填写上课内容' }]}>
-              <Input.TextArea rows={3} placeholder="描述本次课程内容..." disabled={isCompleted} style={{ borderRadius: 8 }} />
+              <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8 }} />
             </Form.Item>
             <Form.Item name="homework" label="作业布置">
-              <Input.TextArea rows={2} placeholder="布置的作业..." disabled={isCompleted} style={{ borderRadius: 8 }} />
+              <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8 }} />
             </Form.Item>
             <Form.Item name="notes" label="备注">
-              <Input.TextArea rows={2} placeholder="其他备注..." disabled={isCompleted} style={{ borderRadius: 8 }} />
+              <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8 }} />
             </Form.Item>
             <Form.Item style={{ marginBottom: 0 }}>
               <Button
                 type="primary"
                 htmlType="submit"
-                disabled={isCompleted}
+                loading={fbSubmitting}
                 style={{ background: '#722ed1', borderColor: '#722ed1', borderRadius: 8, height: 38, fontWeight: 600 }}
               >
-                {course.feedback ? '更新反馈' : '提交反馈（自动扣课时）'}
+                提交反馈（自动扣课时）
               </Button>
             </Form.Item>
           </Form>
