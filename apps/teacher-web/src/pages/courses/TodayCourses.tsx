@@ -41,7 +41,7 @@ export default function TodayCourses() {
     try {
       const [todayRes, allRes] = await Promise.all([
         client.get('/courses/today').catch(() => ({ data: [] })),
-        client.get('/courses?limit=200').catch(() => ({ data: { items: [] } })),
+        client.get('/courses/all/teacher', { params: { page_size: 200 } }).catch(() => ({ data: { items: [] } })),
       ]);
       const todayArr = Array.isArray(todayRes.data) ? todayRes.data : (todayRes.data.items || []);
       const allArr = allRes.data?.items || (Array.isArray(allRes.data) ? allRes.data : []);

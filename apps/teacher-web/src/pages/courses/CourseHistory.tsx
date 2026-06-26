@@ -25,7 +25,7 @@ export default function CourseHistory() {
   const load = async (p = page) => {
     setLoading(true);
     try {
-      const { data } = await client.get('/courses/all', { params: { page: p, page_size: 20 } });
+      const { data } = await client.get('/courses/all/teacher', { params: { page: p, page_size: 20 } });
       setCourses(data.items || []);
       setTotal(data.total || 0);
     } catch (err) { console.error(extractError(err)); } finally { setLoading(false); }
