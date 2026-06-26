@@ -11,6 +11,7 @@ Per TECH-SPEC 5.2:
 """
 
 from uuid import UUID
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -24,6 +25,7 @@ from app.schemas.course import (
     PaginatedCourses,
     ConflictCheckRequest,
     ConflictCheckResponse,
+    MeetingLinkUpdate,
 )
 from app.services.course import (
     create_course,
@@ -130,6 +132,34 @@ async def teacher_my_students(
 # ---------------------------------------------------------------------------
 # Role-scoped list views (MUST be before /{course_id} to avoid path conflicts)
 # ---------------------------------------------------------------------------
+
+
+# ── Teacher: 更新课程会议链接 ──
+@router.put("/{course_id}/meeting-link", response_model=CourseDetail)
+async def update_meeting_link_endpoint(
+    course_id: UUID,
+    body: MeetingLinkUpdate,
+    user: CurrentUser = Depends(require_role("teacher")),
+) -> CourseDetail:
+    """教师更新自己课程的腾讯会议链接."""
+    sb = get_supabase()
+    tid = str(user.teacher_id).strip("{}") if user.teacher_id else ""
+    if not tid:
+        raise HTTPException(403, detail="无效的教师身份")
+
+    # 验证课程属于该教师
+    course = sb.table("courses").select("id, teacher_id").eq("id", str(course_id)).limit(1).execute()
+    if not course.data:
+        raise HTTPException(404, detail={"code": "COURSE_NOT_FOUND", "message": "课程不存在"})
+    if course.data[0]["teacher_id"] != tid:
+        raise HTTPException(403, detail={"code": "NOT_COURSE_TEACHER", "message": "只能更新自己的课程"})
+
+    sb.table("courses").update({
+        "meeting_link": body.meeting_link,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }).eq("id", str(course_id)).execute()
+
+    return await get_course_detail(course_id, user_id=str(user.id), role=user.role)
 
 
 # ── Teacher/Parent-scoped: 保留 get_current_user + 属主过滤 ──

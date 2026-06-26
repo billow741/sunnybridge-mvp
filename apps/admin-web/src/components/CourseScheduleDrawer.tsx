@@ -148,7 +148,7 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
       const childIds = editingCourse.students?.map(s => s.id) || [];
       form.setFieldsValue({
         teacher_id: editingCourse.teacher_id,
-        child_ids: childIds,
+        child_ids: childIds[0] || undefined,
         date: dayjs(editingCourse.date),
         start_time: stDayjs,
         duration,
@@ -161,7 +161,7 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
       form.resetFields();
       const init: Record<string, any> = { duration: 60, hours: 1 };
       if (prefill?.teacher_id) init.teacher_id = prefill.teacher_id;
-      if (prefill?.child_id) init.child_ids = [prefill.child_id];
+      if (prefill?.child_id) init.child_ids = prefill.child_id;
       if (prefill?.date) init.date = dayjs(prefill.date);
       if (prefill?.start_time) {
         init.start_time = dayjs(prefill.start_time, 'HH:mm');
@@ -187,7 +187,7 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
       const duration = values.duration ?? 60;
       const endTime = startTime ? calcEndTime(values.start_time, duration) : '';
       const teacherId = values.teacher_id;
-      const childIds = values.child_ids || [];
+      const childIds = values.child_ids ? [values.child_ids] : [];
 
       if (!date || !startTime || !endTime || (!teacherId && childIds.length === 0)) {
         setConflicts([]);
@@ -235,7 +235,7 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
         start_time: values.start_time?.format('HH:mm'),
         end_time: endTime,
         teacher_id: values.teacher_id,
-        child_ids: values.child_ids || [],
+        child_ids: values.child_ids ? [values.child_ids] : [],
         hours: durationToHours(duration),
         meeting_link: values.meeting_link || null,
         status: editingCourse?.status,
@@ -434,11 +434,9 @@ export default function CourseScheduleDrawer({ open, onClose, editingCourse, pre
           <Col span={12}>
             <Form.Item name="child_ids" label="学员" rules={[{ required: true, message: '请选择学员' }]}>
               <Select
-                mode="multiple"
                 placeholder="选择学员"
                 showSearch
                 optionFilterProp="label"
-                maxTagCount={3}
                 options={studentOptions.map(s => ({
                   value: s.id,
                   label: `${s.name}${s.remaining_hours != null ? ` (${s.remaining_hours}h)` : ''}`,

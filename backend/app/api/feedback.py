@@ -26,7 +26,10 @@ async def create_feedback_endpoint(
 ) -> FeedbackOut:
     """Create feedback for a course. Teacher only.
 
-    DB trigger auto-marks course as completed on insert.
+    After feedback created:
+    - Course auto-marked as completed
+    - Student hours auto-deducted
+    - Teacher settlement auto-generated
     Duplicate feedback for same course → 409.
     """
     # teacher_id is stored in JWT claims

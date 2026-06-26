@@ -5,7 +5,7 @@ Per TECH-SPEC 5.3 / DB-02:
 - Update feedback (teacher only, must be the feedback author)
 - Get feedback (parent/teacher/admin)
 - Duplicate feedback → 409 (UNIQUE course_id)
-- DB trigger `trg_feedback_insert` auto-marks course as completed
+- Create feedback → 自动标课程completed + 扣学员课时 + 生成教师settlement (方案C)
 """
 
 import structlog
@@ -46,14 +46,17 @@ async def create_feedback(
     body: FeedbackCreate,
     teacher_id: UUID,
 ) -> FeedbackOut:
-    """Create feedback for a course.
+    """Create feedback for a course. Teacher only.
 
     Checks:
     1. Course exists
     2. Current teacher is the course's assigned teacher
     3. No existing feedback for this course (UNIQUE)
 
-    DB trigger `trg_feedback_insert` will auto-set course.status = 'completed'.
+    提交反馈后自动执行:
+    - 标课程 status = 'completed'
+    - 扣减每个学员 usedhours
+    - 生成教师 settlement 行
     """
     sb = get_supabase()
     cid = str(course_id)
@@ -82,7 +85,7 @@ async def create_feedback(
             detail={"code": "FEEDBACK_ALREADY_EXISTS", "message": "该课程已有反馈，请使用修改功能"},
         )
 
-    # 4. Insert feedback (DB trigger will auto-mark course as completed)
+    # 4. Insert feedback
     result = sb.table("feedbacks").insert({
         "course_id": cid,
         "content": body.content,
@@ -90,6 +93,64 @@ async def create_feedback(
         "notes": body.notes,
         "created_by": tid,
     }).execute()
+
+    # ── 方案C: 反馈提交后自动完成课程 + 扣课时 + 生成settlement ──
+
+    # 5. 标课程为 completed
+    course = sb.table("courses").select("id, teacher_id, status, hours, date").eq("id", cid).limit(1).execute()
+    course_row = course.data[0] if course.data else {}
+    old_status = course_row.get("status", "pending")
+
+    if old_status != "completed":
+        sb.table("courses").update({
+            "status": "completed",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", cid).execute()
+        logger.info("course_auto_completed", course_id=cid, trigger="feedback_create")
+
+        course_hours = float(course_row.get("hours") or 1)
+
+        # 6. 扣减每个学员 usedhours
+        cs = sb.table("course_students").select("child_id").eq("course_id", cid).execute()
+        child_ids = [row["child_id"] for row in (cs.data or [])]
+
+        for child_id in child_ids:
+            ch = sb.table("children").select("id, name, usedhours, totalhours").eq("id", child_id).limit(1).execute()
+            if ch.data:
+                old_used = int(ch.data[0].get("usedhours") or 0)
+                total_h = int(ch.data[0].get("totalhours") or 0)
+                new_used = old_used + int(course_hours)
+                sb.table("children").update({
+                    "usedhours": new_used,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }).eq("id", child_id).execute()
+                logger.info(
+                    "hours_deducted",
+                    child_id=child_id,
+                    course_id=cid,
+                    hours=course_hours,
+                    old_usedhours=old_used,
+                    new_usedhours=new_used,
+                )
+                # 课时变动日志
+                try:
+                    from app.api.hours_log import record_hours_change
+                    record_hours_change(
+                        child_id=child_id, change_type="deduction", delta=-course_hours,
+                        balance_after=total_h - new_used, ref_id=cid,
+                        note=f"课程完成扣减 {course_hours}h", created_by=None,
+                    )
+                except Exception:
+                    pass
+
+        # 7. 自动生成 settlement 行
+        teacher_id = str(course_row.get("teacher_id") or "")
+        if teacher_id:
+            try:
+                from app.services.course import _auto_create_settlement
+                await _auto_create_settlement(sb, teacher_id, course_id, course_hours, dict(course_row))
+            except Exception as e:
+                logger.warning("auto_settlement_failed", course_id=cid, error=str(e))
 
     logger.info("feedback_created", course_id=cid, teacher_id=tid)
     return await _enrich_feedback(result.data[0])

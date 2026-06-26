@@ -17,6 +17,7 @@ interface Course {
   teacher?: { name?: string };
   child_id?: string | number;
   students?: any[];
+  meeting_link?: string;
 }
 
 interface Child {
@@ -138,7 +139,28 @@ export default function ChildOverview() {
                     </span>
                   }
                 />
-                <div>{statusBadge(item.status)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {item.meeting_link && (
+                    <a
+                      href={item.meeting_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#F4A230',
+                        color: '#fff',
+                        padding: '4px 12px',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      进入会议室
+                    </a>
+                  )}
+                  {statusBadge(item.status)}
+                </div>
               </List.Item>
             )}
           />

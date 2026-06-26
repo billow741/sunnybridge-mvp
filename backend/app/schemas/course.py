@@ -136,3 +136,10 @@ class ConflictCheckResponse(BaseModel):
     """排课冲突检测响应."""
     conflicts: list[ConflictItem] = []
     student_hours: list[dict] = Field(default_factory=list, description="学员课时信息 [{id, name, remaining, hours_after}]")
+
+
+# ── 教师更新会议链接 ──────────────────────────────────
+
+class MeetingLinkUpdate(BaseModel):
+    """教师端更新腾讯会议链接."""
+    meeting_link: str = Field(..., min_length=1, description="腾讯会议链接")

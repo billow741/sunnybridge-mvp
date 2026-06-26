@@ -42,7 +42,7 @@ export default function Schedule() {
 
   const onAdd = async (values: any) => {
     try {
-      await client.post('/courses', { ...values, date: values.date?.format('YYYY-MM-DD'), start_time: values.start_time?.format('HH:mm'), end_time: values.end_time?.format('HH:mm') });
+      await client.post('/courses', { ...values, child_ids: values.child_ids ? [values.child_ids] : [], date: values.date?.format('YYYY-MM-DD'), start_time: values.start_time?.format('HH:mm'), end_time: values.end_time?.format('HH:mm') });
       message.success('排课成功'); setModalOpen(false); form.resetFields(); load();
     } catch (err) { message.error(extractError(err)); }
   };
@@ -96,7 +96,7 @@ export default function Schedule() {
             <Select options={teachers.map(t => ({ value: t.id, label: t.name }))} />
           </Form.Item>
           <Form.Item name="child_ids" label="学生">
-            <Select mode="multiple" options={children.map(c => ({ value: c.id, label: c.name }))} />
+            <Select options={children.map(c => ({ value: c.id, label: c.name }))} />
           </Form.Item>
           <Form.Item name="hours" label="课时" initialValue={1}><InputNumber min={0.5} step={0.5} /></Form.Item>
         </Form>
