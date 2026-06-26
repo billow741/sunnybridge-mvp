@@ -1,19 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import {
-  Card, Row, Col, Statistic, List, Tag, Spin, Input, Button, Table,
-  Space, Typography, Dropdown, Badge, Empty, Avatar, Progress,
+  Card, Row, Col, Statistic, Tag, Spin, Input, Button, Table,
+  Space, Typography, Dropdown, Badge, Empty, Modal, Form,
 } from 'antd';
 import {
-  CalendarOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  TeamOutlined,
-  SearchOutlined,
-  FilterOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
-  BookOutlined,
-  ExclamationCircleOutlined,
+  CalendarOutlined, ClockCircleOutlined, CheckCircleOutlined,
+  UserOutlined, BookOutlined, SearchOutlined, FilterOutlined,
+  ArrowUpOutlined, ArrowDownOutlined, ExclamationCircleOutlined,
+  VideoCameraOutlined, LinkOutlined, EditOutlined, HistoryOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import client, { extractError } from '@/api/client';
@@ -22,7 +16,16 @@ import { useDashboardStore } from '@/store/dashboardStore';
 
 const { Title, Text } = Typography;
 
-/* ─── 统计卡片 ─── */
+/* ── 状态样式 ── */
+const STATUS_TAG: Record<string, { bg: string; text: string; label: string }> = {
+  scheduled:   { bg: '#fff7ed', text: '#c2410c', label: '待上课' },
+  in_progress: { bg: '#eff6ff', text: '#1d4ed8', label: '进行中' },
+  completed:   { bg: '#f0fdf4', text: '#16a34a', label: '已完成' },
+  absent:      { bg: '#fef2f2', text: '#dc2626', label: '学生缺席' },
+  cancelled:   { bg: '#f9fafb', text: '#6b7280', label: '已取消' },
+};
+
+/* ── 统计卡片 ── */
 function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
   todayCount: number; weekDone: number; weekTotal: number; pending: number;
 }) {
@@ -33,7 +36,7 @@ function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
           <Statistic
             title={<Text type="secondary" style={{ fontSize: 13 }}>今日课程</Text>}
             value={todayCount}
-            prefix={<CalendarOutlined style={{ color: '#5CAADF' }} />}
+            prefix={<CalendarOutlined style={{ color: '#722ed1' }} />}
             valueStyle={{ fontWeight: 600, fontSize: 28 }}
           />
         </Card>
@@ -76,8 +79,12 @@ function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
   );
 }
 
-/* ─── 今日任务列表 ─── */
-function TodaysCourses({ courses }: { courses: any[] }) {
+/* ── 今日课程: 卡片网格 ── */
+function TodayCardGrid({ courses, onOpenFeedback, onEditLink }: {
+  courses: any[];
+  onOpenFeedback: (idx: number) => void;
+  onEditLink: (idx: number) => void;
+}) {
   const navigate = useNavigate();
   const { courseSearchQuery, setCourseSearchQuery, courseStatusFilter, setCourseStatusFilter } = useDashboardStore();
 
@@ -98,11 +105,14 @@ function TodaysCourses({ courses }: { courses: any[] }) {
   }, [courses, courseSearchQuery, courseStatusFilter]);
 
   return (
-    <Card
-      title="今日课程"
-      bordered={false}
-      style={{ borderRadius: 12 }}
-      extra={
+    <section>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <VideoCameraOutlined style={{ color: '#722ed1', fontSize: 20 }} />
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#1f2937' }}>
+            今日课程 ({courses.length})
+          </span>
+        </div>
         <Space>
           <Input
             placeholder="搜索学生..."
@@ -124,137 +134,152 @@ function TodaysCourses({ courses }: { courses: any[] }) {
             }}
           >
             <Button size="small" icon={<FilterOutlined />}>
-              筛选{courseStatusFilter !== 'all' && <Badge color="#5CAADF" style={{ marginLeft: 4 }} />}
+              筛选{courseStatusFilter !== 'all' && <Badge color="#722ed1" style={{ marginLeft: 4 }} />}
             </Button>
           </Dropdown>
         </Space>
-      }
-    >
+      </div>
+
       {filtered.length === 0 ? (
-        <Empty description="没有匹配的课程" />
+        <div style={{ textAlign: 'center', padding: '32px 0', color: '#9ca3af', background: '#fff', borderRadius: 12 }}>
+          今天没有排课
+        </div>
       ) : (
-        <List
-          dataSource={filtered}
-          renderItem={(c: any) => (
-            <List.Item
-              style={{ cursor: 'pointer', padding: '12px 0', borderRadius: 8, paddingLeft: 12, paddingRight: 12 }}
-              onClick={() => navigate(`/courses/${c.id}`)}
-              actions={[
-                <Tag key="status" color={c.feedback ? 'green' : 'purple'}>
-                  {c.feedback ? '已完成' : '待上课'}
-                </Tag>,
-              ]}
-            >
-              <List.Item.Meta
-                avatar={
-                  <Avatar
-                    size={40}
-                    style={{
-                      backgroundColor: c.feedback ? '#f6ffed' : '#f9f0ff',
-                      color: c.feedback ? '#52c41a' : '#722ed1',
-                    }}
-                    icon={c.feedback ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
-                  />
-                }
-                title={
-                  <span style={{ fontWeight: 600 }}>
-                    {c.students?.map((ch: any) => ch.name).join(', ') || '未分配学生'}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+          {filtered.map((c: any, idx: number) => {
+            const hasFeedback = !!c.feedback;
+            const hasLink = !!c.meeting_link;
+            const statusKey = hasFeedback ? 'completed' : (c.status || 'scheduled');
+            const s = STATUS_TAG[statusKey] || STATUS_TAG.scheduled;
+
+            return (
+              <div
+                key={c.id}
+                style={{
+                  background: '#fff',
+                  borderRadius: 12,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  padding: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderTop: `4px solid ${hasFeedback ? '#22c55e' : '#722ed1'}`,
+                  transition: 'box-shadow 0.2s, transform 0.2s',
+                  cursor: 'pointer',
+                }}
+                onClick={() => navigate(`/courses/${c.id}`)}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; e.currentTarget.style.transform = 'none'; }}
+              >
+                {/* 时间 + 状态 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ClockCircleOutlined style={{ color: '#9ca3af', fontSize: 14 }} />
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{c.start_time?.slice(0,5)} - {c.end_time?.slice(0,5)}</span>
+                  </div>
+                  <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 12, background: s.bg, color: s.text, fontWeight: 500 }}>
+                    {s.label}
                   </span>
-                }
-                description={
-                  <Space size={16}>
-                    <span><ClockCircleOutlined /> {c.start_time?.slice(0, 5)} - {c.end_time?.slice(0, 5)}</span>
-                    <span><BookOutlined /> 课时: {c.hours ?? 1}</span>
-                  </Space>
-                }
-              />
-            </List.Item>
-          )}
-        />
+                </div>
+
+                {/* 学生 + 科目 */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <UserOutlined style={{ color: '#9ca3af', fontSize: 14 }} />
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{c.students?.map((ch: any) => ch.name).join(', ') || '-'}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <BookOutlined style={{ color: '#9ca3af', fontSize: 14 }} />
+                    <span style={{ color: '#6b7280', fontSize: 14 }}>English</span>
+                  </div>
+                </div>
+
+                {/* 会议链接指示 */}
+                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {hasLink ? (
+                    <span style={{ fontSize: 12, color: '#722ed1', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <LinkOutlined /> 会议链接已设置
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: '#d1d5db' }}>未设置会议链接</span>
+                  )}
+                  {hasFeedback ? (
+                    <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 500 }}>已提交反馈</span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: '#F4A230', fontWeight: 500 }}>待提交反馈</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
-    </Card>
+    </section>
   );
 }
 
-/* ─── 课程历史表格 ─── */
+/* ── 最近课程: 表格 ── */
 function RecentCoursesTable({ courses }: { courses: any[] }) {
   const navigate = useNavigate();
   const columns = [
+    { title: '日期', dataIndex: 'date', key: 'date', width: 110 },
+    { title: '学生', key: 'students', render: (_: any, c: any) => c.students?.map((ch: any) => ch.name).join(', ') || '-' },
+    { title: '时间', key: 'time', width: 110, render: (_: any, c: any) => `${c.start_time?.slice(0,5)}-${c.end_time?.slice(0,5)}` },
+    { title: '课时', dataIndex: 'hours', key: 'hours', width: 60, render: (v: number) => v ?? 1 },
     {
-      title: '日期',
-      dataIndex: 'date',
-      key: 'date',
-      width: 120,
+      title: '状态', key: 'status', width: 90,
+      render: (_: any, c: any) => {
+        const s = STATUS_TAG[c.feedback ? 'completed' : (c.status || 'scheduled')] || STATUS_TAG.scheduled;
+        return <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 12, background: s.bg, color: s.text }}>{s.label}</span>;
+      },
     },
     {
-      title: '学生',
-      key: 'students',
-      render: (_: any, c: any) => c.students?.map((ch: any) => ch.name).join(', ') || '-',
-    },
-    {
-      title: '时间',
-      key: 'time',
-      width: 120,
-      render: (_: any, c: any) => `${c.start_time?.slice(0, 5)} - ${c.end_time?.slice(0, 5)}`,
-    },
-    {
-      title: '课时',
-      dataIndex: 'hours',
-      key: 'hours',
-      width: 80,
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 100,
+      title: '反馈', key: 'feedback', width: 70,
       render: (_: any, c: any) => (
-        <Tag color={c.feedback ? 'green' : 'orange'}>
-          {c.feedback ? '已反馈' : '待反馈'}
-        </Tag>
-      ),
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 80,
-      render: (_: any, c: any) => (
-        <Button type="link" size="small" onClick={() => navigate(`/courses/${c.id}`)}>
-          查看
-        </Button>
+        <Button type="link" size="small" onClick={() => navigate(`/courses/${c.id}`)}>查看</Button>
       ),
     },
   ];
 
   return (
-    <Card
-      title="最近课程"
-      bordered={false}
-      style={{ borderRadius: 12 }}
-      extra={
-        <Button type="link" onClick={() => navigate('/courses')}>
-          查看全部 →
-        </Button>
-      }
-    >
-      <Table
-        dataSource={courses.slice(0, 10)}
-        columns={columns}
-        rowKey="id"
-        size="small"
-        pagination={false}
-        scroll={{ x: 600 }}
-      />
-    </Card>
+    <section>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <HistoryOutlined style={{ color: '#6b7280', fontSize: 18 }} />
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#1f2937' }}>最近课程</span>
+        </div>
+        <Button type="link" onClick={() => navigate('/courses')} style={{ padding: 0 }}>查看全部 →</Button>
+      </div>
+      <Card bodyStyle={{ padding: 0 }} style={{ borderRadius: 12, overflow: 'hidden' }}>
+        <Table
+          dataSource={courses.slice(0, 10)}
+          columns={columns}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          onRow={(r) => ({ onClick: () => navigate(`/courses/${r.id}`), style: { cursor: 'pointer' } })}
+        />
+      </Card>
+    </section>
   );
 }
 
-/* ─── 主 Dashboard ─── */
+/* ── 主 Dashboard ── */
 export default function Dashboard() {
   const [todayCourses, setTodayCourses] = useState<any[]>([]);
   const [allCourses, setAllCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
   const navigate = useNavigate();
+
+  // 反馈弹窗
+  const [fbModal, setFbModal] = useState<{ open: boolean; courseIndex: number }>({ open: false, courseIndex: -1 });
+  const [fbForm] = Form.useForm();
+  const [fbSubmitting, setFbSubmitting] = useState(false);
+
+  // 会议链接弹窗
+  const [linkModal, setLinkModal] = useState<{ open: boolean; courseIndex: number; value: string; saving: boolean }>({
+    open: false, courseIndex: -1, value: '', saving: false,
+  });
 
   useEffect(() => {
     (async () => {
@@ -280,7 +305,7 @@ export default function Dashboard() {
   const weekDone = allCourses.filter((c: any) => c.feedback).length;
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       {/* 欢迎区 */}
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -289,7 +314,7 @@ export default function Dashboard() {
         </div>
         <Space>
           <Button onClick={() => navigate('/today')}>今日课程</Button>
-          <Button type="primary" icon={<CalendarOutlined />} onClick={() => navigate('/courses')}>
+          <Button type="primary" icon={<CalendarOutlined />} onClick={() => navigate('/courses')} style={{ background: '#722ed1', borderColor: '#722ed1' }}>
             全部课程
           </Button>
         </Space>
@@ -305,15 +330,13 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* 今日任务 + 数据表格 两栏 */}
-      <Row gutter={[24, 24]}>
-        <Col xs={24} lg={14}>
-          <TodaysCourses courses={todayCourses} />
-        </Col>
-        <Col xs={24} lg={10}>
-          <RecentCoursesTable courses={allCourses} />
-        </Col>
-      </Row>
+      {/* 今日课程卡片 */}
+      <div style={{ marginBottom: 28 }}>
+        <TodayCardGrid courses={todayCourses} onOpenFeedback={() => {}} onEditLink={() => {}} />
+      </div>
+
+      {/* 最近课程表格 */}
+      <RecentCoursesTable courses={allCourses} />
     </div>
   );
 }
