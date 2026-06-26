@@ -251,8 +251,8 @@ function CourseRow({ c, onClick }: { c: any; onClick: () => void }) {
 /* ── 最近课程: 左右两栏 ── */
 function RecentCoursesSplit({ courses }: { courses: any[] }) {
   const navigate = useNavigate();
-  const upcoming = courses.filter((c: any) => c.status !== 'completed' && c.status !== 'absent');
-  const completed = courses.filter((c: any) => c.status === 'completed' || c.status === 'absent');
+  const upcoming = courses.filter((c: any) => !c.feedback);
+  const completed = courses.filter((c: any) => !!c.feedback);
 
   return (
     <section>

@@ -86,6 +86,7 @@ class CourseOut(BaseModel):
     hours: float = 1
     students: list[ChildBrief] = []
     feedbacks: list[FeedbackBrief] = []
+    feedback: FeedbackBrief | None = None  # first feedback for frontend convenience
     created_at: datetime
     updated_at: datetime
 

@@ -401,7 +401,7 @@ async def get_today_courses_parent(user_id: UUID) -> list[CourseOut]:
     for cid in course_ids:
         c = sb.table("courses").select("*").eq("id", cid).eq("date", today).neq("status", "cancelled").limit(1).execute()
         if c.data:
-            courses.append(await _enrich_course(c.data[0]))
+            courses.append(await _enrich_course(c.data[0], include_feedback=True))
 
     # Sort by start_time
     courses.sort(key=lambda x: x.start_time)
@@ -417,7 +417,7 @@ async def get_today_courses_teacher(teacher_id: UUID) -> list[CourseOut]:
 
     courses = []
     for row in result.data:
-        courses.append(await _enrich_course(row))
+        courses.append(await _enrich_course(row, include_feedback=True))
     return courses
 
 
@@ -430,7 +430,7 @@ async def get_today_courses_admin() -> list[CourseOut]:
 
     courses = []
     for row in result.data:
-        courses.append(await _enrich_course(row))
+        courses.append(await _enrich_course(row, include_feedback=True))
     return courses
 
 
@@ -486,12 +486,24 @@ async def get_history_courses_parent(
             for ch in ch_res.data:
                 child_map[ch["id"]] = ChildBrief(id=ch["id"], name=ch["name"])
 
+    # Bulk preload feedbacks
+    fb_map: dict[str, dict] = {}
+    if p_course_ids:
+        fb_res = sb.table("feedbacks").select("*").in_("course_id", p_course_ids).execute()
+        for fb in fb_res.data:
+            fb_map[fb["course_id"]] = fb
+
     items = []
     for row in page_data:
         t_id = row.get("teacher_id")
         teacher = teacher_map.get(t_id) if t_id else None
         children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
-        enriched = {**row, "teacher": teacher, "students": children}
+        fb_data = fb_map.get(row["id"])
+        feedback = None
+        if fb_data:
+            from app.schemas.course import FeedbackBrief
+            feedback = FeedbackBrief(**fb_data)
+        enriched = {**row, "teacher": teacher, "students": children, "feedback": feedback}
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)
@@ -549,7 +561,7 @@ async def get_all_courses(
 
     # Teacher isolation on page query too
     if teacher_id:
-        page_query = page_query.eq("teacher_id", teacher_id)
+        page_query = page_query.eq("teacher_id", teacher_id).neq("status", "cancelled")
 
     # Status filter on page query too
     if course_status:
@@ -610,7 +622,9 @@ async def get_all_courses(
         teacher = teacher_map.get(t_id) if t_id else None
         children = [child_map[cid] for cid in cs_map.get(row["id"], []) if cid in child_map]
         feedbacks = feedback_map.get(row["id"], [])
-        enriched = {**row, "teacher": teacher, "students": children, "feedbacks": feedbacks}
+        # First feedback as singular "feedback" for frontend compatibility
+        feedback = FeedbackBrief(**feedbacks[0]) if feedbacks else None
+        enriched = {**row, "teacher": teacher, "students": children, "feedbacks": feedbacks, "feedback": feedback}
         items.append(CourseOut(**enriched))
 
     return PaginatedCourses(items=items, total=total, page=page, page_size=page_size)

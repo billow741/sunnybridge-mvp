@@ -56,7 +56,7 @@ export default function TodayCourses() {
         .sort((a: any, b: any) => (a.date || '').localeCompare(b.date || ''))
         .slice(0, 10);
       const past = allArr
-        .filter((c: any) => (c.date || '') < todayStr || c.status !== 'scheduled')
+        .filter((c: any) => !!c.feedback || ((c.date || '') < todayStr && !c.feedback))
         .sort((a: any, b: any) => (b.date || '').localeCompare(a.date || ''));
 
       setUpcoming(up);
@@ -116,7 +116,7 @@ export default function TodayCourses() {
   const renderTodayCard = (c: any, idx: number) => {
     const hasFeedback = !!c.feedback;
     const hasLink = !!c.meeting_link;
-    const isCompleted = c.status === 'completed' || hasFeedback;
+    const isCompleted = !!c.feedback;
     const statusKey = isCompleted ? 'completed' : (c.status || 'scheduled');
     const s = STATUS_TAG[statusKey] || STATUS_TAG.scheduled;
 
