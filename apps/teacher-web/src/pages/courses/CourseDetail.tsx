@@ -26,32 +26,28 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-/* 反馈只读显示（深色可读） */
+/* 反馈只读显示（深色可读） — 三段式卡片布局 */
 function FeedbackView({ feedback, onEdit }: { feedback: any; onEdit: () => void }) {
+  const sections = [
+    { icon: '📖', label: '上课内容', value: feedback.content, color: '#7c3aed' },
+    { icon: '📝', label: '作业布置', value: feedback.homework, color: '#2563eb' },
+    { icon: '💡', label: '备注', value: feedback.notes, color: '#d97706' },
+  ];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>上课内容</div>
-        <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-          {feedback.content || '-'}
-        </div>
-      </div>
-      {feedback.homework && (
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>作业布置</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {sections.map(s => s.value && (
+        <div key={s.label} style={{
+          background: '#f9fafb', borderRadius: 10, padding: '14px 16px',
+          borderLeft: `4px solid ${s.color}`,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>{s.icon}</span>{s.label}
+          </div>
           <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-            {feedback.homework}
+            {s.value}
           </div>
         </div>
-      )}
-      {feedback.notes && (
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>备注</div>
-          <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-            {feedback.notes}
-          </div>
-        </div>
-      )}
+      ))}
       <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
         <Button
           type="primary"

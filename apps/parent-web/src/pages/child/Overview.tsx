@@ -391,18 +391,23 @@ export default function ChildOverview() {
               <div><b>科目：</b>English</div>
               {fbModal.course.hours && <div><b>课时：</b>{fbModal.course.hours} 节</div>}
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>上课内容</label>
-              <div style={feedbackBlockStyle}>{fbModal.course.content || '无'}</div>
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>作业布置</label>
-              <div style={feedbackBlockStyle}>{fbModal.course.homework || '无'}</div>
-            </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>备注</label>
-              <div style={feedbackBlockStyle}>{fbModal.course.notes || '无'}</div>
-            </div>
+            {[
+              { icon: '📖', label: '上课内容', value: fbModal.course.content, color: '#7c3aed' },
+              { icon: '📝', label: '作业布置', value: fbModal.course.homework, color: '#2563eb' },
+              { icon: '💡', label: '备注', value: fbModal.course.notes, color: '#d97706' },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: '#f9fafb', borderRadius: 10, padding: '14px 16px',
+                borderLeft: `4px solid ${s.color}`, marginBottom: 12,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{s.icon}</span>{s.label}
+                </div>
+                <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                  {s.value || '无'}
+                </div>
+              </div>
+            ))}
           </>
         )}
       </Modal>
@@ -417,11 +422,6 @@ const thStyle: React.CSSProperties = {
 
 const tdStyle: React.CSSProperties = {
   padding: '10px 16px', fontSize: 13, color: '#374151',
-};
-
-const feedbackBlockStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
-  background: '#f9fafb', color: '#4b5563', minHeight: 40, whiteSpace: 'pre-wrap' as const,
 };
 
 const closeBtnStyle: React.CSSProperties = {

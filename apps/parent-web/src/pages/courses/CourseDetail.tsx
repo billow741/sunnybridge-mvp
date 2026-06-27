@@ -37,11 +37,21 @@ export default function CourseDetail() {
 
       {fb && (
         <Card title="教师反馈" style={{ marginTop: 12, borderRadius: 12 }}>
-          <Descriptions column={1} labelStyle={{ fontWeight: 600 }}>
-            <Descriptions.Item label="上课内容">{fb.content}</Descriptions.Item>
-            {fb.homework && <Descriptions.Item label="作业">{fb.homework}</Descriptions.Item>}
-            {fb.notes && <Descriptions.Item label="备注">{fb.notes}</Descriptions.Item>}
-          </Descriptions>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {[
+              { label: '📖 上课内容', value: fb.content, color: '#7c3aed' },
+              { label: '📝 作业布置', value: fb.homework, color: '#2563eb' },
+              { label: '💡 备注', value: fb.notes, color: '#d97706' },
+            ].map(s => s.value && (
+              <div key={s.label} style={{
+                background: '#f9fafb', borderRadius: 10, padding: '14px 16px',
+                borderLeft: `4px solid ${s.color}`,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: s.color, marginBottom: 6 }}>{s.label}</div>
+                <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
     </div>

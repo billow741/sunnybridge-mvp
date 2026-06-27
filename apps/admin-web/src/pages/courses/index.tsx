@@ -559,10 +559,19 @@ export default function CoursesPage() {
         {selected.feedbacks && selected.feedbacks.length > 0 ? (
           <Card title="课堂反馈" size="small" style={{ marginBottom: 16 }}>
             {selected.feedbacks.map((fb, i) => (
-              <div key={i} style={{ marginBottom: i > 0 ? 16 : 0, paddingBottom: i > 0 ? 16 : 0, borderBottom: i > 0 ? '1px dashed #f0f0f0' : 'none' }}>
-                {fb.content && <div style={{ marginBottom: 10 }}><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📝 反馈内容</div><div style={{ background: '#fafafa', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.content}</div></div>}
-                {fb.homework && <div style={{ marginBottom: 10 }}><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>📚 作业</div><div style={{ background: '#fffbe6', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{fb.homework}</div></div>}
-                {fb.notes && <div><div style={{ fontWeight: 600, color: '#333', marginBottom: 4, fontSize: 13 }}>💬 备注</div><div style={{ background: '#f6ffed', borderRadius: 6, padding: '8px 12px', whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#666' }}>{fb.notes}</div></div>}
+              <div key={i} style={{ marginBottom: i > 0 ? 16 : 0, paddingBottom: i > 0 ? 16 : 0, borderBottom: i > 0 ? '1px dashed #f0f0f0' : 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { icon: '📖', label: '上课内容', value: fb.content, color: '#7c3aed', bg: '#faf5ff' },
+                  { icon: '📝', label: '作业布置', value: fb.homework, color: '#2563eb', bg: '#eff6ff' },
+                  { icon: '💡', label: '备注', value: fb.notes, color: '#d97706', bg: '#fffbeb' },
+                ].map(s => s.value && (
+                  <div key={s.label} style={{ background: s.bg, borderRadius: 8, padding: '12px 14px', borderLeft: `4px solid ${s.color}` }}>
+                    <div style={{ fontWeight: 600, color: s.color, marginBottom: 4, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>{s.icon}</span>{s.label}
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, fontSize: 13, color: '#444' }}>{s.value}</div>
+                  </div>
+                ))}
               </div>
             ))}
           </Card>
