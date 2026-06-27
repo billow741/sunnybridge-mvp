@@ -200,12 +200,14 @@ async def all_courses_teacher_endpoint(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
     status: str | None = Query(None, description="状态筛选: pending/completed/cancelled"),
+    child_id: str | None = Query(None, description="学员ID筛选"),
     user: CurrentUser = Depends(require_role("teacher")),
 ) -> PaginatedCourses:
-    """Teacher's own courses with optional month/status filter."""
+    """Teacher's own courses with optional month/status/child filter."""
     teacher_id = str(user.teacher_id) if user.teacher_id else None
     return await get_all_courses(month=month, page=page, page_size=page_size,
-                                 teacher_id=teacher_id, course_status=status)
+                                 teacher_id=teacher_id, course_status=status,
+                                 child_id=child_id)
 
 
 # ── Admin-scoped: require_permission 接管 ──

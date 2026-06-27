@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Card, Table, Input, Tag, Spin, Drawer, Descriptions, Space, Typography } from 'antd';
-import { SearchOutlined, TeamOutlined, PhoneOutlined, BookOutlined, CalendarOutlined, UserOutlined } from '@ant-design/icons';
+import { Card, Table, Input, Tag, Spin, Typography, Space } from 'antd';
+import { SearchOutlined, TeamOutlined, UserOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import client, { extractError } from '@/api/client';
 
 const { Title, Text } = Typography;
@@ -19,8 +20,7 @@ export default function MyStudents() {
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selected, setSelected] = useState<any>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -55,8 +55,13 @@ export default function MyStudents() {
       key: 'name',
       render: (_: any, s: any) => (
         <Space>
-          <UserOutlined style={{ color: '#5CAADF' }} />
-          <span style={{ fontWeight: 600 }}>{s.name}</span>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, background: '#eff6ff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <UserOutlined style={{ color: '#5CAADF', fontSize: 14 }} />
+          </div>
+          <span style={{ fontWeight: 600, color: '#1f2937' }}>{s.name}</span>
         </Space>
       ),
     },
@@ -74,21 +79,31 @@ export default function MyStudents() {
       dataIndex: 'total_hours',
       key: 'total_hours',
       width: 100,
-      render: (h: number) => h || 0,
+      render: (h: number) => <span style={{ fontWeight: 500 }}>{h || 0}</span>,
     },
     {
       title: '家长电话',
       dataIndex: 'parent_phone',
       key: 'parent_phone',
       width: 140,
-      render: (phone: string) => phone || '-',
+      render: (phone: string) => (
+        <Space size={4}>
+          <PhoneOutlined style={{ color: '#9ca3af', fontSize: 12 }} />
+          <span>{phone || '-'}</span>
+        </Space>
+      ),
     },
     {
       title: '最近上课',
       dataIndex: 'last_course_date',
       key: 'last_course_date',
       width: 120,
-      render: (d: string) => d || '-',
+      render: (d: string) => (
+        <Space size={4}>
+          <CalendarOutlined style={{ color: '#9ca3af', fontSize: 12 }} />
+          <span>{d || '-'}</span>
+        </Space>
+      ),
     },
   ];
 
@@ -119,32 +134,11 @@ export default function MyStudents() {
           size="middle"
           pagination={false}
           onRow={(record) => ({
-            onClick: () => { setSelected(record); setDrawerOpen(true); },
+            onClick: () => navigate(`/students/${record.id}`),
             style: { cursor: 'pointer' },
           })}
         />
       </Card>
-
-      <Drawer
-        title={selected?.name || '学员详情'}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        width={400}
-      >
-        {selected && (
-          <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="姓名">{selected.name}</Descriptions.Item>
-            <Descriptions.Item label="级别">
-              <Tag color={CEFR_COLORS[selected.cefr_level] || 'default'}>
-                {selected.cefr_level?.toUpperCase() || 'STARTER'}
-              </Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="累计课时">{selected.total_hours || 0}</Descriptions.Item>
-            <Descriptions.Item label="家长电话">{selected.parent_phone || '-'}</Descriptions.Item>
-            <Descriptions.Item label="最近上课">{selected.last_course_date || '-'}</Descriptions.Item>
-          </Descriptions>
-        )}
-      </Drawer>
     </div>
   );
 }

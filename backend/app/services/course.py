@@ -515,19 +515,33 @@ async def get_all_courses(
     page_size: int = DEFAULT_PAGE_SIZE,
     teacher_id: str | None = None,
     course_status: str | None = None,
+    child_id: str | None = None,
 ) -> PaginatedCourses:
-    """All courses with optional month/status filter + teacher isolation.
+    """All courses with optional month/status/child filter + teacher isolation.
 
     If teacher_id is provided, only that teacher's courses are returned.
     Otherwise (admin), all courses are returned.
+    If child_id is provided, only courses containing that child are returned.
     """
     sb = get_supabase()
+
+    # Child filter: pre-resolve course_ids via course_students
+    child_course_ids: set[str] | None = None
+    if child_id:
+        cs_res = sb.table("course_students").select("course_id").eq("child_id", child_id).execute()
+        child_course_ids = {r["course_id"] for r in cs_res.data or []}
+        if not child_course_ids:
+            return PaginatedCourses(items=[], total=0, page=page, page_size=page_size)
 
     query = sb.table("courses").select("*", count="exact")
 
     # Teacher isolation: only show own courses + hide cancelled
     if teacher_id:
         query = query.eq("teacher_id", teacher_id).neq("status", "cancelled")
+
+    # Child filter on count query
+    if child_course_ids is not None:
+        query = query.in_("id", list(child_course_ids))
 
     # Status filter
     if course_status:
@@ -562,6 +576,10 @@ async def get_all_courses(
     # Teacher isolation on page query too
     if teacher_id:
         page_query = page_query.eq("teacher_id", teacher_id).neq("status", "cancelled")
+
+    # Child filter on page query too
+    if child_course_ids is not None:
+        page_query = page_query.in_("id", list(child_course_ids))
 
     # Status filter on page query too
     if course_status:

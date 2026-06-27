@@ -8,7 +8,10 @@ import CourseHistory from './pages/courses/CourseHistory';
 import TodayCourses from './pages/courses/TodayCourses';
 import CourseDetail from './pages/courses/CourseDetail';
 import MyStudents from './pages/students';
+import StudentDetail from './pages/students/StudentDetail';
 import Materials from './pages/materials';
+import Profile from './pages/profile';
+import CalendarView from './pages/calendar';
 
 export default function App() {
   return (
@@ -22,6 +25,9 @@ export default function App() {
           <Route path="courses" element={<CourseHistory />} />
           <Route path="courses/:id" element={<CourseDetail />} />
           <Route path="students" element={<MyStudents />} />
+          <Route path="students/:id" element={<StudentDetail />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="calendar" element={<CalendarView />} />
           <Route path="materials" element={<Materials />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

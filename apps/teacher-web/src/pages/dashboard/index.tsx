@@ -26,8 +26,9 @@ const STATUS_TAG: Record<string, { bg: string; text: string; label: string }> = 
 };
 
 /* ── 统计卡片 ── */
-function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
+function StatsCards({ todayCount, weekDone, weekTotal, pending, weekHours, monthHours }: {
   todayCount: number; weekDone: number; weekTotal: number; pending: number;
+  weekHours: number; monthHours: number;
 }) {
   return (
     <Row gutter={[16, 16]}>
@@ -72,6 +73,49 @@ function StatsCards({ todayCount, weekDone, weekTotal, pending }: {
               ? <ArrowUpOutlined style={{ color: '#52c41a' }} />
               : <ArrowDownOutlined style={{ color: '#F4A230' }} />}
             valueStyle={{ fontWeight: 600, fontSize: 28 }}
+          />
+        </Card>
+      </Col>
+    </Row>
+  );
+}
+
+/* ── 课时统计卡 ── */
+function HoursStats({ weekHours, monthHours, totalCourses }: {
+  weekHours: number; monthHours: number; totalCourses: number;
+}) {
+  return (
+    <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+      <Col xs={24} sm={8}>
+        <Card bordered={false} style={{ borderRadius: 12, borderTop: '3px solid #722ed1' }}>
+          <Statistic
+            title={<Text type="secondary" style={{ fontSize: 13 }}>本周课时</Text>}
+            value={weekHours}
+            prefix={<ClockCircleOutlined style={{ color: '#722ed1' }} />}
+            suffix="h"
+            valueStyle={{ fontWeight: 600, fontSize: 24, color: '#722ed1' }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={8}>
+        <Card bordered={false} style={{ borderRadius: 12, borderTop: '3px solid #5CAADF' }}>
+          <Statistic
+            title={<Text type="secondary" style={{ fontSize: 13 }}>本月课时</Text>}
+            value={monthHours}
+            prefix={<ClockCircleOutlined style={{ color: '#5CAADF' }} />}
+            suffix="h"
+            valueStyle={{ fontWeight: 600, fontSize: 24, color: '#5CAADF' }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={8}>
+        <Card bordered={false} style={{ borderRadius: 12, borderTop: '3px solid #22c55e' }}>
+          <Statistic
+            title={<Text type="secondary" style={{ fontSize: 13 }}>全部课程</Text>}
+            value={totalCourses}
+            prefix={<BookOutlined style={{ color: '#22c55e' }} />}
+            suffix="节"
+            valueStyle={{ fontWeight: 600, fontSize: 24, color: '#22c55e' }}
           />
         </Card>
       </Col>
@@ -323,6 +367,7 @@ function RecentCoursesSplit({ courses }: { courses: any[] }) {
 export default function Dashboard() {
   const [todayCourses, setTodayCourses] = useState<any[]>([]);
   const [allCourses, setAllCourses] = useState<any[]>([]);
+  const [allCoursesTotal, setAllCoursesTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -332,10 +377,12 @@ export default function Dashboard() {
       try {
         const [todayRes, allRes] = await Promise.all([
           client.get('/courses/today').catch(() => ({ data: [] })),
-          client.get('/courses/all/teacher', { params: { page_size: 20 } }).catch(() => ({ data: { items: [] } })),
+          client.get('/courses/all/teacher', { params: { page_size: 20 } }).catch(() => ({ data: { items: [], total: 0 } })),
         ]);
         setTodayCourses(Array.isArray(todayRes.data) ? todayRes.data : (todayRes.data.items || []));
-        setAllCourses(allRes.data?.items || Array.isArray(allRes.data) ? (Array.isArray(allRes.data) ? allRes.data : allRes.data.items || []) : []);
+        const items = allRes.data?.items || (Array.isArray(allRes.data) ? allRes.data : allRes.data.items || []);
+        setAllCourses(items);
+        setAllCoursesTotal(allRes.data?.total || items.length);
       } catch (err) {
         console.error(extractError(err));
       } finally {
@@ -349,6 +396,13 @@ export default function Dashboard() {
   const todayDone = todayCourses.filter((c: any) => c.feedback).length;
   const pendingFeedback = allCourses.filter((c: any) => !c.feedback).length;
   const weekDone = allCourses.filter((c: any) => c.feedback).length;
+
+  // 本周/本月课时计算
+  const now = new Date();
+  const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekHours = allCourses.filter((c: any) => new Date(c.date + 'T00:00:00') >= weekStart).reduce((s: number, c: any) => s + (c.hours || 1), 0);
+  const monthHours = allCourses.filter((c: any) => new Date(c.date + 'T00:00:00') >= monthStart).reduce((s: number, c: any) => s + (c.hours || 1), 0);
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -367,17 +421,22 @@ export default function Dashboard() {
       </div>
 
       {/* 统计卡片 */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 8 }}>
         <StatsCards
           todayCount={todayCourses.length}
           weekDone={weekDone}
           weekTotal={allCourses.length}
           pending={pendingFeedback}
+          weekHours={weekHours}
+          monthHours={monthHours}
         />
       </div>
 
+      {/* 课时统计面板 */}
+      <HoursStats weekHours={weekHours} monthHours={monthHours} totalCourses={allCoursesTotal} />
+
       {/* 今日课程卡片 */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 28, marginTop: 24 }}>
         <TodayCardGrid courses={todayCourses} />
       </div>
 

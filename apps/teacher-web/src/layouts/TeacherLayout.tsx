@@ -3,6 +3,7 @@ import { Layout, Menu, Button, Avatar, Dropdown, Space, Typography } from 'antd'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   CalendarOutlined,
+  ScheduleOutlined,
   HistoryOutlined,
   KeyOutlined,
   MenuFoldOutlined,
@@ -12,6 +13,7 @@ import {
   UserOutlined,
   TeamOutlined,
   BookOutlined,
+  ProfileOutlined,
 } from '@ant-design/icons';
 import AppLogo from '@/components/AppLogo';
 import { useAuthStore } from '@/store/authStore';
@@ -22,8 +24,10 @@ const menuItems = [
   { key: '/', icon: <DashboardOutlined />, label: '仪表盘' },
   { key: '/today', icon: <CalendarOutlined />, label: '今日课程' },
   { key: '/courses', icon: <HistoryOutlined />, label: '全部课程' },
+  { key: '/calendar', icon: <ScheduleOutlined />, label: '课程日历' },
   { key: '/students', icon: <TeamOutlined />, label: '我的学员' },
   { key: '/materials', icon: <BookOutlined />, label: '阅读材料' },
+  { key: '/profile', icon: <ProfileOutlined />, label: '个人资料' },
   { key: '/change-password', icon: <KeyOutlined />, label: '修改密码' },
 ];
 
@@ -32,7 +36,7 @@ export default function TeacherLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const selectedKey = location.pathname === '/' ? '/' : location.pathname;
+  const selectedKey = location.pathname === '/' ? '/' : '/' + location.pathname.split('/').filter(Boolean)[0];
 
   const userName = user?.name || user?.username || '教师';
 
@@ -94,7 +98,7 @@ export default function TeacherLayout() {
             <Dropdown
               menu={{
                 items: [
-                  { key: 'profile', icon: <UserOutlined />, label: '个人信息' },
+                  { key: 'profile', icon: <UserOutlined />, label: '个人信息', onClick: () => navigate('/profile') },
                   { type: 'divider' },
                   {
                     key: 'logout',
