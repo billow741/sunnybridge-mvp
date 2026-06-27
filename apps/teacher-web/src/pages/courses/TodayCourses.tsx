@@ -399,14 +399,14 @@ export default function TodayCourses() {
           </div>
         )}
         <Form form={fbForm} layout="vertical" onFinish={submitFeedback}>
-          <Form.Item name="content" label="上课内容" rules={[{ required: true, message: '请填写上课内容' }]}>
-            <Input.TextArea rows={3} placeholder="描述本次课程内容..." />
+          <Form.Item name="content" label={<span style={{ fontWeight: 600, color: '#6d28d9' }}>📖 上课内容</span>} rules={[{ required: true, message: '请填写上课内容' }]}>
+            <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderColor: '#ede9fe' }} />
           </Form.Item>
-          <Form.Item name="homework" label="作业布置">
-            <Input.TextArea rows={2} placeholder="布置的作业..." />
+          <Form.Item name="homework" label={<span style={{ fontWeight: 600, color: '#1d4ed8' }}>📝 布置作业</span>}>
+            <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderColor: '#dbeafe' }} />
           </Form.Item>
-          <Form.Item name="notes" label="备注">
-            <Input.TextArea rows={2} placeholder="学生表现、改进方向..." />
+          <Form.Item name="notes" label={<span style={{ fontWeight: 600, color: '#b45309' }}>💡 备注</span>}>
+            <Input.TextArea rows={2} placeholder="学生表现、改进方向..." style={{ borderColor: '#fef3c7' }} />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -21,19 +21,39 @@ const STATUS_TAG: Record<string, { bg: string; text: string; label: string }> = 
   absent:      { bg: '#fef2f2', text: '#dc2626', label: '学生缺席' },
 };
 
-/* ── 反馈三段式卡片 ── */
+/* ── 反馈三段式卡片 — 带图标色块标题栏 ── */
 function FeedbackCard({ feedback }: { feedback: any }) {
   const sections = [
-    { key: 'content', label: '📖 上课内容', value: feedback.content, borderColor: '#722ed1', bgColor: '#faf5ff', titleColor: '#722ed1' },
-    { key: 'homework', label: '📝 布置作业', value: feedback.homework, borderColor: '#1890ff', bgColor: '#f0f5ff', titleColor: '#1890ff' },
-    { key: 'notes', label: '💡 备注', value: feedback.notes, borderColor: '#d97706', bgColor: '#fffbeb', titleColor: '#d97706' },
+    { key: 'content', icon: '📖', label: '上课内容', value: feedback.content, bg: '#faf5ff', headerBg: '#ede9fe', titleColor: '#6d28d9', borderColor: '#7c3aed' },
+    { key: 'homework', icon: '📝', label: '布置作业', value: feedback.homework, bg: '#eff6ff', headerBg: '#dbeafe', titleColor: '#1d4ed8', borderColor: '#3b82f6' },
+    { key: 'notes', icon: '💡', label: '备注', value: feedback.notes, bg: '#fffbeb', headerBg: '#fef3c7', titleColor: '#b45309', borderColor: '#f59e0b' },
   ];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {sections.map(s => s.value ? (
-        <div key={s.key} style={{ borderLeft: `4px solid ${s.borderColor}`, background: s.bgColor, padding: '10px 14px', borderRadius: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: s.titleColor, marginBottom: 4 }}>{s.label}</div>
-          <div style={{ fontSize: 13, color: '#374151', whiteSpace: 'pre-wrap' }}>{s.value}</div>
+        <div key={s.key} style={{
+          border: `1px solid ${s.borderColor}20`,
+          borderLeft: `5px solid ${s.borderColor}`,
+          background: s.bg,
+          borderRadius: 10,
+          overflow: 'hidden',
+        }}>
+          {/* 标题栏 */}
+          <div style={{
+            background: s.headerBg,
+            padding: '8px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            borderBottom: `1px solid ${s.borderColor}15`,
+          }}>
+            <span style={{ fontSize: 16 }}>{s.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: s.titleColor }}>{s.label}</span>
+          </div>
+          {/* 内容区 */}
+          <div style={{ padding: '12px 14px', fontSize: 14, color: '#1f2937', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
+            {s.value}
+          </div>
         </div>
       ) : null)}
     </div>

@@ -26,24 +26,37 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-/* 反馈只读显示（深色可读） — 三段式卡片布局 */
+/* 反馈只读显示 — 带图标色块标题栏的三段式卡片 */
 function FeedbackView({ feedback, onEdit }: { feedback: any; onEdit: () => void }) {
   const sections = [
-    { icon: '📖', label: '上课内容', value: feedback.content, color: '#7c3aed' },
-    { icon: '📝', label: '作业布置', value: feedback.homework, color: '#2563eb' },
-    { icon: '💡', label: '备注', value: feedback.notes, color: '#d97706' },
+    { icon: '📖', label: '上课内容', value: feedback.content, bg: '#faf5ff', headerBg: '#ede9fe', titleColor: '#6d28d9', borderColor: '#7c3aed' },
+    { icon: '📝', label: '作业布置', value: feedback.homework, bg: '#eff6ff', headerBg: '#dbeafe', titleColor: '#1d4ed8', borderColor: '#3b82f6' },
+    { icon: '💡', label: '备注', value: feedback.notes, bg: '#fffbeb', headerBg: '#fef3c7', titleColor: '#b45309', borderColor: '#f59e0b' },
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {sections.map(s => s.value && (
         <div key={s.label} style={{
-          background: '#f9fafb', borderRadius: 10, padding: '14px 16px',
-          borderLeft: `4px solid ${s.color}`,
+          border: `1px solid ${s.borderColor}20`,
+          borderLeft: `5px solid ${s.borderColor}`,
+          background: s.bg,
+          borderRadius: 10,
+          overflow: 'hidden',
         }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span>{s.icon}</span>{s.label}
+          {/* 标题栏 */}
+          <div style={{
+            background: s.headerBg,
+            padding: '8px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            borderBottom: `1px solid ${s.borderColor}15`,
+          }}>
+            <span style={{ fontSize: 16 }}>{s.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: s.titleColor }}>{s.label}</span>
           </div>
-          <div style={{ fontSize: 14, color: '#1f2937', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+          {/* 内容区 */}
+          <div style={{ padding: '12px 14px', fontSize: 14, color: '#1f2937', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>
             {s.value}
           </div>
         </div>
@@ -224,14 +237,14 @@ export default function CourseDetail() {
               style={{ marginBottom: 14, borderRadius: 8 }}
             />
             <Form form={fbForm} layout="vertical" onFinish={submitFeedback}>
-              <Form.Item name="content" label="上课内容" rules={[{ required: true, message: '请填写上课内容' }]}>
-                <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8 }} />
+              <Form.Item name="content" label={<span style={{ fontWeight: 600, color: '#6d28d9' }}>📖 上课内容</span>} rules={[{ required: true, message: '请填写上课内容' }]}>
+                <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8, borderColor: '#ede9fe' }} />
               </Form.Item>
-              <Form.Item name="homework" label="作业布置">
-                <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8 }} />
+              <Form.Item name="homework" label={<span style={{ fontWeight: 600, color: '#1d4ed8' }}>📝 布置作业</span>}>
+                <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8, borderColor: '#dbeafe' }} />
               </Form.Item>
-              <Form.Item name="notes" label="备注">
-                <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8 }} />
+              <Form.Item name="notes" label={<span style={{ fontWeight: 600, color: '#b45309' }}>💡 备注</span>}>
+                <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8, borderColor: '#fef3c7' }} />
               </Form.Item>
               <Form.Item style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -253,14 +266,14 @@ export default function CourseDetail() {
         ) : (
           /* 无反馈 → 提交表单（POST，扣课时） */
           <Form form={fbForm} layout="vertical" onFinish={submitFeedback}>
-            <Form.Item name="content" label="上课内容" rules={[{ required: true, message: '请填写上课内容' }]}>
-              <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8 }} />
+            <Form.Item name="content" label={<span style={{ fontWeight: 600, color: '#6d28d9' }}>📖 上课内容</span>} rules={[{ required: true, message: '请填写上课内容' }]}>
+              <Input.TextArea rows={3} placeholder="描述本次课程内容..." style={{ borderRadius: 8, borderColor: '#ede9fe' }} />
             </Form.Item>
-            <Form.Item name="homework" label="作业布置">
-              <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8 }} />
+            <Form.Item name="homework" label={<span style={{ fontWeight: 600, color: '#1d4ed8' }}>📝 布置作业</span>}>
+              <Input.TextArea rows={2} placeholder="布置的作业..." style={{ borderRadius: 8, borderColor: '#dbeafe' }} />
             </Form.Item>
-            <Form.Item name="notes" label="备注">
-              <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8 }} />
+            <Form.Item name="notes" label={<span style={{ fontWeight: 600, color: '#b45309' }}>💡 备注</span>}>
+              <Input.TextArea rows={2} placeholder="其他备注..." style={{ borderRadius: 8, borderColor: '#fef3c7' }} />
             </Form.Item>
             <Form.Item style={{ marginBottom: 0 }}>
               <Button

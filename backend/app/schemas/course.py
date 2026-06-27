@@ -29,7 +29,7 @@ class TeacherBrief(BaseModel):
 class FeedbackBrief(BaseModel):
     """Feedback info embedded in course detail."""
     id: UUID
-    content: str
+    content: str | None = None
     homework: str | None = None
     notes: str | None = None
     created_by: UUID
@@ -77,8 +77,8 @@ class CourseOut(BaseModel):
     """Course record returned in list views."""
     id: UUID
     date: date_type
-    start_time: time_type
-    end_time: time_type
+    start_time: time_type | None = None
+    end_time: time_type | None = None
     teacher_id: UUID
     teacher: TeacherBrief | None = None
     meeting_link: str | None = None
