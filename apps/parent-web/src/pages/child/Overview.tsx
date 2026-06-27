@@ -11,6 +11,19 @@ import { useAuthStore } from '@/store/authStore';
 
 const { Text } = Typography;
 
+/* ── 从腾讯会议文本中提取链接 ── */
+function extractMeetingUrl(raw: string | undefined): { url: string | null; meetingId: string | null } {
+  if (!raw) return { url: null, meetingId: null };
+  // 1) 先找 https:// 链接
+  const urlMatch = raw.match(/https?:\/\/[^\s<>"']+/);
+  // 2) 找会议号 #xxx-xxx-xxx 或 纯数字-数字-数字
+  const idMatch = raw.match(/#?[Tt]encent[Mm]eeting[：:]\s*(\d[\d-]+\d)/) || raw.match(/(\d{3}-\d{3,6}-\d{2,4})/);
+  return {
+    url: urlMatch ? urlMatch[0] : null,
+    meetingId: idMatch ? idMatch[1] : null,
+  };
+}
+
 /* ── 类型 ── */
 interface Course {
   id: string | number;
@@ -165,25 +178,44 @@ export default function ChildOverview() {
         </div>
 
         {/* 会议链接区 */}
-        {hasLink && (
+        {hasLink && (() => {
+          const { url, meetingId } = extractMeetingUrl(c.meeting_link);
+          return (
           <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 10 }}>
             <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 6 }}>上课信息</div>
             <div style={{
               background: '#eff6ff', borderRadius: 8, padding: '10px 12px',
-              fontSize: 13, color: '#1d4ed8',
+              display: 'flex', flexDirection: 'column', gap: 6,
             }}>
               {c.status !== 'completed' ? (
-                <a href={c.meeting_link} target="_blank" rel="noopener noreferrer"
-                   style={{ color: '#f97316', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <VideoCameraOutlined />
-                  进入会议室 →
-                </a>
+                <>
+                  {url && (
+                    <a href={url} target="_blank" rel="noopener noreferrer"
+                       style={{ color: '#f97316', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <VideoCameraOutlined />
+                      进入会议室 →
+                    </a>
+                  )}
+                  {meetingId && (
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                      会议号：<span style={{ color: '#1f2937', fontWeight: 500, letterSpacing: 0.5 }}>{meetingId}</span>
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(meetingId); }}
+                        style={{ marginLeft: 8, background: 'none', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 8px', fontSize: 11, color: '#6b7280', cursor: 'pointer' }}
+                      >复制</button>
+                    </div>
+                  )}
+                  {!url && !meetingId && (
+                    <span style={{ color: '#6b7280', fontSize: 13, whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden' }}>{c.meeting_link}</span>
+                  )}
+                </>
               ) : (
-                <span style={{ color: '#6b7280' }}>{c.meeting_link}</span>
+                <span style={{ color: '#6b7280', fontSize: 12 }}>{url || c.meeting_link}</span>
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* 已完成的课程 → 查看反馈 */}
         {c.status === 'completed' && (c.content || c.homework) && (
